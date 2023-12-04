@@ -21,9 +21,13 @@ class Pipeline(ABC):
     pipeline_str: str
 
     def __init__(self):
-        assert self.pipeline_str is not None, "pipeline_str must be set"
-        self.parsed = Gst.parse_launch(self.pipeline_str)
+        assert self.get_pipeline_str() is not None, "pipeline_str must be set"
+        self.parsed = Gst.parse_launch(self.get_pipeline_str())
 
+
+    @abstractmethod
+    def get_pipeline_str(self):
+        return self.pipeline_str
     
     def play(self):
         self.parsed.set_state(Gst.State.PLAYING)

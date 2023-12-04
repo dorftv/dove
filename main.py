@@ -1,16 +1,17 @@
-import asyncio
-from hypercorn.config import Config
-from hypercorn.asyncio import serve
+import gi 
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, GLib
 
-from api import app
-from config import settings
-from pipelines import Pipeline
+Gst.init(None)
 
-if __name__ == "__main__":
-    # start the api task
-    server_config = Config()
-    loop = asyncio.new_event_loop()
-    loop.create_task(serve(app, server_config))
-    main_pipeline = Pipeline("https://static.dev.dorftv.at/overlay.html", "/home/hatsch/Videos/banane.mp4", 1280, 720)
-    main_pipeline.build()
-    main_pipeline.run()
+from api_thread import APIThread
+from pipeline_handler import PipelineHandler
+from pipelines.test_pipeline import TestPipeline
+
+
+api = APIThread()
+api.start()
+
+pipelines = PipelineHandler()
+pipelines.add_pipeline(TestPipeline())
+pipelines.start()

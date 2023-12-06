@@ -1,5 +1,14 @@
 version: "3.5"
 services:
+  frontend:
+    image: node:lts
+    working_dir: /var/www/html/app/
+    entrypoint: npm run dev -- -o --host
+    expose:
+      - 8000
+    volumes:
+      - ./frontend/:/var/www/html/app
+    tty: true
   dove:
     build:
       context: .

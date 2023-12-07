@@ -2,7 +2,8 @@ from threading import Thread
 from fastapi import FastAPI
 
 import uvicorn
-from api.ui import router
+from api import ui
+from api import hls
 
 
 class APIThread(Thread):
@@ -10,7 +11,8 @@ class APIThread(Thread):
     name = "API Thread"
     def run(self):
         fastapi = FastAPI()
-        fastapi.include_router(router)
+        fastapi.include_router(ui.router)
+        fastapi.include_router(hls.router)
         config = uvicorn.Config(fastapi, port=5000)
         server = uvicorn.Server(config)
         server.run()

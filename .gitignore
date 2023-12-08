@@ -1,2 +1,7 @@
 __pycache__/
+.vite/
+.nuxt/
+.output/
+node_modules/
+
 

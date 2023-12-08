@@ -5,7 +5,7 @@
       <VideoPlayer :preview_uri="input.uri" />
       <div :class="statusClass">
         <div>
-          Status: {{ input.uid }}
+          Input: {{ input.uid }}
         </div>
         <div>
           Status: {{ input.status }}

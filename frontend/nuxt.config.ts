@@ -1,7 +1,13 @@
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-
+  ssr: false,
+  nitro: {
+    devProxy: {
+      '/api': 'http://fakeapi:3000',
+      '/ws': 'http://fakeapi:9999',
+    },
+  },  
   devtools: { enabled: true },
   css: ["@/assets/css/tailwind.css"],
   postcss: {
@@ -13,7 +19,7 @@ export default defineNuxtConfig({
     },
   },
   modulesDir: ['./node_modules'],
-  modules: ['@nuxtjs/tailwindcss'],
+  modules: ['@nuxt/ui'],
   link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
   template: {
     compilerOptions: {
@@ -21,5 +27,6 @@ export default defineNuxtConfig({
       isCustomElement: (tag) => tag.startsWith('media-'),
     },
   },
+  
 })
 

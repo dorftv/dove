@@ -1,5 +1,6 @@
 FROM python:3.11-slim-bookworm
 
+ARG INTERPIPE_VERSION=develop
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 ENV PYTHONPATH=/app
@@ -27,13 +28,21 @@ RUN apt-get update && \
     graphviz \
     curl
 
+RUN apt install -yq git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools
 
+RUN git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git /install/interpipe && \
+    cd /install/interpipe && \
+    mkdir -p build && \
+    meson setup build --prefix=/usr && \
+    ninja -C build && \
+    ninja -C build install && \
+    rm -rf /install
 
-# currently we install gst-interpipe manually
-RUN curl -JO https://people.debian.org/~birger/aequee2XOhwa7oow/gst-interpipe_1.1.8-1_amd64.deb && dpkg -i gst-interpipe_1.1.8-1_amd64.deb
+#RUN apt-get purge  -y git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools #&& \
+#    apt-get autoremove -y
+
 
 RUN  pip install --upgrade pip 
-
 
 COPY . /app
 WORKDIR /app

@@ -13,7 +13,7 @@ const webSocket = ref(null);
 const { data: inputs } = await useFetch('/api/input')
 
 onMounted(() => {
-  webSocket.value = new WebSocket('ws://192.168.23.129:9999');
+  webSocket.value = new WebSocket('ws://localhost:9999');
 
   webSocket.value.onmessage = (event) => {
     const message = JSON.parse(event.data);

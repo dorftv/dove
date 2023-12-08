@@ -1,7 +1,6 @@
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-<<<<<<< HEAD
   ssr: false,
   nitro: {
     devProxy: {
@@ -9,9 +8,6 @@ export default defineNuxtConfig({
       '/ws': 'http://fakeapi:9999',
     },
   },  
-=======
-
->>>>>>> 3eeb711 (WIP: Add nuxt.js frontend.)
   devtools: { enabled: true },
   css: ["@/assets/css/tailwind.css"],
   postcss: {
@@ -23,11 +19,7 @@ export default defineNuxtConfig({
     },
   },
   modulesDir: ['./node_modules'],
-<<<<<<< HEAD
   modules: ['@nuxt/ui'],
-=======
-  modules: ['@nuxtjs/tailwindcss'],
->>>>>>> 3eeb711 (WIP: Add nuxt.js frontend.)
   link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
   template: {
     compilerOptions: {
@@ -35,9 +27,6 @@ export default defineNuxtConfig({
       isCustomElement: (tag) => tag.startsWith('media-'),
     },
   },
-<<<<<<< HEAD
   
-=======
->>>>>>> 3eeb711 (WIP: Add nuxt.js frontend.)
 })
 

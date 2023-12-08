@@ -3,12 +3,9 @@
         <header class="shadow-sm bg-white">
             <nav class="container mx-auto p-4 flex justify-between">
                 <NuxtLink to="/" class="font-bold">DOVE - Online Video Editor</NuxtLink>
-<<<<<<< HEAD
                 <div class="flex gap-4">
                   <CreatePane />
                 </div>
-=======
->>>>>>> 3eeb711 (WIP: Add nuxt.js frontend.)
                 <ul class="flex gap-4">
                     <li><NuxtLink to="/">Home</NuxtLink></li>
                     <li><NuxtLink to="/about">About</NuxtLink></li>

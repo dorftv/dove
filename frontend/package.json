@@ -17,13 +17,9 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.0.18",
-<<<<<<< HEAD
     "@nuxt/ui": "^2.11.0",
     "@nuxtjs/tailwindcss": "^6.10.1",
     "axios": "^1.6.2",
-=======
-    "@nuxtjs/tailwindcss": "^6.10.1",
->>>>>>> 3eeb711 (WIP: Add nuxt.js frontend.)
     "vidstack": "^1.8.3"
   }
 }

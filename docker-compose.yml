@@ -9,11 +9,11 @@ services:
     volumes:
       - ./frontend/:/var/www/html/app
     tty: true
-  dove:
+  api:
     build:
       context: ./api
     volumes:
-      - .:/app
+      - ./api:/app
     environment:
       - GST_DEBUG=3
       - LOG_LEVEL=debug

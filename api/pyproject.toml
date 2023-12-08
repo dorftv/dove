@@ -4,7 +4,7 @@ version = "0.1"
 description = "DORFTV Online Video Editor"
 authors = ["Stefan Hageneder <stefan.hageneder@dorftv.at>"]
 license = "Apache License"
-readme = "README.md"
+#readme = "README.md"
 
 
 [tool.poetry.dependencies]

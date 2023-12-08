@@ -13,6 +13,6 @@ class APIThread(Thread):
         fastapi = FastAPI()
         fastapi.include_router(ui.router)
         fastapi.include_router(hls.router)
-        config = uvicorn.Config(fastapi, port=5000, host=0.0.0.0)
+        config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)
         server.run()

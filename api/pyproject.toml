@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "dove"
+version = "0.1"
+description = "DORFTV Online Video Editor"
+authors = ["Stefan Hageneder <stefan.hageneder@dorftv.at>"]
+license = "Apache License"
+#readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+uvicorn = "^0.24.0.post1"
+dynaconf = "^3.2.4"
+hypercorn = "^0.15.0"
+pygobject = "^3.46.0"
+gobject = "^0.1.0"
+pycairo = "^1.25.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools]
+include-package-data = false
+py-modules = []

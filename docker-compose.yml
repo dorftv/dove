@@ -1,0 +1,21 @@
+version: "3.5"
+services:
+  api:
+    build:
+      context: ./api
+    volumes:
+      - .:/app
+    environment:
+      - GST_DEBUG=3
+      - LOG_LEVEL=debug
+      - LIBGL_ALWAYS_SOFTWARE=true
+      - LIBVA_DRIVER_NAME=fakedrive
+      - GST_PLUGIN_FEATURE_RANK="wpesrc:MAX"
+    restart: always
+    ports:
+      - 5000:5000
+      - 8080:8080
+
+networks:
+  dove:
+

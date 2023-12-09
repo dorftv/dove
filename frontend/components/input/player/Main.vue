@@ -2,8 +2,7 @@
   <div>
       <InputPlayerHeader :uid="uid" />
       <VideoPlayer  v-if="enablePreview" :preview_uri="input.uri" />
-      <InputPlayerControls :uid="uid" />
-      <InputPlayerStatus :status="input.status" :uid="input.uid" />      
+      <InputPlayerControls :status="input.status" :uid="input.uid"  />
   </div>
 </template>
 

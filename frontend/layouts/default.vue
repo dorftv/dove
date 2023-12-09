@@ -18,6 +18,9 @@ const isOpen = ref(false)
                     <li><NuxtLink to="/help">Help</NuxtLink></li>
                 </ul>
                 <TogglePreview />
+                <a href="https://github.com/dorftv/brave">
+                  <Icon name="uil:github" color="black" size="36px" />
+                </a>
             </nav>
         </header>
 

@@ -1,7 +1,10 @@
 <template>
   <div class="container">
     Input: {{ uid }}
-    <UIcon name="i-heroicons-trash" size="md" inline="inline-flex" color="red" @click="submitRemove"/>
+    <UIcon name="i-heroicons-trash" class="h-5 w-5" color="red" @click="submitRemove"/>
+    <UIcon name="i-heroicons-video-camera-slash" class="h-5 w-5" color="red" @click="submitRemove"/>
+
+    
   </div>
 </template>
 

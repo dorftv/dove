@@ -7,7 +7,10 @@
 
 <script setup>
 
-const { preview_uri } = defineProps(['preview_uri'])
+
+const props = defineProps({
+  preview_uri: String,
+})
 
 </script>
 

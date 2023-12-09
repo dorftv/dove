@@ -1,6 +1,6 @@
 
 <template>
-    <div v-if="enablePreview">     
+    <div>     
     <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`${preview_uri}`">
   <media-provider></media-provider>
 </media-player>
@@ -16,7 +16,6 @@ import 'vidstack/player/styles/default/theme.css';
 import 'vidstack/player/styles/default/layouts/video.css';
 import { BeakerIcon } from "@heroicons/vue/20/solid";
 
-const  enablePreview = useState('enablePreview') // Same as useState('color')
 const { preview_uri } = defineProps(['preview_uri'])
 
 

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div>
-      <InputControls />
+      <InputPlayerControls :uid="uid" />
       <VideoPlayer :preview_uri="input.uri" />
       <div :class="statusClass">
         <div>
@@ -23,6 +23,7 @@ const props = defineProps({
   input: Object
 })
 
+const uid = props.input.uid
 
 
 const statusClass = computed(() => {

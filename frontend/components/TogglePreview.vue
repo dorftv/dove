@@ -1,9 +1,7 @@
 <script setup>
-const enablePreview = ref(true)
-//const color = useColor() // Same as useState('color')
-const usePreviewEnabled =  useState('enablePreview')
-// TODO make available global
-
+//const usePreviewEnabled = useState('enablePreview', () => true)
+// use cookie because SSR is disabled
+const usePreviewEnabled = useCookie('enablePreview')
 </script>
 
 <template>

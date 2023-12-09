@@ -1,7 +1,7 @@
 <template>
   <div class="grid grid-cols-4 gap-5">
     <div v-for="input in inputs" :key="input.uid">
-      <InputPlayer :input="input" />
+      <InputPlayerVideo :input="input" />
     </div>
   </div>
 </template>

@@ -9,7 +9,11 @@ const items = [{
 }, {
   key: 'testsrc',
   label: 'Test Source',
-  description: 'Add Test Source.'
+  description: 'Add Test Source.',
+}, {
+  key: 'test',
+  label: 'Test Theme',
+  description: 'Add Test Source.'  
 }]
 
 </script>
@@ -26,7 +30,7 @@ const items = [{
   :trailing="false"
   @click="isOpen = true"
 />
-  <UModal v-model="isOpen" :transition="false">
+    <UModal v-model="isOpen" :transition="false">
   <UTabs :items="items"  orientation="vertical">
     <template #item="{ item }">
 
@@ -36,9 +40,10 @@ const items = [{
         <div v-if="item.key === 'testsrc'" class="space-y-3">
           <!--
                   <CreateInputUri :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
-
-        <CreateTestsrc :isOpen="isOpen" @close="(closing) => isOpen = closing" /> -->
+--> 
+        <CreateInputTestsrc :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
         </div>        
+        <CreateInputTest v-if="item.key === 'test'" :isOpen="isOpen" @close="(closing) => isOpen = closing" />
       
     </template>
   </UTabs>      

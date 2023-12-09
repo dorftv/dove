@@ -1,21 +1,9 @@
 <template>
   <div>
-    <div>
+      <InputPlayerHeader :uid="uid" />
+      <VideoPlayer  v-if="enablePreview" :preview_uri="input.uri" />
       <InputPlayerControls :uid="uid" />
-<div v-if="enablePreview">
-      <VideoPlayer :preview_uri="input.uri" />
-       <InputPlayerStatus :status="input.status" :uid="input.uid" />
-
-      <div :class="statusClass">
-        <div>
-          Input: {{ input.uid }}
-        </div>
-        <div>
-          Status: {{ input.status }}
-        </div>
-        </div>        
-      </div>
-    </div>
+      <InputPlayerStatus :status="input.status" :uid="input.uid" />      
   </div>
 </template>
 

@@ -1,6 +1,7 @@
 
 <template>
     <div>     
+
     <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`${preview_uri}`">
   <media-provider></media-provider>
 </media-player>

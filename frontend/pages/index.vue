@@ -1,18 +1,14 @@
-<script>
+<script setup> 
 
-
-export default defineComponent({
-  setup() {   
-  },
-})
 </script>
 
 <template>
-  <div> 
+  <div > 
 <MainOutputPlayer preview_uri="http://localhost:88/preview/playlist.m3u8" />
 <InputsPane />
   </div>
 </template>
+
 <script setup>
 </script>
 <style scoped>  

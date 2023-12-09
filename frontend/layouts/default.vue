@@ -7,7 +7,7 @@ const isOpen = ref(false)
         <header class="shadow-sm bg-white">
             <nav class="container mx-auto flex justify-between">
                 <NuxtLink to="/" class="font-bold">DOVE - Online Video Editor</NuxtLink>
-                <div class="float-left flex" >
+                <div class="flex" >
                   <CreateInputPane />
                   <CreateMixerPane />
                   <CreateOutputPane />

@@ -1,7 +1,12 @@
 <template>
-  <div>
-    <Icon name="i-ic:baseline-delete-forever" color="black" size="24" @click="submitForm"/>    
-  </div>    
+<div>
+    <UButton icon="i-heroicons-play-circle" color="gray" @click="submitForm"/>
+    <UButton icon="i-heroicons-stop-circle" color="gray" @click="submitForm"/>
+    <UButton icon="i-heroicons-pause-circle" color="gray" @click="submitForm"/>
+</div>
+   
+    
+    
 </template>
 
 <script setup>
@@ -9,7 +14,7 @@ const props = defineProps({
   uid: Object
 })
 
-const submitForm = async () => {
+const submitRemove = async () => {
     const { data: responseData } = await useFetch('/api/input/delete', {
         method: 'post',
         body: { 

@@ -2,7 +2,7 @@
 <template>
     <div>
         <div class="p-4">
-          <h2>Uri ( for files, SRT, RTMP, HLS, ...)</h2>
+          <h2>Test Source ( Video and Audio )</h2>
           <UForm :validate="validate" :state="state" class="space-y-4" @submit="submitForm">
           <UInput v-model="uri" size="md" />
           <UCheckbox v-model="loop" name="loop" label="Loop (content replays once finished)" />
@@ -21,10 +21,9 @@
   </template>
 
 <script setup>
-const uri = ref('')
+
 const volume = ref(80)
-const loop = ref(false)
-//Can change 7 to 2 for longer results.
+
 
 
 const formData = ref({

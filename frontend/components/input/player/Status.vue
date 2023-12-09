@@ -49,10 +49,8 @@ switch (props.status) {
 
 </script>
 
-<style>
-div {
-margin: 1em;
-}
+<style scoped>
+
 
 .playing {
 background-color: green;

@@ -19,7 +19,7 @@ export default defineNuxtConfig({
     },
   },
   modulesDir: ['./node_modules'],
-  modules: ['@nuxt/ui', 'nuxt-icon-tw', '@nuxtjs/tailwindcss'],
+  modules: ['@nuxt/ui', 'nuxt-icon'],
   link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
   template: {
     compilerOptions: {

@@ -2,6 +2,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
+  static: true,
   nitro: {
     devProxy: {
       '/api': 'http://fakeapi:3000',

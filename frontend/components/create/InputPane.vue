@@ -20,7 +20,6 @@ const items = [{
 
 <template>
   <div>
-
     <UButton class="ma-0 pa-0"
   icon="i-heroicons-pencil-square"
   size="sm"

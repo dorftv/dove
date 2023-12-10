@@ -1,10 +1,13 @@
 <template>
   <div :class="statusClass">
-    <UIcon name="i-heroicons-stop-circle" class="h-5 w-5" color="gray" @click="submitStop"/>
-    <UIcon name="i-heroicons-pause-circle" class="h-5 w-5" color="gray" @click="submitPause"/>
-    <UIcon name="i-heroicons-play-circle" class="h-5 w-5" color="gray" @click="submitPlay"/>
-    <nuxt-icon name="admin/badge"></nuxt-icon>    {{ status }}
-  </div>        
+    <Icon name="uil:stop-circle" color="black" size="24px" @click="submitStop"/>
+    <Icon name="uil:pause-circle" color="black" size="24px"  @click="submitPause" />
+    <Icon name="uil:play-circle" color="black" size="24px" @click="submitPlay"/>
+     {{ status }}
+     <!-- toggle preview -->
+    <Icon name="uil:video-slash" color="black" size="24px"  v-if="!previewEnabled && inputEnabled" @click="$emit('enablePreview', false)"/>
+    <Icon name="uil:video" color="black" size="24px"  v-if="!previewEnabled && !inputEnabled"  @click="$emit('enablePreview', true)"/>    
+  </div>
 </template>
 
 <script setup>
@@ -13,10 +16,18 @@ import { computed } from "@vue/reactivity"
 
 const props = defineProps({
   status: String,
-  uid: String
+  uid: String,
+  inputEnabled: Boolean
+
 })
 //const status = ref(input.status)
 
+const previewEnabled = useCookie('enablePreview')
+  
+  function enablePreview() {
+    inputEnabled = !prop.inputEnabled
+  }
+  
 const submitPlay = async () => {
     const { data: responseData } = await useFetch('/api/input/delete', {
         method: 'post',
@@ -72,6 +83,7 @@ switch (props.status) {
 
 .playing {
 background-color: green;
+
 }
 
 .buffering {

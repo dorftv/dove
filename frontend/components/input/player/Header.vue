@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     Input: {{ uid }}
-    <Icon name="uil:trash" color="black" size="24px" @click="submitRemove"/>   
+    <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>
 </template>
 

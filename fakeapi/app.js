@@ -115,9 +115,38 @@ app.delete('/api/outputs', (req, res) => {
   }
 });
 
-// Remaining unchanged code
-// ...
 
+// Function to randomly update input status
+function updateRandomInputStatus() {
+  if (inputs.length > 0) {
+    const randomIndex = Math.floor(Math.random() * inputs.length);
+    const input = inputs[randomIndex];
+    input.status = statuses[Math.floor(Math.random() * statuses.length)];
+    broadcast({ 
+      type: 'input', 
+      channel: 'UPDATE', 
+      data: { uid: input.uid, uri: input.uri, status: input.status } 
+    });
+  }
+}
+
+// Function to randomly update output status
+function updateRandomOutputStatus() {
+  if (outputs.length > 0) {
+    const randomIndex = Math.floor(Math.random() * outputs.length);
+    const output = outputs[randomIndex];
+    output.status = statuses[Math.floor(Math.random() * statuses.length)];
+    broadcast({ 
+      type: 'output', 
+      channel: 'UPDATE', 
+      data: { uid: output.uid, type: output.type, status: output.status } 
+    });
+  }
+}
+
+// Set intervals for random status updates
+setInterval(updateRandomInputStatus, 1000);
+setInterval(updateRandomOutputStatus, 1000);
 app.listen(port, '0.0.0.0', () => {
   console.log(`Mixer API running on http://0.0.0.0:${port}`);
 });

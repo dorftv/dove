@@ -17,9 +17,9 @@
 import { watch,  ref, onMounted, onUnmounted } from 'vue';
 
 const webSocket = ref(null);
-const { data: inputs } = await useFetch('/api/input')
-const { data: mixers } = await useFetch('/api/mixer')
-const { data: outputs } = await useFetch('/api/input')
+const { data: inputs } = await useFetch('/api/inputs')
+const { data: mixers } = await useFetch('/api/mixers')
+const { data: outputs } = await useFetch('/api/inputs')
 
 
 

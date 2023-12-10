@@ -33,8 +33,8 @@ const formData = ref({
 
 
 const submitForm = async () => {
-    const { data: responseData } = await useFetch('/api/input/add', {
-        method: 'post',
+    const { data: responseData } = await useFetch('/api/inputs', {
+        method: 'put',
         body: { 
           uid: (Math.random() + 1).toString(36).substring(7),
           uri: 'http://localhost:88/preview/playlist.m3u8',

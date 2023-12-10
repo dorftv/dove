@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   static: true,
   nitro: {
     devProxy: {
-      '/api': 'http://fakeapi:3000',
+      '/api': 'http://fakeapi:3000/api',
       '/ws': 'http://fakeapi:9999',
     },
   },  

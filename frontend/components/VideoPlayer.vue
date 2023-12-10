@@ -15,7 +15,6 @@ import 'vidstack/player/layouts';
 import 'vidstack/player/ui';
 import 'vidstack/player/styles/default/theme.css';
 import 'vidstack/player/styles/default/layouts/video.css';
-import { BeakerIcon } from "@heroicons/vue/20/solid";
 
 const { preview_uri } = defineProps(['preview_uri'])
 

@@ -1,14 +1,28 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const yaml = require('js-yaml');
+const fs = require('fs');
 
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
 
-const mixers = []; // Array to store mixers
-const inputs = []; // Array to store inputs
+// Function to generate random UID
+const generateUID = () => Math.random().toString(36).substring(2, 10);
+
+// Load configuration from settings.yml
+let config;
+try {
+  config = yaml.load(fs.readFileSync('settings.yml', 'utf8'));
+} catch (e) {
+  console.error(e);
+}
+
+const mixers = config.mixers || []; // Array to store mixers
+const inputs = config.inputs || []; // Array to store inputs
+const outputs = config.outputs || []; // Array to store outputs
 
 const statuses = ["PLAYING", "PENDING", "PAUSED", "BUFFERING"];
 
@@ -24,22 +38,33 @@ function broadcast(data) {
   });
 }
 
-// Add mixer endpoint
-app.post('/mixer/add', (req, res) => {
-  const { uid, inputs } = req.body;
-  mixers.push({ uid, inputs });
-  broadcast({ type: 'mixer', channel: 'CREATE', uid, inputs });
-  res.status(201).send({ message: 'Mixer added' });
-});
-
-// Get mixer endpoint
-app.get('/mixer', (req, res) => {
+// Get mixers endpoint
+app.get('/api/mixers', (req, res) => {
   res.json(mixers);
 });
 
-// Add input endpoint
-app.post('/input/add', (req, res) => {
-  const { uid, uri } = req.body;
+// Get inputs endpoint
+app.get('/api/inputs', (req, res) => {
+  res.json(inputs);
+});
+
+// Get outputs endpoint
+app.get('/api/outputs', (req, res) => {
+  res.json(outputs);
+});
+
+
+// Update mixer and input endpoints
+app.put('/api/mixers', (req, res) => {
+  const { uid, inputs, width, height } = req.body;
+  mixers.push({ uid, inputs, width, height });
+  broadcast({ type: 'mixer', channel: 'CREATE', uid, inputs, width, height });
+  res.status(201).send({ message: 'Mixer added' });
+});
+
+app.put('/api/inputs', (req, res) => {
+  const uid = generateUID();
+  const uri = 'http://localhost:88/preview/playlist.m3u8';
   const status = statuses[Math.floor(Math.random() * statuses.length)];
   inputs.push({ uid, uri, status });
   broadcast({ 
@@ -47,11 +72,10 @@ app.post('/input/add', (req, res) => {
     channel: 'CREATE', 
     data: { uid, uri, status } 
   });
-  res.status(201).send({ message: 'Input added' });
+  res.status(201).send({ message: 'Input added', uid });
 });
 
-// Delete input endpoint
-app.post('/input/delete', (req, res) => {
+app.delete('/api/inputs', (req, res) => {
   const { uid } = req.body;
   const index = inputs.findIndex(input => input.uid === uid);
   if (index !== -1) {
@@ -67,26 +91,32 @@ app.post('/input/delete', (req, res) => {
   }
 });
 
-// Get inputs endpoint
-app.get('/input', (req, res) => {
-  res.json(inputs);
+// New outputs endpoint
+app.put('/api/outputs', (req, res) => {
+  const { uid, type, status } = req.body;
+  outputs.push({ uid, type, status });
+  broadcast({ type: 'output', channel: 'CREATE', uid, type, status });
+  res.status(201).send({ message: 'Output added' });
 });
 
-// Function to randomly update input status
-function updateRandomInputStatus() {
-  if (inputs.length > 0) {
-    const randomIndex = Math.floor(Math.random() * inputs.length);
-    const input = inputs[randomIndex];
-    input.status = statuses[Math.floor(Math.random() * statuses.length)];
+app.delete('/api/outputs', (req, res) => {
+  const { uid } = req.body;
+  const index = outputs.findIndex(output => output.uid === uid);
+  if (index !== -1) {
+    outputs.splice(index, 1);
     broadcast({ 
-      type: 'input', 
-      channel: 'UPDATE', 
-      data: { uid: input.uid, uri: input.uri, status: input.status } 
+      type: 'output', 
+      channel: 'DELETE', 
+      data: {uid}
     });
+    res.send({ message: 'Output deleted' });
+  } else {
+    res.status(404).send({ message: 'Output not found' });
   }
-}
+});
 
-setInterval(updateRandomInputStatus, 5000);
+// Remaining unchanged code
+// ...
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Mixer API running on http://0.0.0.0:${port}`);

@@ -20,8 +20,8 @@ function enablePreview() {
 }
 
 const submitRemove = async () => {
-    const { data: responseData } = await useFetch('/api/input/delete', {
-        method: 'post',
+    const { data: responseData } = await useFetch('/api/inputs', {
+        method: 'delete',
         body: { 
           uid: props.uid,
         }

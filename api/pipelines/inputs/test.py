@@ -3,7 +3,7 @@ from pipelines.base import Pipeline
 from models import input
 
 class TestPipeline(Pipeline):
-    pipeline_str: str = "v4l2src device=/dev/video0 ! videoconvert ! videoscale ! video/x-raw,width=320,height=240 ! theoraenc ! oggmux ! tcpserversink host=127.0.0.1 port=8080"
+    pipeline_str: str = "videotestsrc name=video_<uid> is-live=true ! videoconvert ! videoscale ! video/x-raw,width={width],height={height},pixel-aspect-ratio=1/1,format=RGBA !  interpipesink name=video_uid"
 
     def describe(self) -> "input.InputCreateDTO":
         return input.InputCreateDTO(

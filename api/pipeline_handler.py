@@ -3,18 +3,24 @@ from gi.repository import GLib
 
 
 class PipelineHandler:
-    pipelines: list[Pipeline]
+    pipelines: dict[str, list[Pipeline]]
 
     def __init__(self):
-        self.pipelines = []
+        self.pipelines = {
+            "inputs": []
+        }
 
-    def add_pipeline(self, pipeline: Pipeline):
-        self.pipelines.append(pipeline)
-    
+    def add_pipeline(self, pipeline: Pipeline, type: str = "inputs"):
+        if type in self.pipelines:
+            self.pipelines[type].append(pipeline)
+        else:
+            self.pipelines[type] = [pipeline]
+
     def start(self, set_all_playing=True):
         if set_all_playing:
-            for pipeline in self.pipelines:
-                pipeline.play()
-        
+            for pipelines in self.pipelines.values():
+                for pipeline in pipelines:
+                    pipeline.play()
+
         loop = GLib.MainLoop()
         loop.run()

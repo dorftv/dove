@@ -1,4 +1,5 @@
 from pipelines.base import Pipeline
+from models import input
 
 
 class CompositorPipeline(Pipeline):
@@ -6,6 +7,9 @@ class CompositorPipeline(Pipeline):
         self.width = width
         self.height = height
         super().__init__()
+        
+    def describe(self) -> input.Description:
+        return input.Description(uid=self.uid)
 
     def get_pipeline_str(self):
         return f"compositor name=overlay src::alpha=1 bg::alpha=1 htmloverlay::alpha=1 ! \

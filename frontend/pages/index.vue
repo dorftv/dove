@@ -1,14 +1,16 @@
 <template>
   <div > 
-    
     <MainOutputPlayer preview_uri="http://localhost:88/preview/playlist.m3u8" />
-
+      <div v-for="output in outputs" :key="output.uid">
+        <OutputMain :output="output"/>
+      </div>
     <div class="grid grid-cols-4 gap-5">
       <div v-for="input in inputs" :key="input.uid">
         <InputPlayerMain :input="input" />
       </div>
     </div>
-  
+    <div>
+    </div>
   </div>
 </template>
 

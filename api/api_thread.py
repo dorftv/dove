@@ -6,6 +6,7 @@ import uvicorn
 from api import ui
 from api import hls
 from api import inputs
+from api import outputs
 from pipeline_handler import PipelineHandler
 
 
@@ -27,6 +28,7 @@ class APIThread(Thread):
         fastapi.include_router(ui.router)
         fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
+        fastapi.include_router(outputs.router)
         config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)
         server.run()

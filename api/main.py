@@ -18,12 +18,5 @@ pipelines = PipelineHandler()
 api = APIThread(pipeline_handler=pipelines)
 api.start()
 
-pipelines.add_pipeline(TestPipeline(
-    uid=uuid4(),
-    name="Test",
-    height=300,
-    width=300,
-    preview=False,
-    state="PLAYING"
-))
+pipelines.add_pipeline(None)
 pipelines.start()

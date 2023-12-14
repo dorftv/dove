@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, HTTPException
 
 from models.input import InputDTO, InputCreateDTO, InputTypes
 from models import input
+from pipelines.hls_monitor import HLSMonitorPipeline
 from pipelines.inputs import TestPipeline
 
 router = APIRouter(prefix="/inputs")
@@ -28,6 +29,7 @@ async def delete(request: Request, input: InputDTO):
 
     for pipeline in inputs:
         if pipeline.uid == input.uid:
+            handler.add_pipeline(HLSMonitorPipeline())
             pipeline.stop()
             inputs.remove(pipeline)
 
@@ -52,6 +54,10 @@ async def create_or_update(input: InputCreateDTO, request: Request):
         )
         handler.add_pipeline(pipeline)
         pipeline.set_state(input.state)
+
+        preview_pipeline = HLSMonitorPipeline(f"video_{pipeline.uid}", pipeline.uid.hex, input.width, input.height)
+        handler.add_pipeline(preview_pipeline)
+        preview_pipeline.play()
     except KeyError:
         HTTPException(400, detail=f"cannot find pipeline of type {input.type}")
 

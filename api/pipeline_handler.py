@@ -7,14 +7,18 @@ class PipelineHandler:
 
     def __init__(self):
         self.pipelines = {
-            "inputs": []
+            "inputs": [],
+            "outputs": []
         }
 
     def add_pipeline(self, pipeline: Pipeline, type: str = "inputs"):
-        if type in self.pipelines:
-            self.pipelines[type].append(pipeline)
-        else:
-            self.pipelines[type] = [pipeline]
+        if pipeline is not None:
+            if type in self.pipelines:
+                self.pipelines[type].append(pipeline)
+            else:
+                self.pipelines[type] = [pipeline]
+
+    def delete_pipeline(self):
 
     def start(self, set_all_playing=True):
         if set_all_playing:

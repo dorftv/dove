@@ -2,7 +2,7 @@ from pipelines.base import Pipeline
 from models import input
 
 class HLSMonitorPipeline(Pipeline):
-    def __init__(self, src: str, src_name: str, width: int, height: str):
+    def __init__(self, src: str, src_name: str, width: int, height: int):
         self.src = src
         self.src_name = src_name
         self.width = width

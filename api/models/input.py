@@ -22,3 +22,7 @@ class InputCreateDTO(InputDTO):
     height: int
     width: int
     preview: bool
+
+class OutputDTO(BaseModel):
+    uid: UUID
+    state: str

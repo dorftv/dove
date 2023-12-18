@@ -1,7 +1,8 @@
-class Caps:
-    video: str
-    audio: str
+from typing import Optional
 
-    def __init__(self, video: str, audio: str):
-        self.video = video
-        self.audio = audio
+from pydantic import BaseModel
+
+
+class Caps(BaseModel):
+    video: Optional[str]
+    audio: Optional[str]

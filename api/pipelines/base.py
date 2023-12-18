@@ -16,7 +16,12 @@ class GSTBase(BaseModel):
     def build(self):
         pass
 
+    @abstractmethod
+    def describe(self):
+        pass
+
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
+        print("pl", pipeline)
         if type(pipeline) == str:
             pipeline = Gst.parse_launch(pipeline)
 
@@ -28,3 +33,6 @@ class GSTBase(BaseModel):
         def inner(func: Callable):
             return functools.partial(GLib.idle_add, func)
         return inner
+
+    class Config:
+        arbitrary_types_allowed = True

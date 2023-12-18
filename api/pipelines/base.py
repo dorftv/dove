@@ -34,5 +34,9 @@ class GSTBase(BaseModel):
             return functools.partial(GLib.idle_add, func)
         return inner
 
+    def set_state(self, state: Gst.State):
+        for pipeline in self.inner_pipelines:
+            pipeline.set_state(state)
+
     class Config:
         arbitrary_types_allowed = True

@@ -24,9 +24,12 @@ class PipelineHandler:
 
     def add_pipeline(self, pipeline: GSTBase, start=True):
         if issubclass(pipeline.__class__, Input):
+            print("input")
             try:
+                pipeline.build()
                 self._pipelines["inputs"].append(pipeline)
             except AttributeError:
+                pipeline.build()
                 self._pipelines["inputs"] = [pipeline]
 
         elif issubclass(pipeline.__class__, Output):
@@ -42,12 +45,20 @@ class PipelineHandler:
                 inner.set_state(Gst.State.PLAYING)
 
     def get_pipeline(self, type: str, uid: UUID):
-        for pipelines in self._pipelines.get(type):
-            for pipeline in pipelines:
-                if pipeline.uid == uid:
-                    return pipeline
+        print("pipelines", self._pipelines.get(type))
+        for pipeline in self._pipelines.get(type):
+            if pipeline.uid == uid:
+                return pipeline
 
         raise KeyError("Pipeline was not found")
+    
+    def delete_pipeline(self, type, uid):
+        pipeline = self.get_pipeline(type, uid)
+        pipeline.set_state(Gst.State.NULL)
+
+        idx = self._pipelines[type].index(pipeline)
+        self._pipelines[type].pop(idx)
+        del pipeline
 
     def start(self):
         self.mainloop = GObject.MainLoop()

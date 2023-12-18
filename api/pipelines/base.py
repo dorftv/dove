@@ -6,9 +6,12 @@ from typing import Callable, Optional, Any
 
 from pydantic import BaseModel
 
+from caps import Caps
+
 
 class GSTBase(BaseModel):
-    inner_pipelines: list[Gst.Pipeline] = []
+    inner_pipelines: Optional[list[Gst.Pipeline]] = []
+    caps: Caps
     @abstractmethod
     def build(self):
         pass

@@ -1,22 +1,21 @@
-from uuid import uuid4
-
 import gi
 
-from models.input import InputTypes
+from caps import Caps
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
 Gst.init(None)
 
-from api_thread import APIThread
+# from api_thread import APIThread
 from pipeline_handler import PipelineHandler
-from pipelines.inputs.test import TestPipeline
+from pipelines.outputs.hls_output import HLSOutput
 
-pipelines = PipelineHandler()
+caps = Caps(None, None)
+output = HLSOutput(caps=caps, listen_to="videomixer_out")
+pipelines = PipelineHandler({"outputs": output})
 
-api = APIThread(pipeline_handler=pipelines)
-api.start()
+# api = APIThread(pipeline_handler=pipelines)
+# api.start()
 
-pipelines.add_pipeline(None)
 pipelines.start()

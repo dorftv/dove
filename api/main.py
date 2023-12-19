@@ -18,7 +18,7 @@ caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="aud
 uid = uuid4()
 input = TestInput(caps=caps, uid=uid, attrs=InputDTO(
     uid=uid,
-    type="TestInput",
+    type="testsrc",
     name="Test",
     state="PLAYING",
     height=300,

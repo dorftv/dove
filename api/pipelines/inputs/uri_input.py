@@ -7,11 +7,10 @@ class URIInput(Input):
     attrs: InputDTO
 
     def build(self):
-        video_pipeline_str = f"uridecodebin3 uri={self.attrs.uri} name=uridecodebin instant-uri=true uridecodebin. !" + self.get_video_end()
-        audio_pipeline_str = f"uridecodebin. ! " + self.get_audio_end()
+        video_pipeline_str = f" uridecodebin3 uri={self.attrs.uri} name=uridecodebin_{self.uid} instant-uri=true uridecodebin_{self.uid}. ! " + self.get_video_end()
+        audio_pipeline_str = f" uridecodebin_{self.uid}. ! " + self.get_audio_end()
 
-        self.add_pipeline(video_pipeline_str)
-        self.add_pipeline(audio_pipeline_str)
+        self.add_pipeline(video_pipeline_str + audio_pipeline_str)
 
     def describe(self):
         attrs = {

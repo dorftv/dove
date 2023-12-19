@@ -31,14 +31,14 @@ async def all(request: Request):
 async def create(request: Request, data: InputDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     match data.type:
-        case("TestInput"):
+        case("testsrc"):
             caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
             new_input = TestInput(caps=caps, uid=data.uid, attrs=data)
             handler.add_pipeline(new_input)
             # emit websocket
             # TODO send data like we need them in frontend
             await ws_broadcast(data)            
-        case("URIInput"):
+        case("uri"):
             caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
             new_input = URIInput(caps=caps, uid=data.uid, attrs=data.__dict__)
             handler.add_pipeline(new_input)

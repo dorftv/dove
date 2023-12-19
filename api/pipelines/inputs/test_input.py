@@ -7,11 +7,11 @@ from pipelines.description import Description
 class TestInput(Input):
     attrs: InputDTO
 
+
     def build(self):
         video_pipeline_str = f"videotestsrc pattern=1 is_live=true name=videotestsrc_{self.uid} !" + self.get_video_end()
         audio_pipeline_str = f"audiotestsrc wave=2 freq=600 is-live=true volume=0.5 name=audiotestsrc_{self.uid} ! audioresample ! audioconvert !" + self.get_audio_end()
-        self.add_pipeline(video_pipeline_str)
-        self.add_pipeline(audio_pipeline_str)
+        self.add_pipeline(video_pipeline_str + audio_pipeline_str)
 
     def describe(self):
         # attrs = {

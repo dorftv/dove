@@ -7,6 +7,7 @@ import uvicorn
 from api import hls
 from api import inputs
 from api import outputs
+from api import websockets
 from pipeline_handler import PipelineHandler
 
 
@@ -28,7 +29,11 @@ class APIThread(Thread):
         # fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
         # fastapi.include_router(outputs.router)
-        # serve frontend with StaticFiles
+
+        # websockets handler
+        fastapi.include_router(websockets.router)
+
+        # serve frontend with StaticFiles        
         fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")        
         config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)

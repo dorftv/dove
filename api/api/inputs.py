@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 
 from api.dtos import InputDTO, SuccessDTO, InputDeleteDTO
 from pipeline_handler import PipelineHandler
@@ -10,6 +10,7 @@ from pipelines.base import GSTBase
 from pipelines.inputs.input import Input
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import URIInput
+from websocket_handler import  ws_broadcast
 
 router = APIRouter(prefix="/api")
 
@@ -34,6 +35,9 @@ async def create(request: Request, data: InputDTO):
         case("TestInput"):
             new_input = TestInput(caps=data.caps, uid=data.uid)
             handler.add_pipeline(new_input)
+            # emit websocket
+            # TODO send data like we need them in frontend
+            await ws_broadcast(data)            
         case("URIInput"):
             new_input = URIInput(caps=data.caps.__dict__, uid=data.uid, uri=data.attrs["uri"])
             handler.add_pipeline(new_input)

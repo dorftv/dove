@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from threading import Thread
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 import uvicorn
-from api import ui
 from api import hls
 from api import inputs
 from api import outputs
@@ -25,10 +25,11 @@ class APIThread(Thread):
     name = "API Thread"
     def run(self):
         fastapi = FastAPI(lifespan=self.lifespan)
-        # fastapi.include_router(ui.router)
         # fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
         # fastapi.include_router(outputs.router)
+        # serve frontend with StaticFiles
+        fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")        
         config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)
         server.run()

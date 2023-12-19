@@ -11,10 +11,10 @@ from pipelines.inputs.input import Input
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import URIInput
 
-router = APIRouter(prefix="/inputs")
+router = APIRouter(prefix="/api")
 
 
-@router.get("/", response_model=list[Description])
+@router.get("/inputs", response_model=list[Description])
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     inputs: list[Input] = handler._pipelines["inputs"]
@@ -27,7 +27,7 @@ async def all(request: Request):
 
     return descriptions
 
-@router.put("/", response_model=InputDTO)
+@router.put("/inputs", response_model=InputDTO)
 async def create(request: Request, data: InputDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     match data.type:
@@ -40,7 +40,7 @@ async def create(request: Request, data: InputDTO):
 
     return data
 
-@router.delete("/", response_model=SuccessDTO)
+@router.delete("/inputs", response_model=SuccessDTO)
 async def delete(request: Request, data: InputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)

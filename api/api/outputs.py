@@ -2,9 +2,9 @@
 #
 # from models.input import OutputDTO, InputCreateDTO, Description
 #
-# router = APIRouter(prefix="/outputs")
+# router = APIRouter(prefix="/api")
 #
-# @router.get("/", response_model=list[InputCreateDTO])
+# @router.get("/outputs", response_model=list[InputCreateDTO])
 # async def all_outputs(request: Request):
 #     handler = request.app.state._state["pipeline_handler"]
 #     outputs = handler.pipelines["outputs"]
@@ -15,6 +15,6 @@
 #
 #     return descriptions
 #
-# @router.put("/")
+# @router.put("outputs")
 # async def create_output(request: Request):
 #     pass

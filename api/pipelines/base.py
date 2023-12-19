@@ -1,12 +1,16 @@
+import asyncio
+import json
 from abc import ABC, abstractmethod
 import functools
 from gi.repository import Gst, GLib
 
 from typing import Callable, Optional, Any
 
+from orjson import orjson
 from pydantic import BaseModel
 
 from caps import Caps
+from websocket_handler import ws_broadcast
 
 
 class GSTBase(BaseModel):
@@ -21,12 +25,18 @@ class GSTBase(BaseModel):
         pass
 
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
-        print("pl", pipeline)
         if type(pipeline) == str:
             pipeline = Gst.parse_launch(pipeline)
 
         self.inner_pipelines.append(pipeline)
         pipeline.set_state(Gst.State.PLAYING)
+
+        bus = pipeline.get_bus()
+        bus.add_signal_watch()
+        bus.connect("message::error", lambda e, b: asyncio.run(self._on_error(e, b))),
+        bus.connect("message::state-changed", lambda e, b: asyncio.run(self._on_state_change(e, b)))
+        bus.connect("message::eos", lambda e, b: asyncio.run(self._on_eos(e, b)))
+        bus.connect("message::info", lambda e, b: asyncio.run(self._on_info(e, b)))
 
     @staticmethod
     def run_on_master():
@@ -37,6 +47,35 @@ class GSTBase(BaseModel):
     def set_state(self, state: Gst.State):
         for pipeline in self.inner_pipelines:
             pipeline.set_state(state)
+
+    # event handlers
+    async def _on_error(self, bus, message):
+        await ws_broadcast(orjson.dumps({
+            "uid": self.uid,
+            "type": "error",
+            "message": str(message)
+        }))
+
+    async def _on_state_change(self, bus, message):
+        await ws_broadcast(orjson.dumps({
+            "uid": self.uid,
+            "type": "state_change",
+            "message": str(message)
+        }))
+
+    async def _on_eos(self, bus, message):
+        await ws_broadcast(orjson.dumps({
+            "uid": self.uid,
+            "type": "eos",
+            "message": str(message)
+        }))
+
+    async def _on_info(self, bus, message):
+        await ws_broadcast(orjson.dumps({
+            "uid": self.uid,
+            "type": "info",
+            "message": str(message)
+        }))
 
     class Config:
         arbitrary_types_allowed = True

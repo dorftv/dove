@@ -16,6 +16,7 @@ hypercorn = "^0.15.0"
 pygobject = "^3.46.0"
 gobject = "^0.1.0"
 websockets = "^12.0"
+orjson = "3.9.10"
 
 [build-system]
 requires = ["poetry-core"]

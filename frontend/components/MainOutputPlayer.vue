@@ -15,9 +15,5 @@ const props = defineProps({
 </script>
 
 <style scoped> 
-:deep() media-player {
-  aspect-ratio: 16 / 9;
-  width: 400px;
-  height: 225;
-}
+
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="">
       <InputPlayerHeader   :uid="uid" />
       <VideoPlayer   v-if="previewEnabled || inputEnabled" :preview_uri="input.uri" />
       <InputPlayerControls :status="input.status" :uid="input.uid"  :inputEnabled="inputEnabled" @enablePreview="(preview) => inputEnabled = preview" />

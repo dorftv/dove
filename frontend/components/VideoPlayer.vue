@@ -2,7 +2,7 @@
 <template>
     <div>     
 
-    <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`${preview_uri}`">
+    <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`${preview_uri}`" class="aspect-video">
   <media-provider></media-provider>
 </media-player>
 
@@ -22,9 +22,5 @@ const { preview_uri } = defineProps(['preview_uri'])
 </script>
  
 <style scoped>  
-media-player {
-  aspect-ratio: 16 / 9;
-  width: 320px;
-  height: 180;
-}
+
 </style>

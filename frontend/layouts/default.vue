@@ -5,12 +5,12 @@ const isOpen = ref(false)
 <template>
     <div>
         <header class="shadow-sm bg-white">
-            <nav class="container mx-auto flex justify-between">
+            <nav class="flex justify-between">
                 <NuxtLink to="/" class="font-bold">DOVE - Online Video Editor</NuxtLink>
                 <div class="flex" >
-                  <CreateInputPane />
-                  <CreateMixerPane />
-                  <CreateOutputPane />
+                  <CreateInputPane class="p-2"/>
+                  <CreateMixerPane class="p-2"/>
+                  <CreateOutputPane class="p-2"/>
                 </div>
                 <ul class="flex gap-4">
                     <li><NuxtLink to="/">Home</NuxtLink></li>
@@ -24,8 +24,8 @@ const isOpen = ref(false)
             </nav>
         </header>
 
-        <div class="container mx-auto">
-            <slot />
+        <div class="grid grid-cols-12 px-4 py-8">
+        <slot />
         </div>
     </div>
 </template>

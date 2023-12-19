@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="">
     Input: {{ uid }}
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>

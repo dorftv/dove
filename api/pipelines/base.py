@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import functools
 from gi.repository import Gst, GLib
 
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, Type
 
 from orjson import orjson
 from pydantic import BaseModel
@@ -16,6 +16,8 @@ from websocket_handler import ws_broadcast
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
     caps: Caps
+    attrs: BaseModel
+
     @abstractmethod
     def build(self):
         pass

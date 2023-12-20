@@ -7,15 +7,31 @@ from pydantic_core.core_schema import FieldValidationInfo
 from caps import Caps
 
 class InputDTO(BaseModel):
-    uid: Annotated[Optional[UUID], Field(default=uuid4())]
+    uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     type: str
-    name: str
-    state: str
-    height: int
-    width: int
-    preview: bool
-    uri: Optional[str] = None
+    name: Optional[str] = None
+    state: Optional[str] = "PLAYING"
+    height: Optional[int] = None
+    width: Optional[int] = None
+    preview: Optional[bool] = True
 
+class TestInputDTO(InputDTO):
+    pattern: str
+
+class UriInputDTO(InputDTO):
+    uri: str
+  
+
+    # optional inputs for some inputs
+    # TODO validate
+
+    # test_input
+#    pattern: Optional[int] = 0
+#    volume: Optional[float] = 0.8
+#    wave: Optional[int] = 1
+#    freq: Optional[float] = 440.0
+
+'''
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
@@ -33,6 +49,7 @@ class InputDTO(BaseModel):
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
 
         return value
+'''
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

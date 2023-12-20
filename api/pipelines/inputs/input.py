@@ -5,11 +5,11 @@ from api.dtos import InputDTO
 
 from caps import Caps
 from pipelines.base import GSTBase
+from typing import Annotated, Optional
 
 
 class Input(GSTBase, ABC):
     uid: UUID
-    volume: float
     def get_video_end(self) -> str:
         return f" {self.caps.video} ! queue ! interpipesink name=video_{self.uid} async=false sync=true"
 

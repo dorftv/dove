@@ -16,7 +16,8 @@ from pipelines.inputs.test_input import TestInput
 
 caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
 uid = uuid4()
-input = TestInput(caps=caps, uid=uid, pattern=1, type="test", volume=1.0)
+
+input = TestInput(caps=caps, uid=uid, dto=TestInputDTO(volume=1.0))
 pipelines = PipelineHandler({"inputs": [input]})
 
 api = APIThread(pipeline_handler=pipelines)

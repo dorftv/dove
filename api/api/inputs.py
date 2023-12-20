@@ -23,9 +23,9 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
 
     # Handle based on the type of data
     if isinstance(data, TestInputDTO):
-        input = TestInput(caps=caps, uid=data.uid, pattern=data.pattern)
+        input = TestInput(caps=caps, uid=data.uid, dto=data)
     elif isinstance(data, UriInputDTO):
-        input = URIInput(caps=caps, uid=data.uid, uri=data.uri)
+        input = URIInput(caps=caps, uid=data.uid, dto=data)
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 

@@ -35,11 +35,14 @@ class InputDTO(BaseModel):
         return value
 
 class TestInputDTO(InputDTO):
+    type: str = "test"
     pattern: Optional[int] = 1
     wave: Optional[int] = 1
     freq: Optional[float] = 440.0
 
+
 class UriInputDTO(InputDTO):
+    type: str = "uri"
     uri: str
 
 class InputDeleteDTO(BaseModel):

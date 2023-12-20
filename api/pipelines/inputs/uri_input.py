@@ -7,19 +7,15 @@ from pipelines.inputs.input import Input
 
 
 class URIInput(Input):
-    uri: str
-    # @TODO  how can we get out values from DTO
-    #dto: UriInputDTO
-    volume: Optional[float]
-    #volume: float
+    dto: UriInputDTO
+
     def build(self):
-        video_pipeline_str = f" uridecodebin3 uri={self.uri} name=uridecodebin instant-uri=true uridecodebin. !" + self.get_video_end()
+        video_pipeline_str = f" uridecodebin3 uri={self.dto.uri} name=uridecodebin instant-uri=true uridecodebin. !" + self.get_video_end()
         audio_pipeline_str = f" uridecodebin. ! " + self.get_audio_end()
 
         self.add_pipeline(video_pipeline_str + audio_pipeline_str)
 
     def describe(self, dto: UriInputDTO):
-        #self.uri = dto.uri
-        #self.volume = dto.volume
+    
 
         return self

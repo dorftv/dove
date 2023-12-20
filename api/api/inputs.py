@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
-
+from pydantic import ValidationError
 from api.dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO
 from caps import Caps
 from pipeline_handler import PipelineHandler
@@ -15,31 +15,39 @@ from websocket_handler import  ws_broadcast
 
 router = APIRouter(prefix="/api")
 
-async def handle_test_input(request, data: TestInputDTO):
+
+async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO]):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    #we don't need caps for input
-    caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
+    caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1",
+                audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
 
-    # needs fixing
-    #new_input = TestInput(caps=caps, uid=data.uid, uri=data.uri)
-    #handler.add_pipeline(new_input)
-    # emit websocket
-    # TODO send data like we need them in frontend
-    await ws_broadcast(data)     
-    # Logic for handling Test input
-    return {"message": "Test input created"}
+    # Handle based on the type of data
+    if isinstance(data, TestInputDTO):
+        input = TestInput(caps=caps, uid=data.uid, pattern=data.pattern)
+    elif isinstance(data, UriInputDTO):
+        input = URIInput(caps=caps, uid=data.uid, uri=data.uri)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input type")
 
-async def handle_uri_input(request, data: UriInputDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
-    #we don't need caps for input
-    #caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
-    
-    # needs fixing    
-    #new_input = URIInput(caps=caps, uid=data.uid, uri=data.uri)
-    #handler.add_pipeline(new_input)    
-    return {"message": "URI input created"}
+    handler.add_pipeline(input)
+    await ws_broadcast(data)
+    return data
 
 
+async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
+    json_data = await request.json()
+    input_type = json_data.get("type")
+    try:
+        if input_type == "test":
+            return TestInputDTO(**json_data)
+        elif input_type == "uri":
+            return UriInputDTO(**json_data)
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+
+# @TODO Fix getting List
 @router.get("/inputs", response_model=list[InputDTO])
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
@@ -51,20 +59,10 @@ async def all(request: Request):
 
     return descriptions
 
-
+# @TODO handle updates
 @router.put("/inputs")
-async def create(request: Request, data: Union[TestInputDTO, UriInputDTO]):
-    if data.type == "test":
-        if not isinstance(data, TestInputDTO):
-            raise HTTPException(status_code=400, detail="Invalid input for type 'test'")
-        return await handle_test_input(request, data)
-    elif data.type == "uri":
-        if not isinstance(data, UriInputDTO):
-            raise await HTTPException(status_code=400, detail="Invalid input for type 'uri'")
-        return await handle_uri_input(request, data)
-    else:
-        raise HTTPException(status_code=400, detail="Invalid input type")
-
+async def create(request: Request, data: Union[TestInputDTO, UriInputDTO] = Depends(getInputDTO)):
+    return await handle_input(request, data)
 
 
 @router.delete("/inputs", response_model=SuccessDTO)

@@ -16,7 +16,7 @@ from websocket_handler import ws_broadcast
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
     caps: Caps
-    attrs: BaseModel
+    #attrs: BaseModel
 
     @abstractmethod
     def build(self):

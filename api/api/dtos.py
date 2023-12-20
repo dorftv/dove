@@ -14,28 +14,12 @@ class InputDTO(BaseModel):
     height: Optional[int] = None
     width: Optional[int] = None
     preview: Optional[bool] = True
+    volume: Optional[float] = 0.8
 
-class TestInputDTO(InputDTO):
-    pattern: str
-
-class UriInputDTO(InputDTO):
-    uri: str
-  
-
-    # optional inputs for some inputs
-    # TODO validate
-
-    # test_input
-#    pattern: Optional[int] = 0
-#    volume: Optional[float] = 0.8
-#    wave: Optional[int] = 1
-#    freq: Optional[float] = 440.0
-
-'''
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["TestInput", "URIInput"]
+        ALLOWED_TYPES = ["test", "uri"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -49,7 +33,14 @@ class UriInputDTO(InputDTO):
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
 
         return value
-'''
+
+class TestInputDTO(InputDTO):
+    pattern: Optional[int] = 1
+    wave: Optional[int] = 1
+    freq: Optional[float] = 440.0
+
+class UriInputDTO(InputDTO):
+    uri: str
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

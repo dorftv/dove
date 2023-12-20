@@ -4,6 +4,8 @@ from config_handler import ConfigReader  # make sure to replace with your actual
 
 router = APIRouter()
 
+router = APIRouter(prefix="/api")
+
 config_reader = ConfigReader('/app/config.toml')
 
 @router.get("/config")

@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Request, HTTPException, Depends
+from pydantic import create_model
 
 from api.dtos import InputDTO, SuccessDTO, InputDeleteDTO
 from caps import Caps
@@ -33,14 +34,16 @@ async def create(request: Request, data: InputDTO):
     match data.type:
         case("TestInput"):
             caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
-            new_input = TestInput(caps=caps, uid=data.uid, attrs=data)
+            attrs_model = create_model("Attrs", **{key: (value[0], ... if value[1] else None) for key, value in TestInput.schema})
+
+            new_input = TestInput(caps=caps, uid=data.uid, name=data.name, state=data.state, attrs=attrs_model(**data.attrs))
             handler.add_pipeline(new_input)
             # emit websocket
             # TODO send data like we need them in frontend
             await ws_broadcast(data)            
         case("URIInput"):
             caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
-            new_input = URIInput(caps=caps, uid=data.uid, attrs=data.__dict__)
+            new_input = URIInput(caps=caps, uid=data.uid, name=data.name, state=data.state, attrs=URIInput.get_attr_type()(**data.attrs))
             handler.add_pipeline(new_input)
 
     return data

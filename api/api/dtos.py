@@ -11,10 +11,7 @@ class InputDTO(BaseModel):
     type: str
     name: str
     state: str
-    height: int
-    width: int
-    preview: bool
-    uri: Optional[str] = None
+    attrs: dict
 
     @field_validator("type")
     @classmethod

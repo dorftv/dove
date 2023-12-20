@@ -8,7 +8,9 @@ from api import hls
 from api import inputs
 from api import outputs
 from api import websockets
+from api import configuration
 from pipeline_handler import PipelineHandler
+
 
 
 class APIThread(Thread):
@@ -26,6 +28,7 @@ class APIThread(Thread):
     name = "API Thread"
     def run(self):
         fastapi = FastAPI(lifespan=self.lifespan)
+        fastapi.include_router(configuration.router)
         # fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
         # fastapi.include_router(outputs.router)

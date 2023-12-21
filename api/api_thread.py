@@ -31,7 +31,7 @@ class APIThread(Thread):
         fastapi.include_router(configuration.router)
         # fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
-        # fastapi.include_router(outputs.router)
+        fastapi.include_router(outputs.router)
 
         # websockets handler
         fastapi.include_router(websockets.router)

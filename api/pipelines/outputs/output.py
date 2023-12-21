@@ -1,7 +1,20 @@
+from abc import ABC
+from uuid import UUID
+
+from caps import Caps
 from pipelines.base import GSTBase
 
-
 class Output(GSTBase):
-    listen_to: str = "videomixer_out"
-    def get_pipeline_start(self):
-        return f"interpipesrc listen_to={self.listen_to} name=output_{self.uid} format=time allow-renegotiation=true do-timestamp=true is-live=true ! queue ! "
+    uid: UUID
+    src: UUID
+    def get_video_start(self) -> str:
+        return f" interpipesrc name=video_{uid} listen-to={src} "
+
+    def get_audio_start(self):
+        return f" interpipesrc name=audio_{uid} listen-to={src} "
+
+    def describe(self):
+
+        return self
+
+                

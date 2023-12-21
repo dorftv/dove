@@ -2,9 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 from pipelines.outputs.output import Output
+from api.outputs_dtos import previewHlsOutputDTO
 
 
-class HLSOutput(Output):
+class previewHlsOutput(Output):
+    data: previewHlsOutputDTO
     output_base: Optional[Path] = "/var/dove/hls"
 
     def build(self):

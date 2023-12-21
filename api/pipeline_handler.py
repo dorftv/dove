@@ -36,7 +36,7 @@ class PipelineHandler:
             try:
                 self._pipelines["outputs"].append(pipeline)
             except AttributeError:
-                self._pipelines["inputs"] = [pipeline]
+                self._pipelines["outputs"] = [pipeline]
         else:
             raise KeyError("Invalid pipeline type")
 

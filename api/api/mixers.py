@@ -12,6 +12,11 @@ from pipelines.mixers.output_mixer import outputMixer
 from pipelines.mixers.mixer_mixer import mixerMixer
 from websocket_handler import  ws_broadcast
 
+# @TODO find a better place
+from pipelines.outputs.preview_hls_output import previewHlsOutput
+from api.outputs_dtos import previewHlsOutputDTO
+from uuid import UUID, uuid4
+
 router = APIRouter(prefix="/api")
 
 unionMixerDTO = Union[mixerMixerDTO, outputMixerDTO]
@@ -27,7 +32,11 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
         raise HTTPException(status_code=400, detail="Invalid mixer type")
 
     handler.add_pipeline(mixer)
-    await ws_broadcast(data)
+    # @TODO find a better place 
+    # @TODO need a way to delete       
+    output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+    handler.add_pipeline(output)    
+    await ws_broadcast("mixer", "CREATE", data.json())    
     return data
 
 
@@ -48,7 +57,6 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
 @router.get("/mixers")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    print("lalala", handler._pipelines)
     mixers: list[Mixer] = handler._pipelines["mixers"]
     descriptions: list[Description] = []
 
@@ -68,5 +76,6 @@ async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
 async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("mixers", data.uid)
+    await ws_broadcast("mixer", "DELETE", data.json())        
     return SuccessDTO(code=200, details="OK")
 

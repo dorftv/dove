@@ -15,6 +15,7 @@ from websocket_handler import  ws_broadcast
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
 from api.outputs_dtos import previewHlsOutputDTO
+from uuid import UUID, uuid4
 
 
 router = APIRouter(prefix="/api")

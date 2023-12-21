@@ -60,8 +60,9 @@ async def all(request: Request):
     return descriptions
 
 # @TODO handle updates
+unionInputDTO = Union[TestInputDTO, UriInputDTO]
 @router.put("/inputs")
-async def create(request: Request, data: Union[TestInputDTO, UriInputDTO] = Depends(getInputDTO)):
+async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
     return await handle_input(request, data)
 
 

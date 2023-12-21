@@ -9,7 +9,7 @@ from typing import Callable, Optional, Any, Type
 from orjson import orjson
 from pydantic import BaseModel
 
-from websocket_handler import ws_broadcast
+from websocket_handler import ws_broadcast, ws_message
 
 
 class GSTBase(BaseModel):
@@ -25,6 +25,7 @@ class GSTBase(BaseModel):
         pass
 
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
+        print(pipeline)
         if type(pipeline) == str:
             pipeline = Gst.parse_launch(pipeline)
 
@@ -50,25 +51,26 @@ class GSTBase(BaseModel):
 
     # event handlers
     async def _on_error(self, bus, message):
-        await ws_broadcast(orjson.dumps({
+        err, debug = message.parse_error()
+        await ws_message(orjson.dumps({
             "uid": self.uid,
             "type": "error",
-            "message": str(message)
+            "message": f"Error:, {err}, {debug}",
         }))
 
     async def _on_state_change(self, bus, message):
+        
         if isinstance(message.src, Gst.Pipeline):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
-            print(self.data)
-            await ws_broadcast(orjson.dumps({
-                "uid": self.uid,
-                "type": "state_change",
-                "message": str(msg),
-        }))
+            self.data.state = Gst.Element.state_get_name(new_state)
+            # @TODO need a way to get type [input/output/mixer] of messaging pipeline            
+            #if issubclass(self.pipeline.__class__, Input):
+            dataJson = self.data.json()
+            await ws_broadcast("input", "UPDATE", dataJson)
 
     async def _on_eos(self, bus, message):
-        await ws_broadcast(orjson.dumps({
+        await ws_message(orjson.dumps({
             "uid": self.uid,
             "type": "eos",
             "message": str(message)

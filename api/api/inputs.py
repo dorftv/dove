@@ -1,5 +1,5 @@
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
@@ -11,6 +11,11 @@ from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
 from websocket_handler import  ws_broadcast
+
+# @TODO find a better place
+from pipelines.outputs.preview_hls_output import previewHlsOutput
+from api.outputs_dtos import previewHlsOutputDTO
+
 
 router = APIRouter(prefix="/api")
 
@@ -31,6 +36,10 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
         existing_input.data = data
     else:
         handler.add_pipeline(input)
+        # @TODO find a better place 
+        # @TODO need a way to delete       
+        output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+        handler.add_pipeline(output)
 
     await ws_broadcast("input", "CREATE", data.json())    
     return data

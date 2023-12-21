@@ -4,7 +4,7 @@ from uuid import UUID
 from caps import Caps
 from pipelines.base import GSTBase
 
-class Output(GSTBase):
+class Output(GSTBase, ABC):
     uid: UUID
     src: UUID
     def get_video_start(self) -> str:

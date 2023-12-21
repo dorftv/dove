@@ -2,9 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 from pipelines.mixers.mixer import Mixer
+from api.mixers_dtos import mixerMixerDTO
 
 
 class mixerMixer(Mixer):
+    data: mixerMixerDTO
     output_base: Optional[Path] = "/var/dove/hls"
 
     def build(self):

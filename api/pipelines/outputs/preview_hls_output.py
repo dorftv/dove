@@ -10,15 +10,17 @@ class previewHlsOutput(Output):
     output_base: Optional[Path] = Path("/var/dove/hls")
 
     def build(self):
-        preview_path = self.output_base.joinpath(self.data.uid.hex)
+        preview_path = self.output_base.joinpath(self.data.src.hex)
         if not preview_path.is_dir():
             preview_path.mkdir(parents=True, exist_ok=False)
 
-        self.add_pipeline(self.get_video_start() + f"x264enc ! mpegtsmux ! hlssink max-files=5 playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path}")
-
-    def switch_src(self, src: str):
-        elm = self.inner_pipelines[0].get_by_name(f"output_{self.uid}")
-        elm.set_property("listen_to", src)
+        # @TODO get from config
+        width = 320
+        height = 180
+        self.add_pipeline(self.get_video_start() + f" videoconvert ! video/x-raw,format=I420,width={width},height={height} ! "
+        f" x264enc ! video/x-h264,profile=main ! queue ! mpegtsmux ! "
+        f" hlssink async-handling=true target-duration=3  max-files=5 "
+        f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} ")
 
     def describe(self):
         return self.data

@@ -18,12 +18,10 @@ unionOutputDTO =  Union[previewHlsOutputDTO]
 
 async def handle_output(request: Request, data: unionOutputDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1",
-                audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
 
     # Handle based on the type of data
     if isinstance(data, previewHlsOutputDTO):
-        output = previewHlsOutput(caps=caps, uid=data.uid, src=data.src, data=data)
+        output = previewHlsOutput(uid=data.uid, src=data.src, data=data)
 #    elif isinstance(data, previewWebrtcOutputDTO):
 #        output = previewWebrtcOutput(caps=caps, uid=data.uid, data=data)
     else:

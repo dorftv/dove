@@ -17,7 +17,6 @@ router = APIRouter(prefix="/api")
 
 async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO]):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-
     # Handle based on the type of data
     if isinstance(data, TestInputDTO):
         input = TestInput(uid=data.uid, data=data)

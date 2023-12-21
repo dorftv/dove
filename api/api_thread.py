@@ -4,12 +4,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import uvicorn
-from api import hls
 from api import inputs
 from api import mixers
 from api import outputs
 from api import websockets
 from api import configuration
+from api import hls_preview
 from pipeline_handler import PipelineHandler
 
 
@@ -37,9 +37,10 @@ class APIThread(Thread):
 
         # websockets handler
         fastapi.include_router(websockets.router)
+        fastapi.include_router(hls_preview.router)  
 
         # serve frontend with StaticFiles        
-        fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")        
+        fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")
         config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)
         server.run()

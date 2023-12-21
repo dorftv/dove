@@ -13,3 +13,6 @@ class mixerMixer(Mixer):
     def switch_src(self, src: str):
         elm = self.inner_pipelines[0].get_by_name(f"output_{self.uid}")
         elm.set_property("listen_to", src)
+
+    def describe(self):
+        return self.data

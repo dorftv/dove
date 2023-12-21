@@ -32,6 +32,7 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
 
 
 async def getMixerDTO(request: Request) -> unionMixerDTO:
+    print("req", await request.body())
     json_data = await request.json()
     mixer_type = json_data.get("type")
     try:
@@ -47,6 +48,7 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
 @router.get("/mixers")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
+    print("lalala", handler._pipelines)
     mixers: list[Mixer] = handler._pipelines["mixers"]
     descriptions: list[Description] = []
 

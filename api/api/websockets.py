@@ -17,8 +17,6 @@ async def websocket_endpoint(websocket: WebSocket):
     active_websockets.append(websocket)
     try:
         while True:
-            # Keep the connection open and wait for any potential messages
-            # (you can also handle incoming messages here)
             data = await websocket.receive_json()
             pipeline = handler.get_pipeline(data.pop("pipeline_type"), data.uid)
 

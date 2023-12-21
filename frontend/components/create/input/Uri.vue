@@ -1,7 +1,7 @@
 <template>
   <div>
     <UContainer>
-      <UForm  :state="state" class="space-y-4" @submit="submitForm">
+      <UForm  :state="state" class="p-4 space-y-4" @submit="submitForm">
         <UFormGroup label="Uri ( for files, SRT, RTMP, HLS, ...)">
           <UInput v-model="uri" />
         </UFormGroup>
@@ -33,8 +33,10 @@ const submitForm = async () => {
     const { data: responseData } = await useFetch('/api/inputs', {
         method: 'put',
         body: { 
-          uid: (Math.random() + 1).toString(36).substring(7),
-          uri: 'http://localhost:88/preview/playlist.m3u8',
+          type: 'uri',
+          uri: formData.value.uri,
+          //uid: (Math.random() + 1).toString(36).substring(7),
+          //uri: 'http://localhost:88/preview/playlist.m3u8',
           //uri: formData.value.uri,
           //loop: formData.value.loop,
           //volume: formData.value.volume,

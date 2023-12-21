@@ -1,8 +1,8 @@
 <template>
   <div class="">
       <InputPlayerHeader   :uid="uid" />
-      <VideoPlayer   v-if="previewEnabled || inputEnabled" :preview_uri="input.uri" />
-      <InputPlayerControls :status="input.status" :uid="input.uid"  :inputEnabled="inputEnabled" @enablePreview="(preview) => inputEnabled = preview" />
+      <VideoPlayer   v-if="previewEnabled || inputEnabled" :uid="input.uid" />
+      <InputPlayerControls :state="input.state" :uid="input.uid"  :inputEnabled="inputEnabled" @enablePreview="(preview) => inputEnabled = preview" />
   </div>
 </template>
 

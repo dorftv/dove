@@ -36,8 +36,15 @@ const submitForm = async () => {
     const { data: responseData } = await useFetch('/api/inputs', {
         method: 'put',
         body: { 
-          uid: (Math.random() + 1).toString(36).substring(7),
-          uri: 'http://localhost:88/preview/playlist.m3u8',
+          type: 'testsrc',
+          //uid: (Math.random() + 1).toString(36).substring(7),
+          width: 1280,
+          height: 720,
+          pattern: 1,
+          wave: 1,
+          volume: 0.5,
+          freq: 440.0
+          //uri: 'http://localhost:88/preview/playlist.m3u8',
           //uid: formData.value.uid,
           //uri: formData.value.email,
 

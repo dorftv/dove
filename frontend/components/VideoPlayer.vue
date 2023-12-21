@@ -1,12 +1,12 @@
 
 <template>
-    <div>     
+  <div>     
 
-    <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`${preview_uri}`" class="aspect-video">
-  <media-provider></media-provider>
-</media-player>
+    <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
+      <media-provider></media-provider>
+    </media-player>
 
-    </div>
+  </div>
 </template>
 
 <script setup>
@@ -16,8 +16,7 @@ import 'vidstack/player/ui';
 import 'vidstack/player/styles/default/theme.css';
 import 'vidstack/player/styles/default/layouts/video.css';
 
-const { preview_uri } = defineProps(['preview_uri'])
-
+const { uid } = defineProps(['uid'])
 
 </script>
  

@@ -1,6 +1,7 @@
 <template>
-  <h1>About</h1>
+  <h1>Debug websockets Messages</h1>
   <div class="grid col-span-12">
+  <PlaygroundWebsocketsTest />
 </div>
 
 </template>

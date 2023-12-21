@@ -20,7 +20,7 @@
     },
     methods: {
       setupWebSocket() {
-        this.socket = new WebSocket('ws://192.168.23.129:9999');
+        this.socket = new WebSocket('ws://localhost:5000/ws');
   
         this.socket.onmessage = (event) => {
           this.messages.push(event.data);

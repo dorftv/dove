@@ -1,9 +1,9 @@
 <template>
-  <div :class="statusClass">
+  <div :class="stateClass">
     <Icon name="uil:stop-circle" color="black" size="24px" @click="submitStop"/>
     <Icon name="uil:pause-circle" color="black" size="24px"  @click="submitPause" />
     <Icon name="uil:play-circle" color="black" size="24px" @click="submitPlay"/>
-     {{ status }}
+     {{ state }}
      <!-- toggle preview -->
     <Icon name="uil:video-slash" color="black" size="24px"  v-if="!previewEnabled && inputEnabled" @click="$emit('enablePreview', false)"/>
     <Icon name="uil:video" color="black" size="24px"  v-if="!previewEnabled && !inputEnabled"  @click="$emit('enablePreview', true)"/>    
@@ -15,12 +15,12 @@
 import { computed } from "@vue/reactivity"
 
 const props = defineProps({
-  status: String,
+  state: String,
   uid: String,
   inputEnabled: Boolean
 
 })
-//const status = ref(input.status)
+//const state = ref(input.state)
 
 const previewEnabled = useCookie('enablePreview')
   
@@ -54,8 +54,8 @@ const submitStop = async () => {
     })
 }
 
-const statusClass = computed(() => {
-switch (props.status) {
+const stateClass = computed(() => {
+switch (props.state) {
   case 'PLAYING':
     console.log("play")
     return 'playing';

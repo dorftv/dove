@@ -8,7 +8,6 @@ from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
-from pipelines.inputs.input import Input
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
 from websocket_handler import  ws_broadcast
@@ -47,8 +46,7 @@ async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
 
-# @TODO Fix getting List
-@router.get("/inputs", response_model=list[InputDTO])
+@router.get("/inputs")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     inputs: list[Input] = handler._pipelines["inputs"]

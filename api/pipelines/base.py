@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 import functools
 from gi.repository import Gst, GLib
 
-from typing import Callable, Optional, Any, Type, ClassVar
+from typing import Callable, Optional, Any, Type
 
 from orjson import orjson
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel
 
 from caps import Caps
 from websocket_handler import ws_broadcast
@@ -16,10 +16,6 @@ from websocket_handler import ws_broadcast
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
     caps: Caps
-    schema: ClassVar[dict]
-
-    name: str
-    state: str
     attrs: BaseModel
 
     @abstractmethod
@@ -82,11 +78,6 @@ class GSTBase(BaseModel):
             "type": "info",
             "message": str(message)
         }))
-
-    @classmethod
-    def get_attr_type(cls):
-        return create_model("Attrs", **{key: (value[0], ... if value[1] else None) for key, value in cls.schema.items()})
-
 
     class Config:
         arbitrary_types_allowed = True

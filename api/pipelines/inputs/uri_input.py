@@ -4,9 +4,7 @@ from pipelines.inputs.input import Input
 
 
 class URIInput(Input):
-    schema = {
-        "uri": (str, True)
-    }
+    attrs: InputDTO
 
     def build(self):
         video_pipeline_str = f"uridecodebin3 uri={self.attrs.uri} name=uridecodebin instant-uri=true uridecodebin. !" + self.get_video_end()
@@ -16,10 +14,7 @@ class URIInput(Input):
         self.add_pipeline(audio_pipeline_str)
 
     def describe(self):
-        return {
-            "uid": self.uid,
-            "type": self.__class__.__name__,
-            "name": self.name,
-            "state": self.state,
-            "attrs": self.attrs.__dict__
+        attrs = {
+            "uri": self.uri
         }
+        return Description(uid=self.uid, attrs=attrs)

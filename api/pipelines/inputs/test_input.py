@@ -1,16 +1,11 @@
-from typing import ClassVar
-
 from api.dtos import InputDTO
 from .input import Input
 from gi.repository import Gst
 from pipelines.description import Description
 
 
-
 class TestInput(Input):
-    schema = {
-        "pattern": (str, False) # (type, required)
-    }
+    attrs: InputDTO
 
     def build(self):
         video_pipeline_str = f"videotestsrc pattern=1 is_live=true name=videotestsrc_{self.uid} !" + self.get_video_end()
@@ -27,10 +22,4 @@ class TestInput(Input):
         #     "state_video": Gst.Element.state_get_name(self.inner_pipelines[0].get_state(1)[1])
         # }
         # return Description(uid=self.uid, attrs=attrs)
-        return {
-            "uid": self.uid,
-            "type": self.__class__.__name__,
-            "name": self.name,
-            "state": self.state,
-            "attrs": self.attrs.__dict__
-        }
+        return self.attrs

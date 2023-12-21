@@ -5,7 +5,7 @@ from pipelines.description import Description
 from pipelines.inputs.input import Input
 
 
-class URIInput(Input):
+class UriInput(Input):
     data: UriInputDTO
 
     def build(self):

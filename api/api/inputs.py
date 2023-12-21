@@ -10,7 +10,7 @@ from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.inputs.input import Input
 from pipelines.inputs.test_input import TestInput
-from pipelines.inputs.uri_input import URIInput
+from pipelines.inputs.uri_input import UriInput
 from websocket_handler import  ws_broadcast
 
 router = APIRouter(prefix="/api")
@@ -25,7 +25,7 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
     if isinstance(data, TestInputDTO):
         input = TestInput(caps=caps, uid=data.uid, data=data)
     elif isinstance(data, UriInputDTO):
-        input = URIInput(caps=caps, uid=data.uid, data=data)
+        input = UriInput(caps=caps, uid=data.uid, data=data)
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 

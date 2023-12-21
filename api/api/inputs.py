@@ -26,7 +26,13 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 
-    handler.add_pipeline(input)
+    existing_input = handler.get_pipeline("inputs", data.uid)
+
+    if existing_input:
+        existing_input.data = data
+    else:
+        handler.add_pipeline(input)
+
     await ws_broadcast(data)
     return data
 

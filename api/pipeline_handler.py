@@ -45,12 +45,11 @@ class PipelineHandler:
                 inner.set_state(Gst.State.PLAYING)
 
     def get_pipeline(self, type: str, uid: UUID):
-        print("pipelines", self._pipelines.get(type))
         for pipeline in self._pipelines.get(type):
-            if pipeline.uid == uid:
+            if pipeline.data.uid == uid:
                 return pipeline
 
-        raise KeyError("Pipeline was not found")
+        return None
     
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)

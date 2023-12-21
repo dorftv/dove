@@ -9,7 +9,7 @@ from pipelines.outputs.output import Output
 
 
 class PipelineHandler:
-    _pipelines: dict[str, List[GSTBase]] = {}
+    _pipelines: dict[str, List[GSTBase]] = {"inputs": {}, "outputs": {}, "mixers": {}}
     mainloop: GObject.MainLoop
 
     def __init__(self, initial_pipelines: dict[str, List[GSTBase]]):

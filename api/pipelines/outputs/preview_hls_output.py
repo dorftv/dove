@@ -7,7 +7,7 @@ from api.outputs_dtos import previewHlsOutputDTO
 
 class previewHlsOutput(Output):
     data: previewHlsOutputDTO
-    output_base: Optional[Path] = "/var/dove/hls"
+    output_base: Optional[Path] = Path("/var/dove/hls")
 
     def build(self):
         self.add_pipeline(self.get_video_start() + f"x264enc ! mpegtsmux ! hlssink max-files=5 playlist-location={self.output_base.joinpath('index.m3u8')} location={self.output_base}")

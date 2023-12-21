@@ -17,14 +17,12 @@ router = APIRouter(prefix="/api")
 
 async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO]):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1",
-                audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
 
     # Handle based on the type of data
     if isinstance(data, TestInputDTO):
-        input = TestInput(caps=caps, uid=data.uid, data=data)
+        input = TestInput(uid=data.uid, data=data)
     elif isinstance(data, UriInputDTO):
-        input = UriInput(caps=caps, uid=data.uid, data=data)
+        input = UriInput(uid=data.uid, data=data)
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 

@@ -40,13 +40,17 @@ class PipelineHandler:
 
         elif issubclass(pipeline.__class__, Output):
             try:
+                pipeline.build()
                 self._pipelines["outputs"].append(pipeline)
             except AttributeError:
+                pipeline.build()
                 self._pipelines["outputs"] = [pipeline]
         elif issubclass(pipeline.__class__, Mixer):
             try:
+                pipeline.build()
                 self._pipelines["mixers"].append(pipeline)
             except AttributeError:
+                pipeline.build()
                 self._pipelines["mixers"] = [pipeline]
         else:
             raise KeyError("Invalid pipeline type")

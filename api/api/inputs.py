@@ -34,7 +34,7 @@ async def create(request: Request, data: InputDTO):
     match data.type:
         case("TestInput"):
             caps = Caps(video="video/x-raw,width=1280,height=720,framerate=25/1", audio="audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2")
-            attrs_model = create_model("Attrs", **{key: (value[0], ... if value[1] else None) for key, value in TestInput.schema.items()})
+            attrs_model = create_model("Attrs", **{key: (value[0], ... if value[1] else None) for key, value in TestInput.schema})
 
             new_input = TestInput(caps=caps, uid=data.uid, name=data.name, state=data.state, attrs=attrs_model(**data.attrs))
             handler.add_pipeline(new_input)

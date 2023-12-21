@@ -38,9 +38,9 @@ async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
     json_data = await request.json()
     input_type = json_data.get("type")
     try:
-        if input_type == "test":
+        if input_type == "testsrc":
             return TestInputDTO(**json_data)
-        elif input_type == "uri":
+        elif input_type == "urisrc":
             return UriInputDTO(**json_data)
         else:
             raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")

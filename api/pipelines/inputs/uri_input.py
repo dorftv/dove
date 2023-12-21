@@ -1,6 +1,5 @@
 from api.dtos import UriInputDTO
 from .input import Input
-from typing import Annotated, Optional
 
 from pipelines.description import Description
 from pipelines.inputs.input import Input

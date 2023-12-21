@@ -19,7 +19,7 @@ class InputDTO(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["test", "uri"]
+        ALLOWED_TYPES = ["testsrc", "urisrc"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -35,14 +35,14 @@ class InputDTO(BaseModel):
         return value
 
 class TestInputDTO(InputDTO):
-    type: str = "test"
+    type: str = "testsrc"
     pattern: Optional[int] = 1
     wave: Optional[int] = 1
     freq: Optional[float] = 440.0
 
 
 class UriInputDTO(InputDTO):
-    type: str = "uri"
+    type: str = "urisrc"
     uri: str
 
 class InputDeleteDTO(BaseModel):

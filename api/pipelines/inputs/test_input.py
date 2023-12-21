@@ -1,8 +1,7 @@
-from api.dtos import InputDTO, TestInputDTO
+from api.dtos import TestInputDTO
 from .input import Input
 from gi.repository import Gst
 from pipelines.description import Description
-from typing import Annotated, Optional
 
 
 class TestInput(Input):

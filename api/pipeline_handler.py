@@ -5,6 +5,7 @@ from gi.repository import Gst, GObject
 
 from pipelines.base import GSTBase
 from pipelines.inputs.input import Input
+from pipelines.mixers.mixer import Mixer
 from pipelines.outputs.output import Output
 
 
@@ -15,6 +16,12 @@ class PipelineHandler:
     def __init__(self, initial_pipelines: dict[str, List[GSTBase]]):
         Gst.init()
         self._pipelines = initial_pipelines
+        if "inputs" not in self._pipelines.keys():
+            self._pipelines["inputs"] = []
+        if "outputs" not in self._pipelines.keys():
+            self._pipelines["outputs"] = []
+        if "mixers" not in self._pipelines.keys():
+            self._pipelines["mixers"] = []
 
         for pl in initial_pipelines.values():
             for pipeline_cls in pl:
@@ -24,7 +31,6 @@ class PipelineHandler:
 
     def add_pipeline(self, pipeline: GSTBase, start=True):
         if issubclass(pipeline.__class__, Input):
-            print("input")
             try:
                 pipeline.build()
                 self._pipelines["inputs"].append(pipeline)
@@ -35,8 +41,13 @@ class PipelineHandler:
         elif issubclass(pipeline.__class__, Output):
             try:
                 self._pipelines["outputs"].append(pipeline)
-            except KeyError:
+            except AttributeError:
                 self._pipelines["outputs"] = [pipeline]
+        elif issubclass(pipeline.__class__, Mixer):
+            try:
+                self._pipelines["mixers"].append(pipeline)
+            except AttributeError:
+                self._pipelines["mixers"] = [pipeline]
         else:
             raise KeyError("Invalid pipeline type")
 

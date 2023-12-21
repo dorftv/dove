@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import gi
 
-from api.dtos import InputDTO, TestInputDTO
+from api.inputs_dtos import InputDTO, TestInputDTO
 from caps import Caps
 
 gi.require_version('Gst', '1.0')

@@ -62,10 +62,11 @@ class GSTBase(BaseModel):
         if isinstance(message.src, Gst.Pipeline):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
+            print(self.data)
             await ws_broadcast(orjson.dumps({
                 "uid": self.uid,
                 "type": "state_change",
-                "message": str(msg)
+                "message": str(msg),
         }))
 
     async def _on_eos(self, bus, message):

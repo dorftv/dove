@@ -3,7 +3,7 @@ from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description

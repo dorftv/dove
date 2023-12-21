@@ -1,6 +1,5 @@
 from abc import ABC
 from uuid import UUID
-from api.dtos import InputDTO
 
 
 from caps import Caps

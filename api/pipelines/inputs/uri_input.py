@@ -1,4 +1,4 @@
-from api.dtos import UriInputDTO
+from api.inputs_dtos import UriInputDTO
 from .input import Input
 
 from pipelines.description import Description

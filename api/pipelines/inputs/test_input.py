@@ -1,4 +1,4 @@
-from api.dtos import TestInputDTO
+from api.inputs_dtos import TestInputDTO
 from .input import Input
 from gi.repository import Gst
 from pipelines.description import Description

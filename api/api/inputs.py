@@ -32,7 +32,7 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
     else:
         handler.add_pipeline(input)
 
-    await ws_broadcast(data)
+    await ws_broadcast("input", "CREATE", data.json())    
     return data
 
 
@@ -71,5 +71,7 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 async def delete(request: Request, data: InputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)
+    await ws_broadcast("input", "DELETE", data.json())
+
     return SuccessDTO(code=200, details="OK")
 

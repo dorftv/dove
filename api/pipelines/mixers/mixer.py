@@ -16,7 +16,6 @@ class Mixer(GSTBase, ABC):
     def describe(self):
         return self
 
-    def cut(self, src, target):
-        self.data.src = src
-        self.data.target = target
+    def cut(self, data):
+        self.data = data
         # TODO: get the element and set the attributes here

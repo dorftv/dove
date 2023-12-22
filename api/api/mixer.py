@@ -8,6 +8,6 @@ router = APIRouter(prefix="/api")
 @router.post("/cut")
 async def action_cut(request: Request, item: mixerDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    pipeline = handler.get_pipeline_all(item.target)
-    pipeline.cut(item.src)
+    mixer = handler.get_pipeline("mixers", item.target)
+    mixer.cut(item)
     return {"src": item.src, "target": item.target}

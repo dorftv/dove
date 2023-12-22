@@ -18,4 +18,4 @@ class Mixer(GSTBase, ABC):
 
     def cut(self, data):
         self.data = data
-        # TODO: get the element and set the attributes here
+        mixer = self.inner_pipelines[0]

@@ -37,7 +37,7 @@ class ConnectionManager:
         }
 
         for websocket in self.active_connections:
-            await websocket.send_bytes(orjson.dumps(final_dict))
+            await websocket.send_text(orjson.dumps(final_dict).decode("utf-8"))
 
 
 # @router.websocket("/ws")

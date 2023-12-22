@@ -39,8 +39,9 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
         handler.add_pipeline(input)
         # @TODO find a better place 
         # @TODO need a way to delete
-        output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
-        handler.add_pipeline(output)
+        # output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+        # handler.add_pipeline(output)
+        input.add_preview(handler, uuid4(), data.uid)
 
     await ws_broadcast("input", "CREATE", data.json())    
     return data

@@ -65,6 +65,13 @@ class PipelineHandler:
                 return pipeline
 
         return None
+
+    def get_pipeline_all(self, uid: UUID):
+        for pipelines in self._pipelines.values():
+            for pipeline in pipelines:
+                return pipeline
+
+        return None
     
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)

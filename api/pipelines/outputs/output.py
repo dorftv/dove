@@ -14,7 +14,6 @@ class Output(GSTBase, ABC):
         return f" interpipesrc name=audio_{self.uid} listen-to=audio_{self.src} is-live=true format=time ! "
 
     def describe(self):
-
         return self
 
                 

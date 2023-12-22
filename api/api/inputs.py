@@ -38,7 +38,7 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
     else:
         handler.add_pipeline(input)
         # @TODO find a better place 
-        # @TODO need a way to delete       
+        # @TODO need a way to delete
         output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
         handler.add_pipeline(output)
 

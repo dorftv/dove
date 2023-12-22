@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 from api import inputs
 from api import mixers
+from api import mixer
 from api import outputs
 from api import websockets
 from api import configuration
@@ -34,6 +35,7 @@ class APIThread(Thread):
         fastapi.include_router(inputs.router)
         fastapi.include_router(outputs.router)
         fastapi.include_router(mixers.router)
+        fastapi.include_router(mixer.router)
 
         # websockets handler
         fastapi.include_router(websockets.router)

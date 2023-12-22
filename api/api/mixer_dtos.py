@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -11,7 +11,21 @@ from caps import Caps
 # type: DTO
 # eg: urisrc: UriInputDTO
 
+class mixerInputDTO(BaseModel):
+    src: UUID
+#    xpos:
+#    ypos:
+#    width:
+#    height:
+#    alpha:
+#    zorder:
+
+class mixerInputsDTO(BaseModel):
+    src: Optional[List[mixerInputDTO]] = None
+    target: UUID
 
 class mixerDTO(BaseModel):
     src: UUID
     target: UUID
+    preview: Optional[bool] = True
+

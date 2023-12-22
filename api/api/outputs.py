@@ -4,12 +4,12 @@ from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 from api.outputs_dtos import OutputDTO, SuccessDTO, OutputDeleteDTO, previewHlsOutputDTO
+from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
-from websocket_handler import  ws_broadcast
 
 router = APIRouter(prefix="/api")
 
@@ -28,7 +28,7 @@ async def handle_output(request: Request, data: unionOutputDTO):
         raise HTTPException(status_code=400, detail="Invalid output type")
 
     handler.add_pipeline(output)
-    await ws_broadcast("output", "CREATE", data.json())    
+    await manager.broadcast("CREATE", data)
     return data
 
 
@@ -66,7 +66,7 @@ async def create(request: Request, data: unionOutputDTO = Depends(getOutputDTO))
 async def delete(request: Request, data: OutputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("outputs", data.uid)
-    await ws_broadcast("output", "DELETE", data.json())  
+    await manager.broadcast("DELETE", data)
       
     return SuccessDTO(code=200, details="OK")
 

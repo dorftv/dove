@@ -9,7 +9,7 @@ from typing import Callable, Optional, Any, Type
 from orjson import orjson
 from pydantic import BaseModel
 
-from websocket_handler import ws_broadcast, ws_message
+from api.websockets import manager
 
 
 class GSTBase(BaseModel):
@@ -52,11 +52,12 @@ class GSTBase(BaseModel):
     # event handlers
     async def _on_error(self, bus, message):
         err, debug = message.parse_error()
-        await ws_message(orjson.dumps({
-            "uid": self.uid,
-            "type": "error",
-            "message": f"Error:, {err}, {debug}",
-        }))
+        # await ws_message(orjson.dumps({
+        #     "uid": self.uid,
+        #     "type": "error",
+        #     "message": f"Error:, {err}, {debug}",
+        # }))
+        await manager.broadcast("ERROR", self.data)
 
     async def _on_state_change(self, bus, message):
         
@@ -66,22 +67,18 @@ class GSTBase(BaseModel):
             self.data.state = Gst.Element.state_get_name(new_state)
             # @TODO need a way to get type [input/output/mixer] of messaging pipeline            
             #if issubclass(self.pipeline.__class__, Input):
-            dataJson = self.data.json()
-            await ws_broadcast("input", "UPDATE", dataJson)
+            await manager.broadcast("UPDATE", self.data)
 
     async def _on_eos(self, bus, message):
-        await ws_message(orjson.dumps({
-            "uid": self.uid,
-            "type": "eos",
-            "message": str(message)
-        }))
+        manager.broadcast("EOS", {"message": str(message)})
 
     async def _on_info(self, bus, message):
-        await ws_broadcast(orjson.dumps({
-            "uid": self.uid,
-            "type": "info",
-            "message": str(message)
-        }))
+        # await ws_broadcast(orjson.dumps({
+        #     "uid": self.uid,
+        #     "type": "info",
+        #     "message": str(message)
+        # }))
+        manager.broadcast("INFO", {"message": str(message)})
 
     class Config:
         arbitrary_types_allowed = True

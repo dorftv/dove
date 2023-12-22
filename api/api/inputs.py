@@ -10,7 +10,7 @@ from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
-from websocket_handler import  ws_broadcast
+from api.websockets import manager
 
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
@@ -39,11 +39,10 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
         handler.add_pipeline(input)
         # @TODO find a better place 
         # @TODO need a way to delete
-        # output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
-        # handler.add_pipeline(output)
-        input.add_preview(handler, uuid4(), data.uid)
+        output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+        handler.add_pipeline(output)
 
-    await ws_broadcast("input", "CREATE", data.json())    
+    await manager.broadcast("CREATE", data)
     return data
 
 
@@ -82,7 +81,7 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 async def delete(request: Request, data: InputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)
-    await ws_broadcast("input", "DELETE", data.json())
+    await manager.broadcast("DELETE", data)
 
     return SuccessDTO(code=200, details="OK")
 

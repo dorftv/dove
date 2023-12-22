@@ -6,6 +6,11 @@ from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
 
+# @TODO add function that returns dict of DTOS for using in api
+# type: DTO
+# eg: urisrc: UriInputDTO
+
+
 class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     type: str

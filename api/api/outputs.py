@@ -28,7 +28,7 @@ async def handle_output(request: Request, data: unionOutputDTO):
         raise HTTPException(status_code=400, detail="Invalid output type")
 
     handler.add_pipeline(output)
-    await ws_broadcast("output", "CREATE", data)    
+    await ws_broadcast("output", "CREATE", data.json())    
     return data
 
 
@@ -66,6 +66,7 @@ async def create(request: Request, data: unionOutputDTO = Depends(getOutputDTO))
 async def delete(request: Request, data: OutputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("outputs", data.uid)
-    await ws_broadcast("output", "DELETE", data)    
+    await ws_broadcast("output", "DELETE", data.json())  
+      
     return SuccessDTO(code=200, details="OK")
 

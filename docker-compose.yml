@@ -1,5 +1,15 @@
 version: "3.5"
 services:
+  frontend:
+    build:
+      context: ./frontend
+    working_dir: /var/www/html/app/
+    entrypoint: npm run dev -- -o --host
+    expose:
+      - 8000
+    volumes:
+      - ./frontend/:/var/www/html/app
+    tty: true
   api:
     build:
       context: ./api
@@ -15,6 +25,17 @@ services:
     ports:
       - 5000:5000
       - 8080:8080
+  fakeapi:
+    build:
+      context: ./fakeapi
+    working_dir: /var/www/html/app/
+    entrypoint: nodejs app.js
+    ports:
+      - 3000:3000
+      - 9999:9999
+    volumes:
+      - ./fakeapi:/var/www/html/app
+    tty: true      
 
 networks:
   dove:

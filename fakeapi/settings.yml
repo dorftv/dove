@@ -1,0 +1,27 @@
+inputs:
+  - uid: "12345678"
+    uri: "http://localhost:88/preview/playlist.m3u8"
+  - uid: "87654321"
+    uri: "http://localhost:88/preview/playlist.m3u8"
+
+mixers:
+  - uid: "mixer1234"
+    width: 1920
+    height: 1080
+  - uid: "mixer4321"
+    width: 1920
+    height: 1080
+
+outputs:
+  - uid: "output1"
+    type: "srt"
+    status: "PLAYING"
+  - uid: "output2"
+    type: "rtmp"
+    status: "PENDING"
+  - uid: "output3"
+    type: "uri"
+    status: "PAUSED"
+  - uid: "output4"
+    type: "decklink"
+    status: "BUFFERING"

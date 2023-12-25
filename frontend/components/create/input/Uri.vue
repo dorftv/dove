@@ -19,6 +19,9 @@
 </template>
 
 <script setup>
+
+
+
 const uri = ref('')
 const volume = ref(80)
 const loop = ref(false)
@@ -33,7 +36,7 @@ const submitForm = async () => {
     const { data: responseData } = await useFetch('/api/inputs', {
         method: 'put',
         body: { 
-          type: 'uri',
+          type: 'urisrc',
           uri: formData.value.uri,
           //uid: (Math.random() + 1).toString(36).substring(7),
           //uri: 'http://localhost:88/preview/playlist.m3u8',
@@ -44,6 +47,7 @@ const submitForm = async () => {
 
         }
     })
+    console.log(formData.value.uri)
     console.log(responseData.value)
 }
 

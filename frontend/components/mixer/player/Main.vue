@@ -2,6 +2,12 @@
   <div class="">
       <MixerPlayerHeader   :uid="uid" />
       <VideoPlayer   v-if="previewEnabled || mixerEnabled" :uid="mixer.uid" />
+      <div 
+        v-for="source in mixer.sources" 
+        :key="source.src" 
+        class="grid  col-span-2 px-4 py-8">
+{{  source.src }}sss
+      </div>        
       <!--<InputPlayerControls :state="mixer.state" :uid="mixer.uid"  :mixerEnabled="mixerEnabled" @enablePreview="(preview) => mixerEnabled = preview" />-->
   </div>
 </template>
@@ -14,7 +20,7 @@ import { computed } from "@vue/reactivity"
 const props = defineProps({
   mixer: Object,
 })
-
+console.log(props.mixer)
 const previewEnabled = useCookie('enablePreview')
 const mixerEnabled = ref(false)
 const uid = props.mixer.uid

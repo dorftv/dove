@@ -2,9 +2,12 @@
 <template>
     <div>
         <div class="p-4">
-          <h2>Test Source ( Video and Audio )</h2>
+          <h2></h2>
+
           <UForm :validate="validate" :state="state" class="space-y-4" @submit="submitForm">
-          <UInput v-model="uri" size="md" />
+            <UFormGroup label="Test Source ( Video and Audio )">
+          <UInput v-model="name" size="md" placeholdr="your name" />
+        </UFormGroup>          
           <UCheckbox v-model="loop" name="loop" label="Loop (content replays once finished)" />
           <div>
           <URange v-model="volume" name="range" />

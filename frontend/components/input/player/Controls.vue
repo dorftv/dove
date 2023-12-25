@@ -7,19 +7,40 @@
      <!-- toggle preview -->
     <Icon name="uil:video-slash" color="black" size="24px"  v-if="!previewEnabled && inputEnabled" @click="$emit('enablePreview', false)"/>
     <Icon name="uil:video" color="black" size="24px"  v-if="!previewEnabled && !inputEnabled"  @click="$emit('enablePreview', true)"/>    
+    <div>
+    <URange v-model="volume" name="range" :min="0" :max="100" />
+      Volume: {{  volume  }}          
+    </div>    
   </div>
 </template>
 
 <script setup>
-
+import { inject } from 'vue';
 import { computed } from "@vue/reactivity"
-
 const props = defineProps({
+  input: Object,
   state: String,
   uid: String,
   inputEnabled: Boolean
 
 })
+const webSocket = inject('webSocket');
+const volume = ref(props.input.volume * 100)
+    // Watch for changes in the reactive variable
+const data = {
+  type: 'message',
+  content: 'Hello, World!',
+  timestamp: Date.now()
+};
+    watch(props.volume, (newValue, oldValue) => {
+      // Send a message when the variable changes
+      if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+        console.log(newValue)
+        webSocket.send(JSON.stringify(data));
+      }
+    });
+
+    
 //const state = ref(input.state)
 
 const previewEnabled = useCookie('enablePreview')
@@ -29,7 +50,7 @@ const previewEnabled = useCookie('enablePreview')
   }
   
 const submitPlay = async () => {
-    const { data: responseData } = await useFetch('/api/input/delete', {
+    const { data: responseData } = await useFetch('/api/inputs/delete', {
         method: 'post',
         body: { 
           uid: props.uid,
@@ -65,9 +86,12 @@ switch (props.state) {
   case 'PENDING':
     console.log("pending")
     return 'pending';
-    case 'PAUSED':
+  case 'PAUSED':
     console.log("paused")
     return 'paused';
+    case 'EOS':
+    console.log("eos")
+    return 'eos';    
   default:
     console.log("Status unknown")
     return '';
@@ -94,7 +118,7 @@ background-color: orange;
 background-color: gray;
 }
 
-.paused {
+.paused, .eos {
 background-color: red;
 }
 </style>

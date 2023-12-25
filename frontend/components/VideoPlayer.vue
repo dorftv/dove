@@ -2,7 +2,7 @@
 <template>
   <div>     
 
-    <media-player  autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
+    <media-player  autoplay stream-type="ll-live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
       <media-provider></media-provider>
     </media-player>
 

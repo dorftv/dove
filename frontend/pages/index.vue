@@ -15,8 +15,13 @@
         <OutputMain :output="output"/>
       </div>
 </div>  
-      <div v-for="input in inputs" :key="input.uid" class="grid  col-span-2 px-4 py-8">
-        <InputPlayerMain :input="input" />
+      <div 
+        v-for="input in inputs" 
+        :key="input.uid" 
+        class="grid  col-span-2 px-4 py-8">
+          <InputPlayerMain 
+            :input="input" 
+            :mixers="mixers"/>
       </div>
 
 
@@ -24,7 +29,6 @@
 
 <script setup>
 import { watch, ref, onMounted, onUnmounted } from 'vue';
-
 const webSocket = ref(null);
 const { data: inputs } = await useFetch('/api/inputs');
 const { data: mixers } = await useFetch('/api/mixers');
@@ -57,6 +61,7 @@ const deleteEntity = (type, entityToDelete) => {
 
 onMounted(() => {
   webSocket.value = new WebSocket('ws://localhost:5000/ws');
+  provide('webSocket', webSocket);
   webSocket.value.onmessage = (event) => {
     const message = JSON.parse(event.data);
     const actionMap = {

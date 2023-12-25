@@ -5,14 +5,19 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
-
+from helpers import generateId
 # @TODO add function that returns dict of DTOS for using in api
+# see get_field_requirements(model)
 # type: DTO
 # eg: urisrc: UriInputDTO
+
+# demo for 
+uniqueId = generateId()
 
 
 class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
+    id: str = Field(default_factory=lambda: next(uniqueId))
     type: str
     name: Optional[str] = None
     state: Optional[str] = "PLAYING"
@@ -36,8 +41,17 @@ class InputDTO(BaseModel):
         ALLOWED_STATES = ["PLAYING", "READY"]
         if value not in ALLOWED_STATES:
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
-
+     
         return value
+
+    def get_field_requirements(model):
+        schema = model.schema()
+        fields = schema.get('properties', {})
+        field_requirements = [
+            {"name": field_name, "type": field_info.get('type'), "required": field_name in schema.get('required', [])}
+            for field_name, field_info in fields.items()
+        ]
+        return field_requirements
 
 class TestInputDTO(InputDTO):
     type: str = "testsrc"
@@ -49,6 +63,7 @@ class TestInputDTO(InputDTO):
 class UriInputDTO(InputDTO):
     type: str = "urisrc"
     uri: str
+    loop: Optional[bool] = False
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

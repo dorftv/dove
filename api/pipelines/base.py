@@ -31,7 +31,6 @@ class GSTBase(BaseModel):
 
         self.inner_pipelines.append(pipeline)
         pipeline.set_state(Gst.State.PLAYING)
-
         bus = pipeline.get_bus()
         bus.add_signal_watch()
         bus.connect("message::error", lambda e, b: asyncio.run(self._on_error(e, b))),
@@ -65,12 +64,12 @@ class GSTBase(BaseModel):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
-            # @TODO need a way to get type [input/output/mixer] of messaging pipeline            
-            #if issubclass(self.pipeline.__class__, Input):
+
             await manager.broadcast("UPDATE", self.data)
 
     async def _on_eos(self, bus, message):
-        manager.broadcast("EOS", {"message": str(message)})
+        self.data.state = "EOS"
+        await manager.broadcast("UPDATE", self.data)
 
     async def _on_info(self, bus, message):
         # await ws_broadcast(orjson.dumps({

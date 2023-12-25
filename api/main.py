@@ -18,7 +18,7 @@ from pipelines.outputs.preview_hls_output import previewHlsOutput
 
 uid = uuid4()
 
-input = TestInput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=TestInputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", volume=1.0, pattern=0))
+input = TestInput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=TestInputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", volume=1.0, pattern=1))
 #output = previewHlsOutput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=(previewHlsOutputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a")))
 pipelines = PipelineHandler({"inputs": [input]})
 #pipelines = PipelineHandler({"outputs": [output]})

@@ -17,7 +17,7 @@ class previewHlsOutput(Output):
 
         self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! video/x-raw,format=I420 ! "
         f" x264enc  speed-preset=ultrafast ! video/x-h264,profile=main ! queue ! mpegtsmux ! "
-        f" hlssink async-handling=true target-duration=3  max-files=5 "
+        f" hlssink async-handling=true target-duration=1  max-files=5 "
         f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} ")
 
     def describe(self):

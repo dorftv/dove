@@ -2,12 +2,15 @@ import json
 
 import orjson
 from fastapi import APIRouter, WebSocket
-
-from api.inputs_dtos import TestInputDTO, UriInputDTO, InputDTO
-from api.mixers_dtos import MixerDTO
-from api.outputs_dtos import OutputDTO
+import asyncio
+from api.inputs_dtos import InputDTO, InputDeleteDTO
+from api.mixers_dtos import mixerDTO, MixerDeleteDTO
+from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 
 router = APIRouter()
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 
 
 class ConnectionManager:
@@ -21,67 +24,55 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+        
     async def broadcast(self, channel, data):
         type = ""
-        if issubclass(data.__class__, InputDTO):
+        if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
             type = "input"
-        elif issubclass(data.__class__, OutputDTO):
+        elif issubclass(data.__class__, OutputDTO) or isinstance(data, OutputDeleteDTO):
             type = "output"
-        elif issubclass(data.__class__, MixerDTO):
+        elif issubclass(data.__class__, mixerDTO) or isinstance(data, MixerDeleteDTO):
             type = "mixer"
 
         final_dict = {
             "type": type,
             "channel": channel,
             "data": data.dict()
-        }
+        }        
+        for connection in self.active_connections:
+            await connection.send_text(orjson.dumps(final_dict).decode("utf-8"))
 
-        for websocket in self.active_connections:
-            await websocket.send_text(orjson.dumps(final_dict).decode("utf-8"))
 
-
-# @router.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     handler: GSTBase = websocket.app.state._state["pipeline_handler"]
-#
-#     await websocket.accept()
-#     active_websockets.append(websocket)
-#     try:
-#         while True:
-#             data = await websocket.receive_json()
-#             pipeline = handler.get_pipeline(data.pop("pipeline_type"), data.uid)
-#
-#             if data.type == "testsrc":
-#                 pipeline.data = TestInputDTO(**data)
-#             elif data.type == "urisrc":
-#                 pipeline.data = UriInputDTO(**data)
-#
-#             await ws_broadcast(data)
-#
-#     except Exception as e:
-#         # Handle disconnection
-#         active_websockets.remove(websocket)
 
 manager = ConnectionManager()
+
+
+@staticmethod
+async def get_pipe(self, websocket):
+    handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
+    #handler = 
+    pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
+    print("pipeline")
+    print(pipeline)
+    return pipeline
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
     await manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_json()
-            pipeline = handler.get_pipeline(data.pop("pipeline_type"), data.uid)
-
-            if data.type == "testsrc":
-                pipeline.data = TestInputDTO(**data)
-            elif data.type == "urisrc":
-                pipeline.data = UriInputDTO(**data)
-
-            await manager.broadcast("CREATED", data)
-
-    except Exception as e:
-        # Handle disconnection
+            data = await websocket.receive_text()
+            handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
+            #handler = 
+            pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
+            print("pipeline")
+            print(pipeline)            
+            #print("pipe")
+            await manager.send_personal_message(f"You wrote: {data}", websocket)
+            
+    except WebSocketDisconnect:
         manager.disconnect(websocket)
-
-
-        
+        #await manager.broadcast)

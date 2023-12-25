@@ -70,14 +70,16 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            pipeline = handler.get_pipeline(data.pop("pipeline_type"), data.uid)
+            pipeline = handler.get_pipeline(data.pop("inputs"), "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
 
-            if data.type == "testsrc":
-                pipeline.data = TestInputDTO(**data)
-            elif data.type == "urisrc":
-                pipeline.data = UriInputDTO(**data)
+            await  websocket.send_json(data)
 
-            await manager.broadcast("CREATED", data)
+            #if data.type == "testsrc":
+            #    pipeline.data = TestInputDTO(**data)
+            #elif data.type == "urisrc":
+            #    pipeline.data = UriInputDTO(**data)
+
+#            await manager.broadcast("CREATED", data)
 
     except Exception as e:
         # Handle disconnection

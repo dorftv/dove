@@ -1,57 +1,87 @@
 from typing import Annotated
+from uuid import UUID, uuid4
+from typing import Union
+from fastapi import APIRouter, Request, HTTPException, Depends
+from pydantic import ValidationError
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO
+from caps import Caps
+from pipeline_handler import PipelineHandler
+from pipelines.description import Description
+from pipelines.base import GSTBase
+from pipelines.inputs.test_input import TestInput
+from pipelines.inputs.uri_input import UriInput
+from api.websockets import manager
 
-from fastapi import APIRouter, Request, HTTPException
-
-from models.input import InputDTO, InputCreateDTO, InputTypes
-from models import input
-from pipelines.inputs import TestPipeline
-
-router = APIRouter(prefix="/inputs")
+# @TODO find a better place
+from pipelines.outputs.preview_hls_output import previewHlsOutput
+from api.outputs_dtos import previewHlsOutputDTO
+from uuid import UUID, uuid4
 
 
-@router.get("/", response_model=list[input.InputCreateDTO])
+router = APIRouter(prefix="/api")
+
+
+async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO]):
+    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    # Handle based on the type of data
+    if isinstance(data, TestInputDTO):
+        input = TestInput(uid=data.uid, data=data)
+    elif isinstance(data, UriInputDTO):
+        input = UriInput(uid=data.uid, data=data)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input type")
+
+    existing_input = handler.get_pipeline("inputs", data.uid)
+
+    if existing_input:
+        existing_input.data = data
+    else:
+        handler.add_pipeline(input)
+        # @TODO find a better place 
+        # @TODO need a way to delete
+        output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+        handler.add_pipeline(output)
+
+    await manager.broadcast("CREATE", data)
+    return data
+
+
+async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
+    json_data = await request.json()
+    input_type = json_data.get("type")
+    try:
+        if input_type == "testsrc":
+            return TestInputDTO(**json_data)
+        elif input_type == "urisrc":
+            return UriInputDTO(**json_data)
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+
+@router.get("/inputs")
 async def all(request: Request):
-    handler = request.app.state._state["pipeline_handler"]
-    inputs = handler.pipelines["inputs"]
-    descriptions: list[input.Description] = []
+    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    inputs: list[Input] = handler._pipelines["inputs"]
+    descriptions: list[Description] = []
 
     for pipeline in inputs:
         descriptions.append(pipeline.describe())
 
     return descriptions
 
-
-@router.delete("/")
-async def delete(request: Request, input: InputDTO):
-    handler = request.app.state._state["pipeline_handler"]
-    inputs = handler.pipelines["inputs"]
-
-    for pipeline in inputs:
-        if pipeline.uid == input.uid:
-            pipeline.stop()
-            inputs.remove(pipeline)
-
-    return "OK"
+# @TODO handle updates
+unionInputDTO = Union[TestInputDTO, UriInputDTO]
+@router.put("/inputs")
+async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
+    return await handle_input(request, data)
 
 
-@router.put("/")
-async def create_or_update(input: InputCreateDTO, request: Request):
-    handler = request.app.state._state["pipeline_handler"]
-    mapping = {
-        InputTypes.test_src: TestPipeline
-    }
+@router.delete("/inputs", response_model=SuccessDTO)
+async def delete(request: Request, data: InputDeleteDTO):
+    handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    handler.delete_pipeline("inputs", data.uid)
+    await manager.broadcast("DELETE", data)
 
-    try:
-        pipeline = mapping[input.type](
-            type=input.type,
-            name=input.name,
-            state=input.state,
-            height=input.height,
-            width=input.width,
-            preview=input.preview
-        )
-        handler.add_pipeline(pipeline)
-        pipeline.set_state(input.state)
-    except KeyError:
-        HTTPException(400, detail=f"cannot find pipeline of type {input.type}")
+    return SuccessDTO(code=200, details="OK")
 

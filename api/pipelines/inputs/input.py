@@ -5,6 +5,8 @@ from api.outputs_dtos import previewHlsOutputDTO
 from caps import Caps
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
+from typing import Union
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 
 
 class Input(GSTBase, ABC):

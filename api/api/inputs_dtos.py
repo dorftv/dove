@@ -29,7 +29,7 @@ class InputDTO(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["testsrc", "urisrc"]
+        ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -64,6 +64,16 @@ class UriInputDTO(InputDTO):
     type: str = "urisrc"
     uri: str
     loop: Optional[bool] = False
+
+class ytDlpInputDTO(InputDTO):
+    type: str = "ytdlpsrc"
+    uri: str
+    loop: Optional[bool] = False
+
+class WpeInputDTO(InputDTO):
+    type: str = "wpesrc"
+    location: Optional[str] = "https://dorftv.at"
+    draw_background: Optional[bool] = False
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

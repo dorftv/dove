@@ -3,13 +3,16 @@ from uuid import UUID, uuid4
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
+from pipelines.inputs.wpe_input import WpeInput
+from pipelines.inputs.ytdlp_input import ytDlpInput
+
 from api.websockets import manager
 
 # @TODO find a better place
@@ -20,14 +23,19 @@ from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/api")
 
+unionInputDTO = Union[TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO]
 
-async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO]):
+async def handle_input(request: Request, data: unionInputDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     # Handle based on the type of data
     if isinstance(data, TestInputDTO):
         input = TestInput(uid=data.uid, data=data)
     elif isinstance(data, UriInputDTO):
         input = UriInput(uid=data.uid, data=data)
+    elif isinstance(data, WpeInputDTO):
+        input = WpeInput(uid=data.uid, data=data)    
+    elif isinstance(data, ytDlpInputDTO):
+        input = ytDlpInput(uid=data.uid, data=data)              
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 
@@ -46,7 +54,7 @@ async def handle_input(request: Request, data: Union[TestInputDTO, UriInputDTO])
     return data
 
 
-async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
+async def getInputDTO(request: Request) -> unionInputDTO:
     json_data = await request.json()
     input_type = json_data.get("type")
     try:
@@ -54,6 +62,10 @@ async def getInputDTO(request: Request) -> Union[UriInputDTO, TestInputDTO]:
             return TestInputDTO(**json_data)
         elif input_type == "urisrc":
             return UriInputDTO(**json_data)
+        elif input_type == "wpesrc":
+            return WpeInputDTO(**json_data)
+        elif input_type == "ytdlpsrc":
+            return ytDlpInputDTO(**json_data)                         
         else:
             raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
     except ValidationError as e:
@@ -71,7 +83,6 @@ async def all(request: Request):
     return descriptions
 
 # @TODO handle updates
-unionInputDTO = Union[TestInputDTO, UriInputDTO]
 @router.put("/inputs")
 async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
     return await handle_input(request, data)

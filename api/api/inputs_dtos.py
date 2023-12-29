@@ -12,14 +12,13 @@ from helpers import generateId
 # eg: urisrc: UriInputDTO
 
 # demo for 
-uniqueId = generateId()
+uniqueId = generateId("Input ")
 
 
 class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    id: str = Field(default_factory=lambda: next(uniqueId))
+    name: str = Field(default_factory=lambda: next(uniqueId))
     type: str
-    name: Optional[str] = None
     state: Optional[str] = "PLAYING"
     height: Optional[int] = None
     width: Optional[int] = None

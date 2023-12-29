@@ -4,10 +4,13 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, validator, model_validator, root_validator
 from pydantic_core.core_schema import FieldValidationInfo
 from caps import Caps
+from helpers import generateId
 
+uniqueId = generateId("Mixer ")
 
 class mixerInputDTO(BaseModel):
     src: UUID
+    sink: Optional[str] = None
     xpos: Optional[int] = None
     ypos: Optional[int] = None
     width: Optional[int] = None
@@ -25,7 +28,7 @@ class mixerDTO(BaseModel):
     sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
     type: Optional[str] = "mixer"
     preview: Optional[bool] = True
-    name: Optional[str] = None
+    name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
     height: Optional[int] = None
     width: Optional[int] = None
@@ -64,6 +67,7 @@ class mixerDTO(BaseModel):
                 for key, value in kwargs.items():
                     setattr(source, key, value)
                 break
+        
 
     @field_validator("type")
     @classmethod

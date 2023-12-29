@@ -5,12 +5,15 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
+from helpers import generateId
+
+uniqueId = generateId("Output ")
 
 class OutputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     src: UUID
     type: str
-    name: Optional[str] = None
+    name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
     height: Optional[int] = None
     width: Optional[int] = None

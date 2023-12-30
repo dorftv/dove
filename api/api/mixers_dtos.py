@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field, field_validator, validator, model_validat
 from pydantic_core.core_schema import FieldValidationInfo
 from caps import Caps
 from helpers import generateId
+from config_handler import ConfigReader  # make sure to replace with your actual module name
+
+config = ConfigReader('/app/config.toml')
 
 uniqueId = generateId("Mixer ")
 
@@ -17,11 +20,20 @@ class mixerInputDTO(BaseModel):
     height: Optional[int] = None
     alpha: Optional[float] = None
     zorder: Optional[int] = None
+    immutable: Optional[bool] = False
 
 class mixerInputsDTO(BaseModel):
     src: UUID
     #src: Optional[List[mixerInputDTO]] = []
-  
+
+def get_default_height() -> int:
+    return config.get_default_resolution()['height']
+
+def get_default_width() -> int:
+    return config.get_default_resolution()['width']
+
+def get_default_volume() -> int:
+    return config.get_default_volume()
 
 class mixerDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
@@ -30,9 +42,9 @@ class mixerDTO(BaseModel):
     preview: Optional[bool] = True
     name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
-    height: Optional[int] = None
-    width: Optional[int] = None
-    volume: Optional[float] = 0.8
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)
+    volume: Optional[float] = Field(default_factory=get_default_volume)
 
     # remove all sources but src
     def cut_source(self, src: UUID):
@@ -99,7 +111,6 @@ class mixerCutDTO(BaseModel):
 # @TODO use default from config file
 # used for preview and program
 class mixerMixerDTO(mixerDTO):
-    type: str
     type: Optional[str] = "mixer"
 
 

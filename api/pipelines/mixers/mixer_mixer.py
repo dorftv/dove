@@ -11,7 +11,7 @@ class mixerMixer(Mixer):
 
     def build(self):
         # @TODO improve caps handling
-        caps = "video/x-raw,width=1280,height=720,framerate=25/1"
+        caps = f"video/x-raw,width={self.data.width},height={self.data.height},framerate=25/1"
         audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
         print(self.data.uid)
         self.add_pipeline("videotestsrc pattern=0 is-live=true ! "

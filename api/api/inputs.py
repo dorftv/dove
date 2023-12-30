@@ -18,7 +18,6 @@ from api.websockets import manager
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
 from api.outputs_dtos import previewHlsOutputDTO
-from uuid import UUID, uuid4
 
 
 router = APIRouter(prefix="/api")
@@ -29,13 +28,13 @@ async def handle_input(request: Request, data: unionInputDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     # Handle based on the type of data
     if isinstance(data, TestInputDTO):
-        input = TestInput(uid=data.uid, data=data)
+        input = TestInput(data=data)
     elif isinstance(data, UriInputDTO):
-        input = UriInput(uid=data.uid, data=data)
+        input = UriInput(data=data)
     elif isinstance(data, WpeInputDTO):
-        input = WpeInput(uid=data.uid, data=data)    
+        input = WpeInput(data=data)    
     elif isinstance(data, ytDlpInputDTO):
-        input = ytDlpInput(uid=data.uid, data=data)              
+        input = ytDlpInput(data=data)              
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 
@@ -47,7 +46,7 @@ async def handle_input(request: Request, data: unionInputDTO):
         handler.add_pipeline(input)
         # @TODO find a better place 
         # @TODO need a way to delete
-        output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+        output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)

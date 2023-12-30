@@ -27,26 +27,26 @@ class createElements():
         for mixer, input_list in self.mixer_list.items():
             #print(f"Mixer: {mixer_list}")
             mixerUuid = uuid4()
-            mixers.append(mixerMixer(uid=mixerUuid, data=mixerMixerDTO(uid=mixerUuid, type="mixer")))
+            mixers.append(mixerMixer(data=mixerMixerDTO(uid=mixerUuid, type="mixer")))
             #if self.preview_enabled:
             # @TODO check if output
-            outputs.append(previewHlsOutput(uid=uuid4(), src=mixerUuid, data=previewHlsOutputDTO(src=mixerUuid)))
+            outputs.append(previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid)))
 
             for name, details in input_list.items():  
                 type = details['type']
                 uuid = uuid4()
                 if type == "testsrc":
-                    inputs.append(TestInput(uid=uuid, data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=1)))
+                    inputs.append(TestInput(data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=1)))
                 elif type == "urisrc":
-                    inputs.append(UriInput(uid=uuid, data=UriInputDTO(name=name, uid=uuid,  uri=details.get('uri', None), loop=details.get('loop', None))))
+                    inputs.append(UriInput(data=UriInputDTO(name=name, uid=uuid,  uri=details.get('uri', None), loop=details.get('loop', None))))
                 elif type == "wpesrc":
-                    inputs.append(WpeInput(uid=uuid, data=WpeInputDTO(name=name, uid=uuid, volume=1.0, pattern=1)))
+                    inputs.append(WpeInput(data=WpeInputDTO(name=name, uid=uuid, volume=1.0, pattern=1)))
                 elif type == "ytdlpsrc":
-                    inputs.append(ytDlpInput(uid=uuid, data=ytDlpInputDTO(name=name, uid=uuid, uri=details.get('uri', None))))
+                    inputs.append(ytDlpInput(data=ytDlpInputDTO(name=name, uid=uuid, uri=details.get('uri', None))))
         
                 #if self.preview_enabled:
                 # @TODO check if output
-                outputs.append(previewHlsOutput(uid=uuid4(), src=uuid, data=previewHlsOutputDTO(src=uuid)))
+                outputs.append(previewHlsOutput(data=previewHlsOutputDTO(src=uuid)))
                 #print(preview_enabled)
                 pipelines = {"mixers": mixers, "inputs": inputs, "outputs": outputs}
 

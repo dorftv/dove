@@ -21,7 +21,7 @@ async def handle_output(request: Request, data: unionOutputDTO):
 
     # Handle based on the type of data
     if isinstance(data, previewHlsOutputDTO):
-        output = previewHlsOutput(uid=data.uid, src=data.src, data=data)
+        output = previewHlsOutput(data=data)
 #    elif isinstance(data, previewWebrtcOutputDTO):
 #        output = previewWebrtcOutput(caps=caps, uid=data.uid, data=data)
     else:

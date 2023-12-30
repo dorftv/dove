@@ -10,12 +10,12 @@ from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, 
 
 
 class Input(GSTBase, ABC):
-    uid: UUID
+    data: InputDTO
     def get_video_end(self) -> str:
-        return f"  queue ! interpipesink name=video_{self.uid} async=true sync=true"
+        return f"  queue ! interpipesink name=video_{self.data.uid} async=true sync=true"
 
     def get_audio_end(self):
-        return f" queue ! interpipesink name=audio_{self.uid} async=true sync=true"
+        return f" queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
     def describe(self):
 
         return self

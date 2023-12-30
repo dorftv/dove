@@ -9,11 +9,8 @@ from pipeline_main import get_pipeline_handler
 
 
 class Mixer(GSTBase, ABC):
-    uid: UUID
-    #data: mixerDTO
+    data: mixerDTO
     
-
-
     def get_video_end(self) -> str:
         return f" queue ! interpipesink name=video_{self.data.uid} async=false sync=true"
 
@@ -27,41 +24,38 @@ class Mixer(GSTBase, ABC):
     async def handle_websocket(self):
         await manager.broadcast("UPDATE", self.data)
 
-
         
     def cut(self, input):
 
         print("----CUT-----")
         try:
-            self.data.cut_source(input.src)
-            asyncio.create_task(manager.broadcast("UPDATE", self.data))
-            mixerpipe = self.inner_pipelines[0]
-            print("CUT VIDEOS")
-            
-            self.cut_interpipe("video", input, mixerpipe)
-            #audiomixer = self.getMixer("audio", mixerpipe)            
-            print("CUT AUDIO")
-            self.cut_interpipe("audio", input, mixerpipe)
+            print("CUT VIDEOS")            
+            self.cut_interpipe("video", input)
 
-             
- #               src.set_property("listen-to", input.src)
+            print("CUT AUDIO")
+            self.cut_interpipe("audio", input)
+
+            self.data.cut_source(input.src)
+            print(self.data)
+            asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
         except ValueError as e:
             print(e)
-    def cut_interpipe(self, audio_or_video, input, mixerpipe):
-        mixer = self.getMixer(audio_or_video, mixerpipe)
+
+
+    def cut_interpipe(self, audio_or_video, input):
+        mixer = self.getMixer(audio_or_video)
         pads =  self.get_pads(mixer)
         for pad in pads:
             print(f"PAD: {pad.get_name()}")
 
-        #print(pads)
         if len(pads) == 2:
-            src = self.createInterpipesrc(audio_or_video, input, mixerpipe)
+            src = self.createInterpipesrc(audio_or_video, input)
         else:
-            src =  self.getInterpipesrc(audio_or_video, input, mixer, mixerpipe)
+            src =  self.getInterpipesrc(audio_or_video, input)
 
         if src:
-            self.updateInterpipesrc(audio_or_video, input, mixer, mixerpipe)
+            self.updateInterpipesrc(audio_or_video, input)
 
         pads =  self.get_pads(mixer)
         for pad in pads:
@@ -79,61 +73,65 @@ class Mixer(GSTBase, ABC):
             pads.append(pad)
         return pads
 
-    def updateInterpipesrc(self, audio_or_video, input, mixer, mixerpipe):
+    def updateInterpipesrc(self, audio_or_video, input):
+        mixerpipe = self.get_pipeline()
+        mixer = self.getMixer(audio_or_video)
         mixer_src_pad = mixer.get_static_pad("src")
-
         src = mixerpipe.get_by_name(f"{audio_or_video}_{input.target}_bin")
-
         capsfilter = src.get_by_name(f"{audio_or_video}_capsfilter")
+        
         mixer_src_pad = mixer.get_static_pad("src")
         mixer_caps = mixer_src_pad.get_current_caps()
+        print("UPDATE")
+        print(mixer_caps.to_string)
         capsfilter.set_property("caps", mixer_caps)
-
-        element = self.getInterpipesrc(audio_or_video, input, mixer, mixerpipe)
+        element = self.getInterpipesrc(audio_or_video, input)
         element.set_property("listen-to", f"{audio_or_video}_{input.src}" )
 
 
-    def getInterpipesrc(self, audio_or_video, input, mixer, mixerpipe):
+    def getInterpipesrc(self, audio_or_video, input):
+        mixerpipe = self.get_pipeline()
+        mixer = self.getMixer(audio_or_video)
         pads = self.get_pads(mixer)
         print(pads)
-        if audio_or_video == "video":
-            sink1_pad = mixer.get_static_pad("sink_1")
-            bin = sink1_pad.get_peer().get_parent()
-        elif audio_or_video == "audio":
-            sink1_pad = mixer.get_static_pad("sink_0") 
-            bin = sink1_pad.get_peer().get_parent().get_parent()
-            print(bin)
-            
-        if sink1_pad:      
-            
-            print(bin)
-            element = bin.get_by_name(f"{audio_or_video}_{input.target}_src")
-            print(element)
-
-
+        sink1_pad = mixer.get_static_pad("sink_1")
+        bin = sink1_pad.get_peer().get_parent()
         element = bin.get_by_name(f"{audio_or_video}_{input.target}_src") 
         return element
 
+    def deleteInterpipesrcs(self, audio_or_video, input):
+        mixerpipe = self.get_pipeline()
+        mixer = self.getMixer(audio_or_video)        
+        pads = self.get_pads(mixer)
+        exclude = ["src", "sink_0", "sink_1"]
+        for pad in pads:
+            if pad.get_name() in exclude:
+                continue
+        src_pad = pad.get_peer()
+        if src_pad:
+            element_remove = src_pad.get_peer().get_parent()
+            if element_remove:
+                mixer.release_request_pad(src_pad)
+                element_remove.set_state(Gst.State.NULL)
+                mixerpipe.remove(element_remove)              
 
    
-    def getMixer(self, audio_or_video, mixerpipe):
+    def getMixer(self, audio_or_video):
+        mixerpipe = self.get_pipeline()
         mixer = mixerpipe.get_by_name(f"{audio_or_video}mixer_{ self.uid}")
         return mixer
 
 
-    def createInterpipesrc(self, audio_or_video, input, mixerpipe):
+    def createInterpipesrc(self, audio_or_video, input):
         #caps = "video/x-raw,width=1280,height=720,framerate=25/1"
         audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
-        
-        # Create Elements
-        #VIDEO same as Video but videosrc && videomixer variable
-        #videomixer_pad = videomixer.get_static_pad("sink_0")
-        #videomixer_caps = videomixer_pad.get_current_caps()
-        mixer = self.getMixer(audio_or_video, mixerpipe)
+        mixerpipe = self.get_pipeline()
+        mixer = self.getMixer(audio_or_video)
      
         # Get the current caps of the compositor's sink pad
         sink_pad_template = mixer.get_pad_template("sink_%u")
-        sink_pad = mixer.request_pad(sink_pad_template, None, None)    
+        sink_pad = mixer.request_pad(sink_pad_template, None, None)
+        self.data.update_mixer_input(input.src, sink=sink_pad.get_name())
         mixer_src_pad = mixer.get_static_pad("src")
         mixer_caps = mixer_src_pad.get_current_caps()
         if mixer_caps is not None:
@@ -167,57 +165,24 @@ class Mixer(GSTBase, ABC):
         except ValueError as e:
             print(e)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
-        
+
     def remove(self, input):
         print("-----")
         try:
             self.data.remove_source(input.src)
             print(self.data.sources)
+            
+            mixerpipe = self.inner_pipelines[0]
+            print(mixerpipe)
+            mixer = self.getMixer("video")
+            self.deleteInterpipesrcs("video", input, mixer, mixerpipe);
+
+            
+
         except ValueError as e:
             print(e)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
         
-    #prepares the interpipesrc and interpipesink connection
-    # TODO Refactor this is mostly duplicate!!! use audio_or_video like Brave
-    def addInputToMix(self, mixerpipe, videomixer, srcUid):
-        # @TODO improve caps handling
-        caps = "video/x-raw,width=1280,height=720,framerate=25/1"
-        audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
-        
-        # Create Elements
-        #VIDEO same as Video but videosrc && videomixer variable
-        #videomixer_pad = videomixer.get_static_pad("sink_0")
-        #videomixer_caps = videomixer_pad.get_current_caps()
-        videosrc = Gst.parse_bin_from_description(f"interpipesrc name=video_{srcUid}_src listen-to=video_{srcUid}  "
-        f" format=time allow-renegotiation=false do-timestamp=true is-live=true "
-        f" ! videoconvert !  videoscale ! videorate !  { caps } ! queue   ", True)
-        videosrc.set_name(f"video_{srcUid}_bin")
-        mixerpipe.add(videosrc)
-        pads =  get_pads(mixerpipe)
-        print(pads)
-        sink_pad_template = videomixer.get_pad_template("sink_%u")
-        sink_pad = videomixer.request_pad(sink_pad_template, None, None)    
-        src_pad = videosrc.get_static_pad("src")
-    
- #       #audiomixer_pad = audiomixer.get_static_pad("sink_0")
- #       #audiomixer_caps = audiomixer_pad.get_current_caps()
- #       audiosrc = Gst.parse_bin_from_description(f"interpipesrc name=audio_{uid}_src listen-to=audio_{uid}  "
- #       f" format=time allow-renegotiation=false do-timestamp=true is-live=true "
- #       f" ! audioconvert ! audiorate ! queue ", True)
- #       audiosrc.set_name(f"audio_{uid}_bin")
- #       mixerpipe.add(audiosrc)
- #       audio_sink_pad_template = audiomixer.get_pad_template("sink_%u")
- #       audio_sink_pad = audiomixer.request_pad(audio_sink_pad_template, None, None)
- #       audio_src_pad = audiosrc.get_static_pad("src")
- #        
- #       # link audio and video
-        src_pad.link(sink_pad)
-        videosrc.sync_state_with_parent()     
- #       audio_src_pad.link(audio_sink_pad)
- #       audiosrc.sync_state_with_parent() 
- #       # used by cut
-
-
 
     def describe(self):
 

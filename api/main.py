@@ -12,16 +12,16 @@ from gi.repository import Gst
 Gst.init(None)
 
 from api_thread import APIThread
-from pipeline_handler import PipelineHandler
-from pipelines.inputs.test_input import TestInput
-from pipelines.outputs.preview_hls_output import previewHlsOutput
-from startup import createElements
+from pipeline_main import pipelines
 
 
-elements = createElements()
-pipes = elements.create_mixer()
-pipelines = PipelineHandler(pipes)
-
+# elements = createElements()
+# pipes = elements.create_mixer()
+# pipelines = PipelineHandler(pipes)
+#
+#
+# api = APIThread(pipeline_handler=pipelines)
+# api.start()
 
 api = APIThread(pipeline_handler=pipelines)
 api.start()

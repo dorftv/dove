@@ -5,7 +5,7 @@ from gi.repository import Gst, GLib
 from api.websockets import manager
 import asyncio
 from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, field_validator, validator
+from pipeline_main import get_pipeline_handler
 
 
 class Mixer(GSTBase, ABC):

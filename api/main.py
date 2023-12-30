@@ -12,7 +12,7 @@ from gi.repository import Gst
 Gst.init(None)
 
 from api_thread import APIThread
-from pipeline_main import pipelines
+from pipeline_main import get_pipeline_handler
 
 
 # elements = createElements()
@@ -23,10 +23,11 @@ from pipeline_main import pipelines
 # api = APIThread(pipeline_handler=pipelines)
 # api.start()
 
-api = APIThread(pipeline_handler=pipelines)
+handler = get_pipeline_handler()
+api = APIThread(pipeline_handler=handler)
 api.start()
 
 time.sleep(1)
 
 
-pipelines.start()
+handler.start()

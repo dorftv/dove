@@ -9,7 +9,6 @@ from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
 from pipelines.outputs.preview_hls_output import previewHlsOutput
-from pipelines.mixers.mixer import Mixer
 from pipelines.mixers.mixer_mixer import mixerMixer
 
 

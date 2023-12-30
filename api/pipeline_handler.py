@@ -4,9 +4,9 @@ from uuid import UUID
 from gi.repository import Gst, GObject
 
 from pipelines.base import GSTBase
-from pipelines.inputs.input import Input
-from pipelines.mixers.mixer import Mixer
-from pipelines.outputs.output import Output
+
+def is_subclass_str(cls, base_name):
+    return base_name in [base.__name__ for base in cls.__bases__]
 
 
 class PipelineHandler:
@@ -30,7 +30,7 @@ class PipelineHandler:
                     inner.set_state(Gst.State.PLAYING)
 
     def add_pipeline(self, pipeline: GSTBase, start=True):
-        if issubclass(pipeline.__class__, Input):
+        if is_subclass_str(pipeline.__class__, "Input"):
             try:
                 pipeline.build()
                 self._pipelines["inputs"].append(pipeline)
@@ -38,14 +38,14 @@ class PipelineHandler:
                 pipeline.build()
                 self._pipelines["inputs"] = [pipeline]
 
-        elif issubclass(pipeline.__class__, Output):
+        elif is_subclass_str(pipeline.__class__, "Output"):
             try:
                 pipeline.build()
                 self._pipelines["outputs"].append(pipeline)
             except AttributeError:
                 pipeline.build()
                 self._pipelines["outputs"] = [pipeline]
-        elif issubclass(pipeline.__class__, Mixer):
+        elif is_subclass_str(pipeline.__class__, "Mixer"):
             try:
                 pipeline.build()
                 self._pipelines["mixers"].append(pipeline)

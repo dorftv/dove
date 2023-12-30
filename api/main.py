@@ -15,13 +15,13 @@ from api_thread import APIThread
 from pipeline_handler import PipelineHandler
 from pipelines.inputs.test_input import TestInput
 from pipelines.outputs.preview_hls_output import previewHlsOutput
+from startup import createElements
 
-uid = uuid4()
 
-input = TestInput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=TestInputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", volume=1.0, pattern=1))
-#output = previewHlsOutput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=(previewHlsOutputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a")))
-pipelines = PipelineHandler({"inputs": [input]})
-#pipelines = PipelineHandler({"outputs": [output]})
+elements = createElements()
+pipes = elements.create_mixer()
+pipelines = PipelineHandler(pipes)
+
 
 api = APIThread(pipeline_handler=pipelines)
 api.start()

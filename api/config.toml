@@ -1,0 +1,8 @@
+[mixers]
+
+[mixers.mixer1]
+input1={ type = "testsrc", pattern=3 }
+input2={ type = "urisrc" , uri="https://www.dorftv.at/system/files/thek/720p/2021/35182/35182.mp4"}
+input3={ type = "wpesrc" , uri="https://www.dorftv.at/system/files/thek/720p/2021/35182/35182.mp4"}
+
+

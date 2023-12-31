@@ -50,8 +50,11 @@ class mixerDTO(BaseModel):
     def cut_source(self, src: UUID):
         if not any(source.src == src for source in self.sources):
             self.sources.append(mixerInputDTO(src=src))
+            self.sources = [source for source in self.sources if source.src == src]
+            return True
 
         self.sources = [source for source in self.sources if source.src == src]
+        return False
     
     # add src to mixer
     def overlay_source(self, src: UUID):

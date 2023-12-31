@@ -30,6 +30,7 @@ class GSTBase(BaseModel):
             pipeline = Gst.parse_launch(pipeline)
 
         self.inner_pipelines.append(pipeline)
+        pipeline.set_name(str(self.data.uid))
         pipeline.set_state(Gst.State.PLAYING)
         bus = pipeline.get_bus()
         bus.add_signal_watch()

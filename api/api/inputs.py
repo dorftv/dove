@@ -13,7 +13,7 @@ from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
 from api.outputs_dtos import OutputDTO, OutputDeleteDTO
-
+from api.mixers_dtos import mixerDTO, mixerRemoveDTO
 from api.websockets import manager
 
 # @TODO find a better place
@@ -92,7 +92,13 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 async def delete(request: Request, data: InputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)
+    # cleanup related stuff
     preview = handler.get_preview_pipeline(data.uid)
+    handler.delete_pipeline("outputs", preview.data.uid)
+    mixers = handler.get_pipelines('mixers')
+    for mixer in mixers:
+       mixer.remove(mixerRemoveDTO(src=data.uid))
+       
     await manager.broadcast("DELETE", data)
     await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
 

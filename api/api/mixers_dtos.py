@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator, validator, model_validat
 from pydantic_core.core_schema import FieldValidationInfo
 from caps import Caps
 from helpers import generateId
-from config_handler import ConfigReader  # make sure to replace with your actual module name
+from config_handler import ConfigReader  
 
 config = ConfigReader('/app/config.toml')
 
@@ -107,6 +107,8 @@ class mixerCutDTO(BaseModel):
     src: UUID
     target: UUID
 
+class mixerRemoveDTO(BaseModel):
+    src: UUID
 
 
 

@@ -59,6 +59,9 @@ class PipelineHandler:
             for inner in pipeline.inner_pipelines:
                 inner.set_state(Gst.State.PLAYING)
 
+    def get_pipelines(self, type: str):
+        return self._pipelines.get(type)
+
     def get_pipeline(self, type: str, uid: UUID):
         for pipeline in self._pipelines.get(type):
             if pipeline.data.uid == uid:

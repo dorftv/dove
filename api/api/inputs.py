@@ -12,6 +12,7 @@ from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
+from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 
 from api.websockets import manager
 
@@ -91,7 +92,9 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 async def delete(request: Request, data: InputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)
+    preview = handler.get_preview_pipeline(data.uid)
     await manager.broadcast("DELETE", data)
+    await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
 
     return SuccessDTO(code=200, details="OK")
 

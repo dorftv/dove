@@ -14,7 +14,8 @@ from pipelines.mixers.mixer_mixer import mixerMixer
 
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
-from api.outputs_dtos import previewHlsOutputDTO
+from api.outputs_dtos import previewHlsOutputDTO, OutputDTO, OutputDeleteDTO
+
 from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/api")
@@ -76,6 +77,8 @@ async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
 async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("mixers", data.uid)
+    preview = handler.get_preview_pipeline(data.uid)
     await manager.broadcast("DELETE", data)
+    await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
     return SuccessDTO(code=200, details="OK")
 

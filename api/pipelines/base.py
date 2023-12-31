@@ -73,9 +73,9 @@ class GSTBase(BaseModel):
                 return element
         return None
 
-
     async def _on_about_to_finish(self, playbin):
-        playbin.set_property("uri", playbin.get_property('uri'))   
+        if self.data.loop:
+            playbin.set_property("uri", playbin.get_property('uri'))   
 
     async def _on_error(self, bus, message):
         err, debug = message.parse_error()

@@ -66,6 +66,14 @@ class PipelineHandler:
 
         return None
 
+    def get_preview_pipeline(self, src: UUID):
+        for pipeline in self._pipelines.get('outputs'):
+            if pipeline.data.src == src and pipeline.data.type == "preview_hls":
+                pipeline = self.get_pipeline('outputs', pipeline.data.uid)
+                return pipeline
+
+        return None
+
     def get_pipeline_all(self, uid: UUID):
         for pipelines in self._pipelines.values():
             for pipeline in pipelines:

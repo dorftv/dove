@@ -2,7 +2,7 @@
 <template>
   <div>     
 
-    <media-player  viewType="video" autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
+    <media-player ref="player" :muted="muted" viewType="video" autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
       <media-provider></media-provider>
       <media-video-layout></media-video-layout>
 
@@ -19,10 +19,25 @@ import 'vidstack/player/styles/default/theme.css';
 import 'vidstack/player/styles/default/layouts/video.css';
 
 
+import { MediaPlayerElement } from 'vidstack/elements';
+
+/*
+const player = ref(MediaPlayerElement);
+console.log(player) 
+player.addEventListener('hls-error', (event) => {
+  console.log;
+});
+
+*/
 
 
 
-const { uid } = defineProps(['uid'])
+
+//console.log(player)
+const props = defineProps({
+  uid: String,
+  muted: String
+})
 
 </script>
  

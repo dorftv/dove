@@ -15,7 +15,6 @@ const isOpen = ref(false)
 />
     <UModal v-model="isOpen" :transition="false">
       <div class="p-4">
-        <Placeholder class="h-48" />
         <UInput size="md" />
         <UButton label="Create Output" @click="isOpen = false" />
         <UButton color="red" label="Cancel" @click="isOpen = false" />

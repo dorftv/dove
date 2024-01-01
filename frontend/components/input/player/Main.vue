@@ -1,7 +1,7 @@
 <template>
   <div class="">
       <InputPlayerHeader   :input="input" />
-      <VideoPlayer   v-if="previewEnabled || inputEnabled" :uid="input.uid" />
+      <VideoPlayer muted="true"  v-if="previewEnabled || inputEnabled" :uid="input.uid" />
       <InputPlayerControls :state="input.state" :uid="input.uid"  :input="input" :inputEnabled="inputEnabled" @enablePreview="(preview) => inputEnabled = preview" />
         <div 
         v-for="mixer in mixers" 

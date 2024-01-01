@@ -20,15 +20,17 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
+  vite: {
+    vue: {
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag.startsWith('media-'),
+        },
+      },
+    }
+  },
   modulesDir: ['./node_modules'],
   modules: ['@nuxt/ui', 'nuxt-icon'],
-  link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
-  template: {
-    compilerOptions: {
-      "types": ["vidstack/vue"],
-      isCustomElement: (tag) => tag.startsWith('media-'),
-    },
-  },
-  
+  link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],  
 })
 

@@ -24,22 +24,8 @@ const props = defineProps({
   inputEnabled: Boolean
 
 })
-const webSocket = inject('webSocket');
 const volume = ref(props.input.volume * 100)
     // Watch for changes in the reactive variable
-const data = {
-  type: 'message',
-  content: 'Hello, World!',
-  timestamp: Date.now()
-};
-    watch(props.volume, (newValue, oldValue) => {
-      // Send a message when the variable changes
-      if (webSocket && webSocket.readyState === WebSocket.OPEN) {
-        console.log(newValue)
-        webSocket.send(JSON.stringify(data));
-      }
-    });
-
     
 //const state = ref(input.state)
 

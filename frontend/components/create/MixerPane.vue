@@ -16,7 +16,6 @@
       <UForm  class="p-4 space-y-4" @submit="submitCreateMixer">
 
       <div class="p-4">
-        <Placeholder class="h-48" />
         <UInput size="md" />
         <UButton  type="submit" label="Create Mixer" @click="isOpen = false"   />
         <UButton color="red" label="Cancel" @click="isOpen = false" />

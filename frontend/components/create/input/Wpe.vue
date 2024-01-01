@@ -1,11 +1,11 @@
 <template>
       <div>
             <h2></h2>    
-        <UFormGroup label="Uri ( for files, SRT, RTMP, HLS, ...)" required="true">
-          <UInput v-model="state.uri" required="true"/>
+        <UFormGroup label="Uri or file://html" required="true">
+          <UInput v-model="state.location" required="true" placeholder="https://dorftv.at"/>
         </UFormGroup>
    
-        <UCheckbox v-model="state.loop" name="loop" label="Loop (content replays once finished)" />
+        <UCheckbox v-model="state.background" name="background" label="Draw Background." />
   </div>
 </template>
 
@@ -18,9 +18,9 @@ import { reactive, watchEffect } from 'vue';
 const emit = defineEmits(['update:formData']);
 
 const state = reactive({
-  type: 'urisrc',
-  uri: '',
-  loop: false
+  type: 'wpesrc',
+  location: '',
+  background: false
 });
 
 // Emit formData updates when the reactive state changes

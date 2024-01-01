@@ -2,7 +2,7 @@
   <div class="grid col-span-8">
     <div class="grid grid-cols-3 px-4 py-8">
     <div v-for="mixer in mixers" :key="mixer.uid">
-        <MixerPlayerMain :mixer="mixer"/>
+        <MixerPlayerMain :mixer="mixer" :inputs="inputs"/>
       </div>    
     </div>
     </div> 
@@ -39,6 +39,7 @@ const entityMap = {
   mixer: mixers,
   output: outputs
 };
+
 
 const updateEntity = (type, updatedEntity) => {
   const entities = entityMap[type].value;

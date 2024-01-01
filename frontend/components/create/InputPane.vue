@@ -32,18 +32,13 @@ const items = [{
     <UModal v-model="isOpen" :transition="false">
   <UTabs :items="items"  orientation="vertical">
     <template #item="{ item }">
-
-        <div v-if="item.key === 'uri'" class="space-y-3">
-        <CreateInputUri :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
-        </div>
-        <div v-if="item.key === 'testsrc'" class="space-y-3">
+        <CreateInputUri v-if="item.key === 'uri'" :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
           <!--
                   <CreateInputUri :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
 --> 
-        <CreateInputTestsrc :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
-        </div>        
+        <CreateInputTestsrc  v-if="item.key === 'testsrc'" :isOpen="isOpen" @close="(closing) => isOpen = closing" /> 
         <CreateInputTest v-if="item.key === 'test'" :isOpen="isOpen" @close="(closing) => isOpen = closing" />
-      
+      <CreateInputCommon />
     </template>
   </UTabs>      
 

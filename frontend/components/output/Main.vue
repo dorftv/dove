@@ -1,8 +1,7 @@
 
-import type OutputPaneVue from '~/components/create/OutputPane.vue';
 <template>
-  <div>
-    {{ output.uid }} {{ output.type }} {{ output.state }}
+  <div v-if="output.type.startsWith('preview')">
+    {{ output.name }} {{ output.type }} {{ output.state }}
   </div>
 </template>
 

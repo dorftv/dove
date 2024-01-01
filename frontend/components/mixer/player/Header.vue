@@ -1,13 +1,13 @@
 <template>
   <div class="">
-    Mixer: {{ uid }}
+    {{mixer.uid }}
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>
 </template>
 
 <script setup>
 const props = defineProps({
-  uid: Object,
+  mixer: Object,
   inputEnabled: Boolean
 })
 // <UButton type="submit" label="Create Input" @click="$emit('close', false)" />
@@ -23,7 +23,7 @@ const submitRemove = async () => {
     const { data: responseData } = await useFetch('/api/mixers', {
         method: 'delete',
         body: { 
-          uid: props.uid,
+          uid: props.mixer.uid,
         }
     })
 }

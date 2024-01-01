@@ -1,12 +1,12 @@
 <template>
   <div class="">
-      <MixerPlayerHeader   :uid="uid" />
+      <MixerPlayerHeader   :mixer="mixer" />
       <VideoPlayer   v-if="previewEnabled || mixerEnabled" :uid="mixer.uid" />
       <div 
         v-for="source in mixer.sources" 
         :key="source.src" 
         class="grid  col-span-2 px-4 py-8">
-{{  source.src }}sss
+{{  source }}
       </div>        
       <!--<InputPlayerControls :state="mixer.state" :uid="mixer.uid"  :mixerEnabled="mixerEnabled" @enablePreview="(preview) => mixerEnabled = preview" />-->
   </div>

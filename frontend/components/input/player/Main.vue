@@ -1,6 +1,6 @@
 <template>
   <div class="">
-      <InputPlayerHeader   :uid="uid" />
+      <InputPlayerHeader   :input="input" />
       <VideoPlayer   v-if="previewEnabled || inputEnabled" :uid="input.uid" />
       <InputPlayerControls :state="input.state" :uid="input.uid"  :input="input" :inputEnabled="inputEnabled" @enablePreview="(preview) => inputEnabled = preview" />
         <div 
@@ -26,7 +26,6 @@ const props = defineProps({
 
 const previewEnabled = useCookie('enablePreview')
 const inputEnabled = ref(false)
-const uid = props.input.uid
 
 
 </script>

@@ -11,7 +11,6 @@
 const emit = defineEmits(['update:formData']);
 
 const state = reactive({
-  name: '',
   volume: 0.8
 });
 // Emit formData updates when the reactive state changes

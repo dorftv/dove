@@ -1,8 +1,8 @@
 <template>
       <div>
             <h2></h2>    
-        <UFormGroup label="Any url supported by yt-dlp" required="true">
-          <UInput v-model="state.uri" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ" required="true"/>
+        <UFormGroup label="Any url supported by yt-dlp" required>
+          <UInput v-model="state.uri" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />
         </UFormGroup>
    
         <UCheckbox v-model="state.loop" name="loop" label="Loop (content replays once finished)" />

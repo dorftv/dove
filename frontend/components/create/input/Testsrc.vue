@@ -3,7 +3,6 @@
     <div>
         <div class="p-4">
           <h2></h2>
-
             <div>
               <URange v-model="state.pattern" name="range" :min="0" :max="28" :step="1" />
               Pattern: {{ state.pattern }}
@@ -15,16 +14,11 @@
           <UFormGroup label="Frequency">
             <UInput v-model="state.freq" size="md" placeholder="440.0" />
           </UFormGroup>
-
-
-
         </div>
     </div>
   </template>
 
 <script setup>
-
-
 const emit = defineEmits(['update:formData']);
 
 const state = reactive({

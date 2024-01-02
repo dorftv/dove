@@ -1,11 +1,10 @@
 <template>
       <div>
             <h2></h2>    
-        <UFormGroup label="Uri ( for files, SRT, RTMP, HLS, ...)" required>
-          <UInput v-model="state.uri" />
+        <UFormGroup label="Uri" required="true">
+          <UInput v-model="state.uri" required="true"/>
         </UFormGroup>
    
-        <UCheckbox v-model="state.loop" name="loop" label="Loop (content replays once finished)" />
   </div>
 </template>
 
@@ -18,9 +17,9 @@ import { reactive, watchEffect } from 'vue';
 const emit = defineEmits(['update:formData']);
 
 const state = reactive({
-  type: 'urisrc',
+  type: 'fakesink',
   uri: '',
-  loop: false
+  streamid: ''
 });
 
 // Emit formData updates when the reactive state changes

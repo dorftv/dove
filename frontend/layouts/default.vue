@@ -30,7 +30,7 @@ if (!pending.value && !error.value && config.value) {
                     <li><NuxtLink to="/debug">Debug</NuxtLink></li>
                 </ul>
                 <TogglePreview />
-                <a href="https://github.com/dorftv/brave">
+                <a href="https://github.com/dorftv/dove">
                   <Icon name="uil:github" color="black" size="36px" />
                 </a>
             </nav>

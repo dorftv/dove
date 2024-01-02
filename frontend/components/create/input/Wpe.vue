@@ -1,8 +1,8 @@
 <template>
       <div>
             <h2></h2>    
-        <UFormGroup label="Uri or file://html" required="true">
-          <UInput v-model="state.location" required="true" placeholder="https://dorftv.at"/>
+        <UFormGroup label="Uri or file://html" required>
+          <UInput v-model="state.location"  placeholder="https://dorftv.at"/>
         </UFormGroup>
    
         <UCheckbox v-model="state.background" name="background" label="Draw Background." />

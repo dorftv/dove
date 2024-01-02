@@ -2,7 +2,7 @@
 <template>
   <div>     
 
-    <media-player ref="mediaPlayer" :muted="muted" viewType="video" autoplay stream-type="live" load="eager" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
+    <media-player ref="mediaPlayer" :muted="muted" viewType="video" autoplay stream-type="live" load="custom" title="Sprite Fight"  :src="`/preview/hls/${uid}/index.m3u8`" class="aspect-video">
       <media-provider></media-provider>
       <media-video-layout></media-video-layout>
 
@@ -29,22 +29,35 @@ onMounted(() => {
   player.addEventListener('provider-change', (event) => {
   const provider = event.detail;
   if (provider?.type === 'hls') {
+
     provider.library = HLS;
+    setTimeout(() => {
+    const src = player.src
+    player.startLoading();
+
+    //  player.play();
+}, 1500);
   }
 });
 
 player.addEventListener('can-play', () => {
-  player.play()
   console.log(player.state)
 });
+
 
   player.addEventListener('hls-error', (event) => {
     const provider = event.detail;
     const src = player.src
-    // TODO find a way to handle error
+    
+    player.src = src      
+
+    
+    console.log(player.state)
  });
 });
 
+
+//console.log(player)
 const props = defineProps({
   uid: String,
   muted: String

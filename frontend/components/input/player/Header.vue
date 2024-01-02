@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    {{ input.uid }}
+    {{ input.name }}
     ({{ input.type }})
 
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   

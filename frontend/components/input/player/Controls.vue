@@ -3,10 +3,13 @@
     <Icon name="uil:stop-circle" color="black" size="24px" @click="submitStop"/>
     <Icon name="uil:pause-circle" color="black" size="24px"  @click="submitPause" />
     <Icon name="uil:play-circle" color="black" size="24px" @click="submitPlay"/>
+
      {{ state }}
      <!-- toggle preview -->
     <Icon name="uil:video-slash" color="black" size="24px"  v-if="!previewEnabled && inputEnabled" @click="$emit('enablePreview', false)"/>
     <Icon name="uil:video" color="black" size="24px"  v-if="!previewEnabled && !inputEnabled"  @click="$emit('enablePreview', true)"/>    
+    <Icon name="icomoon-free:loop" color="black" size="24px"  v-if="input.loop" />    
+
     <div>
     <URange v-model="volume" name="range" :min="0" :max="100" />
       Volume: {{  volume  }}          

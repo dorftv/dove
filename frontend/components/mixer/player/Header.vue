@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    {{mixer.uid }}
+    {{mixer.name }}
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>
 </template>

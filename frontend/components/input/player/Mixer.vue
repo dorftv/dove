@@ -1,13 +1,12 @@
 <template>
   <div>
-    {{  input.uid }}
-    Mixer:
+    {{  mixer.name }}
+    
     <Icon name="heroicons:scissors" color="red" size="24px" @click="submitCut"/>   
     <Icon name="zondicons:add-solid" color="red" size="24px" @click="submitOverlay"/>
     <Icon name="lets-icons:remove-fill" color="red" size="24px" @click="submitOverlayRemove"/>
 
 
-   {{mixer.uid}}
   </div>
 </template>
 <script setup>

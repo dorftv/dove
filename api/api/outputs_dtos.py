@@ -36,7 +36,7 @@ class OutputDTO(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["preview_hls"]
+        ALLOWED_TYPES = ["preview_hls", "srtsink"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -62,7 +62,12 @@ class fakeOutputDTO(OutputDTO):
     type: str = "fakesink"
 
 
-
+# @TODO use default from config file
+class srtOutputDTO(OutputDTO):
+    type: str = "srtsink"
+    uri: str
+    streamid: Optional[str] = ''
+    
 
 
 class OutputDeleteDTO(BaseModel):

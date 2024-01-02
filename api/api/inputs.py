@@ -51,7 +51,10 @@ async def handle_input(request: Request, data: unionInputDTO):
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)
+    await manager.broadcast("CREATE", output.data)
+
     return data
+
 
 
 async def getInputDTO(request: Request) -> unionInputDTO:
@@ -98,7 +101,7 @@ async def delete(request: Request, data: InputDeleteDTO):
     mixers = handler.get_pipelines('mixers')
     for mixer in mixers:
        mixer.remove(mixerRemoveDTO(src=data.uid))
-       
+
     await manager.broadcast("DELETE", data)
     await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
 

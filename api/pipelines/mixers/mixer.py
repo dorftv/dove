@@ -36,7 +36,9 @@ class Mixer(GSTBase, ABC):
         try:
             if self.data.cut_source(input.src):
                 self.createInterpipesrc("video", input.src)
+                self.createInterpipesrc("audio", input.src)
             self.sync_pads("video")
+            self.sync_pads("audio")            
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
         except ValueError as e:
             print(e)
@@ -46,6 +48,7 @@ class Mixer(GSTBase, ABC):
         try:
             self.data.overlay_source(input.src)
             self.sync_pads("video")
+            self.sync_pads("audio")
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
         except ValueError as e:
             print(e)
@@ -56,6 +59,7 @@ class Mixer(GSTBase, ABC):
         try:
             self.data.remove_source(input.src)
             self.sync_pads("video")
+            self.sync_pads("audio")
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
         except ValueError as e:
             print(e)
@@ -169,7 +173,7 @@ class Mixer(GSTBase, ABC):
             convert_str = "audioconvert !  audioresample "
 
         src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{inputsrc}_src"
-        f" format=time allow-renegotiation=true is-live=true stream-sync=restart-ts ! "
+        f" format=time allow-renegotiation=true is-live=true stream-sync=restart-ts leaky-type=upstream ! "
         f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter ! queue  ", True)
         src.set_name(f"{audio_or_video}_{inputsrc}_bin")
         interpipesrc = src.get_by_name(f"{audio_or_video}_{inputsrc}_src")

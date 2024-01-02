@@ -58,7 +58,7 @@ class GSTBase(BaseModel):
         #  disable audio for now.
         #handler: GSTBase = request.app.state._state["pipeline_handler"]
         #input =   handler.get_pipeline("inputs",self.data.uid)  
-        return False
+        return True
     def get_pipeline(self):
         return self.inner_pipelines[0]
 

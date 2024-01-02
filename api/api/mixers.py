@@ -78,7 +78,10 @@ async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("mixers", data.uid)
     preview = handler.get_preview_pipeline(data.uid)
+    handler.delete_pipeline("outputs", preview.data.uid)
+
     await manager.broadcast("DELETE", data)
     await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
+    
     return SuccessDTO(code=200, details="OK")
 

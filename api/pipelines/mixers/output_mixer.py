@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Optional
 from api.mixers_dtos import outputMixerDTO
-from pipelines.mixers.mixer import Mixer
 from .mixer import Mixer
 
 

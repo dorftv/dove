@@ -12,21 +12,22 @@ from gi.repository import Gst
 Gst.init(None)
 
 from api_thread import APIThread
-from pipeline_handler import PipelineHandler
-from pipelines.inputs.test_input import TestInput
-from pipelines.outputs.preview_hls_output import previewHlsOutput
+from pipeline_main import get_pipeline_handler
 
-uid = uuid4()
 
-input = TestInput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=TestInputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", volume=1.0, pattern=1))
-#output = previewHlsOutput(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a", data=(previewHlsOutputDTO(uid="e0866247-0b40-4d1b-9ac6-ac1e5054c28b", src="e0866247-0b40-4d1b-9ac6-ac1e5054c28a")))
-pipelines = PipelineHandler({"inputs": [input]})
-#pipelines = PipelineHandler({"outputs": [output]})
+# elements = createElements()
+# pipes = elements.create_mixer()
+# pipelines = PipelineHandler(pipes)
+#
+#
+# api = APIThread(pipeline_handler=pipelines)
+# api.start()
 
-api = APIThread(pipeline_handler=pipelines)
+handler = get_pipeline_handler()
+api = APIThread(pipeline_handler=handler)
 api.start()
 
 time.sleep(1)
 
 
-pipelines.start()
+handler.start()

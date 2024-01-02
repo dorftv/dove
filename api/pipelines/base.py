@@ -30,6 +30,7 @@ class GSTBase(BaseModel):
             pipeline = Gst.parse_launch(pipeline)
 
         self.inner_pipelines.append(pipeline)
+        pipeline.set_name(str(self.data.uid))
         pipeline.set_state(Gst.State.PLAYING)
         bus = pipeline.get_bus()
         bus.add_signal_watch()
@@ -37,7 +38,10 @@ class GSTBase(BaseModel):
         bus.connect("message::state-changed", lambda e, b: asyncio.run(self._on_state_change(e, b)))
         bus.connect("message::eos", lambda e, b: asyncio.run(self._on_eos(e, b)))
         bus.connect("message::info", lambda e, b: asyncio.run(self._on_info(e, b)))
-
+        element = self.get_element_from_pipeline("uridecodebin3")
+        if element:
+            element.connect('about-to-finish', lambda e : asyncio.run(self._on_about_to_finish(e)))
+        
     @staticmethod
     def run_on_master():
         def inner(func: Callable):
@@ -47,8 +51,32 @@ class GSTBase(BaseModel):
     def set_state(self, state: Gst.State):
         for pipeline in self.inner_pipelines:
             pipeline.set_state(state)
-
     # event handlers
+
+    def has_audio_or_video(self, audio_or_video: str):
+        #  @TODO proper handling
+        #  disable audio for now.
+        #handler: GSTBase = request.app.state._state["pipeline_handler"]
+        #input =   handler.get_pipeline("inputs",self.data.uid)  
+        return True
+    def get_pipeline(self):
+        return self.inner_pipelines[0]
+
+    def get_element_from_pipeline(self, element_name):
+        pipeline = self.get_pipeline()
+        iterator = pipeline.iterate_elements()
+        while True:
+            result, element = iterator.next()
+            if result != Gst.IteratorResult.OK:
+                break
+            if element.get_factory().get_name() == element_name:
+                return element
+        return None
+
+    async def _on_about_to_finish(self, playbin):
+        if self.data.loop:
+            playbin.set_property("uri", playbin.get_property('uri'))   
+
     async def _on_error(self, bus, message):
         err, debug = message.parse_error()
         # await ws_message(orjson.dumps({
@@ -59,7 +87,7 @@ class GSTBase(BaseModel):
         await manager.broadcast("ERROR", self.data)
 
     async def _on_state_change(self, bus, message):
-        
+
         if isinstance(message.src, Gst.Pipeline):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"

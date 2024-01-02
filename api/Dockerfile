@@ -48,6 +48,7 @@ COPY . /app
 WORKDIR /app
 
 RUN     pip install . --ignore-installed
+RUN pip install yt_dlp
 
 EXPOSE 5000
 

@@ -1,32 +1,33 @@
 [main]
-mixer_default_resolution = "HD720"
+default_resolution = "HD720"
+default_volume = 0.7
 
+#preview settings
 preview_format = "hls" # | webrtc
 preview_resolution = "SmallPreview"
+preview_enabled = true
 
-input_preview = true
-inputs = [ "test_src", "uri" ]
-outputs = [ "srt", "rtmp", "decklink", "tcpserver" ]
+#inputs = [ "test_src", "uri" ]
+#outputs = [ "srt", "rtmp", "decklink", "tcpserver" ]
 
-[mixer_resolutions."QHD"]
+[resolutions."QHD"]
 {width = 2560, height = 1440}
-[mixer_resolutions."FullHD"]
+[resolutions."FullHD"]
 {width = 1920, height = 1080}
-[mixer_resolutions."WSXGA"]
+[resolutions."WSXGA"]
 {width = 1600, height = 900}
-[mixer_resolutions."WXGA"]
+[resolutions."WXGA"]
 {width = 1366, height =  768}
-[mixer_resolutions."HD720"]
+[resolutions."HD720"]
 {width = 1280, height = 720}
-[mixer_resolutions."WSVGA"]
+[resolutions."WSVGA"]
 {width = 1024, height = 576}
-[mixer_resolutions."qHD"]
+[resolutions."qHD"]
 {width = 640, height = 360}
-[mixer_resolutions."Preview"]
+[resolutions."Preview"]
 {width = 480, height = 270}
-[mixer_resolutions."SmallPreview"]
+[resolutions."SmallPreview"]
 {width = 320, height = 180}
-
 
 
 [ui]
@@ -36,6 +37,8 @@ add_output = true
 input_preview_auto= true
 
 [inputs]
+
+
 
 
 [outputs]

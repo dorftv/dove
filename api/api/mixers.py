@@ -14,7 +14,8 @@ from pipelines.mixers.mixer_mixer import mixerMixer
 
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
-from api.outputs_dtos import previewHlsOutputDTO
+from api.outputs_dtos import previewHlsOutputDTO, OutputDTO, OutputDeleteDTO
+
 from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/api")
@@ -25,16 +26,16 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
 
     # Handle based on the type of data
     if isinstance(data, mixerMixerDTO):
-        mixer = mixerMixer(uid=data.uid, data=data)
+        mixer = mixerMixer(data=data)
     elif isinstance(data, outputMixerDTO):
-        mixer = outputMixer(uid=data.uid, data=data)
+        mixer = outputMixer(data=data)
     else:
         raise HTTPException(status_code=400, detail="Invalid mixer type")
 
     handler.add_pipeline(mixer)
     # @TODO find a better place 
     # @TODO need a way to delete       
-    output = previewHlsOutput(uid=uuid4(), src=data.uid, data=previewHlsOutputDTO(src=data.uid))
+    output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
     handler.add_pipeline(output)    
     await manager.broadcast("CREATE", data)
     return data
@@ -76,6 +77,11 @@ async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
 async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("mixers", data.uid)
+    preview = handler.get_preview_pipeline(data.uid)
+    handler.delete_pipeline("outputs", preview.data.uid)
+
     await manager.broadcast("DELETE", data)
+    await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
+    
     return SuccessDTO(code=200, details="OK")
 

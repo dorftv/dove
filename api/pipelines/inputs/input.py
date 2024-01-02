@@ -5,15 +5,17 @@ from api.outputs_dtos import previewHlsOutputDTO
 from caps import Caps
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
+from typing import Union
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 
 
 class Input(GSTBase, ABC):
-    uid: UUID
+    data: InputDTO
     def get_video_end(self) -> str:
-        return f" queue ! interpipesink name=video_{self.uid} async=false sync=true"
+        return f"  queue ! interpipesink name=video_{self.data.uid} async=true sync=true"
 
     def get_audio_end(self):
-        return f" queue ! interpipesink name=audio_{self.uid} async=false sync=true"
+        return f" queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
     def describe(self):
 
         return self

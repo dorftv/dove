@@ -3,23 +3,40 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
+from config_handler import ConfigReader  
 
 from caps import Caps
+from helpers import generateId
+
+config = ConfigReader('/app/config.toml')
+
+uniqueId = generateId("Output ")
+
+def get_default_height() -> int:
+    return config.get_default_resolution()['height']
+
+def get_default_width() -> int:
+    return config.get_default_resolution()['width']
+
+def get_default_volume() -> int:
+    return config.get_default_volume()
+# @TODO use default from config file
+
 
 class OutputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     src: UUID
     type: str
-    name: Optional[str] = None
+    name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
-    height: Optional[int] = None
-    width: Optional[int] = None
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = 0.8
 
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["preview_hls"]
+        ALLOWED_TYPES = ["preview_hls", "srtsink"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -33,13 +50,24 @@ class OutputDTO(BaseModel):
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
 
         return value
+        
 
-# @TODO use default from config file
 class previewHlsOutputDTO(OutputDTO):
     type: str = "preview_hls"
     height: Optional[int] = 180
     width: Optional[int] = 320
+    
+# @TODO use default from config file
+class fakeOutputDTO(OutputDTO):
+    type: str = "fakesink"
 
+
+# @TODO use default from config file
+class srtOutputDTO(OutputDTO):
+    type: str = "srtsink"
+    uri: str
+    streamid: Optional[str] = ''
+    
 
 
 class OutputDeleteDTO(BaseModel):

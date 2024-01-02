@@ -6,20 +6,27 @@ from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
 from helpers import generateId
+from config_handler import ConfigReader  
+
+config = ConfigReader('/app/config.toml')
+
 # @TODO add function that returns dict of DTOS for using in api
 # see get_field_requirements(model)
 # type: DTO
 # eg: urisrc: UriInputDTO
 
-# demo for 
-uniqueId = generateId()
+uniqueId = generateId("Input ")
 
+def get_default_height() -> int:
+    return config.get_default_resolution()['height']
+
+def get_default_width() -> int:
+    return config.get_default_resolution()['width']
 
 class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    id: str = Field(default_factory=lambda: next(uniqueId))
+    name: str = Field(default_factory=lambda: next(uniqueId))
     type: str
-    name: Optional[str] = None
     state: Optional[str] = "PLAYING"
     height: Optional[int] = None
     width: Optional[int] = None
@@ -29,7 +36,7 @@ class InputDTO(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["testsrc", "urisrc"]
+        ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -58,12 +65,25 @@ class TestInputDTO(InputDTO):
     pattern: Optional[int] = 1
     wave: Optional[int] = 1
     freq: Optional[float] = 440.0
-
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)
 
 class UriInputDTO(InputDTO):
     type: str = "urisrc"
     uri: str
     loop: Optional[bool] = False
+
+class ytDlpInputDTO(InputDTO):
+    type: str = "ytdlpsrc"
+    uri: str
+    loop: Optional[bool] = False
+
+class WpeInputDTO(InputDTO):
+    type: str = "wpesrc"
+    location: Optional[str] = "https://dorftv.at"
+    draw_background: Optional[bool] = False
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)    
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

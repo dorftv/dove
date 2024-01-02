@@ -3,17 +3,18 @@ from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.outputs_dtos import OutputDTO, SuccessDTO, OutputDeleteDTO, previewHlsOutputDTO
+from api.outputs_dtos import OutputDTO, SuccessDTO, OutputDeleteDTO, previewHlsOutputDTO, srtOutputDTO
 from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
+from pipelines.outputs.srt_output import srtOutput
 
 router = APIRouter(prefix="/api")
 
-unionOutputDTO =  Union[previewHlsOutputDTO]
+unionOutputDTO =  Union[previewHlsOutputDTO, srtOutputDTO]
 
 
 async def handle_output(request: Request, data: unionOutputDTO):
@@ -21,9 +22,9 @@ async def handle_output(request: Request, data: unionOutputDTO):
 
     # Handle based on the type of data
     if isinstance(data, previewHlsOutputDTO):
-        output = previewHlsOutput(uid=data.uid, src=data.src, data=data)
-#    elif isinstance(data, previewWebrtcOutputDTO):
-#        output = previewWebrtcOutput(caps=caps, uid=data.uid, data=data)
+        output = previewHlsOutput(data=data)
+    elif isinstance(data, srtOutputDTO):
+        output = srtOutput(data=data)
     else:
         raise HTTPException(status_code=400, detail="Invalid output type")
 
@@ -38,8 +39,8 @@ async def getOutputDTO(request: Request) -> unionOutputDTO:
     try:
         if output_type == "preview_hls":
             return previewHlsOutputDTO(**json_data)
-#        elif output_type == "preview_webrtc":
-#            return previewWebrtcOutputDTO(**json_data)
+        elif output_type == "srtsink":
+            return srtOutputDTO(**json_data)
         else:
             raise HTTPException(status_code=400, detail=f"Invalid output type: {output_type}")
     except ValidationError as e:

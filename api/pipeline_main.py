@@ -11,11 +11,20 @@ def get_pipeline_handler():
     global pipelines
 
     if pipelines is None:
-        print("None!!")
         elements = createElements()
         pipes = elements.create_mixer()
         pipelines = PipelineHandler(pipes)
-    else:
-        print("not none")
 
     return pipelines
+
+class HandlerSingleton:
+    def __new__(cls):
+        from pipeline_handler import PipelineHandler
+        from startup import createElements
+
+        if not hasattr(cls, 'handler'):
+            elements = createElements()
+            pipes = elements.create_mixer()
+            cls.handler = PipelineHandler(pipes)
+
+        return cls.handler

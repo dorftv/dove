@@ -19,6 +19,7 @@ class previewHlsOutput(Output):
 
         # @TODO get source element
         handler = HandlerSingleton()
+        print("test", handler.get_pipelines("inputs"))
         pipeline_audio_str = ""
         if self.has_audio_or_video("audio"):
                 pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! {audio_caps} ! voaacenc  ! aacparse !  queue ! mux."

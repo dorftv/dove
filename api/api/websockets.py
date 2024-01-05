@@ -66,7 +66,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
-            #handler = 
+            # handler = HandlerSingleton()
             pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
             print("pipeline")
             print(pipeline)

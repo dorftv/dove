@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
+from pipeline_handler import HandlerSingleton
 from pipelines.outputs.output import Output
 from api.outputs_dtos import previewHlsOutputDTO
 
@@ -17,6 +18,7 @@ class previewHlsOutput(Output):
         audio_caps = "audio/x-raw, format=S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2"
 
         # @TODO get source element
+        handler = HandlerSingleton()
         pipeline_audio_str = ""
         if self.has_audio_or_video("audio"):
                 pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! {audio_caps} ! voaacenc  ! aacparse !  queue ! mux."

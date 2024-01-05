@@ -1,35 +1,37 @@
-from typing import List
+from typing import List, ClassVar, Any
 from uuid import UUID
 
 from gi.repository import Gst, GObject
-
-from pipelines.base import GSTBase
 
 def is_subclass_str(cls, base_name):
     return base_name in [base.__name__ for base in cls.__bases__]
 
 
-class PipelineHandler:
-    _pipelines: dict[str, List[GSTBase]] = {"inputs": {}, "outputs": {}, "mixers": {}}
+class PipelineHandler(object):
+    _pipelines: dict[str, List["GSTBase"]] = {"inputs": {}, "outputs": {}, "mixers": {}}
     mainloop: GObject.MainLoop
 
-    def __init__(self, initial_pipelines: dict[str, List[GSTBase]]):
+    def __init__(self):
         Gst.init()
-        self._pipelines = initial_pipelines
-        if "inputs" not in self._pipelines.keys():
-            self._pipelines["inputs"] = []
-        if "outputs" not in self._pipelines.keys():
-            self._pipelines["outputs"] = []
-        if "mixers" not in self._pipelines.keys():
-            self._pipelines["mixers"] = []
+        self._pipelines["inputs"] = []
+        self._pipelines["outputs"] = []
+        self._pipelines["mixers"] = []
 
-        for pl in initial_pipelines.values():
-            for pipeline_cls in pl:
+    def build(self, initial_pipelines: dict[str, List["GSTBase"]]):
+        self._pipelines = initial_pipelines
+
+        for pl_type in ("inputs", "mixers", "outputs"):
+            assert pl_type in self._pipelines
+            for pipeline_cls in initial_pipelines[pl_type]:
                 pipeline_cls.build()
                 for inner in pipeline_cls.inner_pipelines:
                     inner.set_state(Gst.State.PLAYING)
 
-    def add_pipeline(self, pipeline: GSTBase, start=True):
+    def start(self):
+        self.mainloop = GObject.MainLoop()
+        self.mainloop.run()
+
+    def add_pipeline(self, pipeline: "GSTBase", start=True):
         if is_subclass_str(pipeline.__class__, "Input"):
             try:
                 pipeline.build()
@@ -76,13 +78,6 @@ class PipelineHandler:
                 return pipeline
 
         return None
-
-    def get_pipeline_all(self, uid: UUID):
-        for pipelines in self._pipelines.values():
-            for pipeline in pipelines:
-                return pipeline
-
-        return None
     
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)
@@ -91,7 +86,19 @@ class PipelineHandler:
         idx = self._pipelines[type].index(pipeline)
         self._pipelines[type].pop(idx)
         del pipeline
+        
+        
+class HandlerSingleton:
+    handler: ClassVar[PipelineHandler] = None
 
-    def start(self):
-        self.mainloop = GObject.MainLoop()
-        self.mainloop.run()
+    def __new__(cls):
+        from main import ElementsFactory
+
+        if cls.handler is None:
+            elements = ElementsFactory()
+            pipes = elements.create_pipelines()
+            cls.handler = PipelineHandler()
+            cls.handler.build(pipes)
+
+        return cls.handler
+

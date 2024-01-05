@@ -5,7 +5,6 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 from caps import Caps
-from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
@@ -93,7 +92,7 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 
 @router.delete("/inputs", response_model=SuccessDTO)
 async def delete(request: Request, data: InputDeleteDTO):
-    handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    handler: "PipelineHandler" = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("inputs", data.uid)
     # cleanup related stuff
     preview = handler.get_preview_pipeline(data.uid)

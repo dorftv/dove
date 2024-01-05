@@ -69,8 +69,7 @@ async def websocket_endpoint(websocket: WebSocket):
             #handler = 
             pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
             print("pipeline")
-            print(pipeline)            
-            #print("pipe")
+            print(pipeline)
             await manager.send_personal_message(f"You wrote: {data}", websocket)
             
     except WebSocketDisconnect:

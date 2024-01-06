@@ -11,13 +11,14 @@
     <Icon name="icomoon-free:loop" color="black" size="24px"  v-if="input.loop" />    
 
     <div>
-    <URange v-model="volume" name="range" :min="0" :max="100" />
+    <URange :modelValue="volume" @update:modelValue="handleVolumeChange" name="range" :min="0" :max="100" />
       Volume: {{  volume  }}          
     </div>    
   </div>
 </template>
 
 <script setup>
+
 import { inject } from 'vue';
 import { computed } from "@vue/reactivity"
 const props = defineProps({
@@ -27,17 +28,45 @@ const props = defineProps({
   inputEnabled: Boolean
 
 })
+
 const volume = ref(props.input.volume * 100)
-    // Watch for changes in the reactive variable
+
+// Update the ref whenever the prop changes
+watch(() => props.input.volume, (newValue) => {
+  volume.value = props.input.volume * 100;
+});
     
 //const state = ref(input.state)
 
 const previewEnabled = useCookie('enablePreview')
   
-  function enablePreview() {
-    inputEnabled = !prop.inputEnabled
-  }
-  
+function enablePreview() {
+  inputEnabled = !prop.inputEnabled
+}
+
+import { useEntities } from '@/composables/entities'; // Adjust the import path as necessary
+const { sendWebSocketMessage } = useEntities();
+
+
+// Handle volume change and send WebSocket message
+const handleVolumeChange = (newVolume) => {
+  // Update the local volume state
+  volume.value = newVolume;
+
+  // Calculate the volume to send, which is a value between 0 and 1
+  const vol = newVolume / 100;
+
+  // Send WebSocket message with the new volume
+  sendWebSocketMessage({
+    type: 'input',
+    action: 'UPDATE',
+    data: {
+      uid: props.uid,
+      volume: vol
+    }
+  });
+};
+
 const submitPlay = async () => {
     const { data: responseData } = await useFetch('/api/inputs/delete', {
         method: 'post',

@@ -1,7 +1,10 @@
 <template>
   <div class="">
+    <UTooltip :text="input.uid" >
     {{ input.name }}
     ({{ input.type }})
+
+  </UTooltip>
 
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>

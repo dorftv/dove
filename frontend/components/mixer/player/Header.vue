@@ -1,6 +1,9 @@
 <template>
   <div class="">
+    <UTooltip :text="mixer.uid" >
+
     {{mixer.name }}
+    </UTooltip>
     <Icon name="uil:trash" color="red" size="24px" @click="submitRemove"/>   
   </div>
 </template>

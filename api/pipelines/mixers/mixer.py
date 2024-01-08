@@ -30,11 +30,22 @@ class Mixer(GSTBase, ABC):
         await manager.broadcast("UPDATE", self.data)
 
     async def update(self, data):
-        #for source in data['sources']:
-        #    print(source.src)
-        #pipe = getInterpipesrc('video', data['src'])
-        pad = self.getPad('video', data['src'])
-        pad.set_property('alpha', data['alpha'])
+        src = data.pop('src')
+        uid = data.pop('uid')
+        self.data.update_mixer_input(src, **data)
+        self.update_pad_from_sources('video', src)
+        await manager.broadcast("UPDATE", self.data)
+
+        
+    def update_pad_from_sources(self, audio_or_video, inputsrc):
+        pad = self.getPad(audio_or_video, inputsrc)
+        if audio_or_video == "video":
+            source = vars(self.data.get_mixer_input(inputsrc))
+            pad.set_property('alpha', source['alpha'])
+            pad.set_property('xpos', source['xpos'])
+            pad.set_property('ypos', source['ypos'])
+            pad.set_property('width', source['width'])
+            pad.set_property('height', source['height'])
 
 
     def getPad(self, audio_or_video, inputsrc):
@@ -155,6 +166,9 @@ class Mixer(GSTBase, ABC):
         capsfilter.set_property("caps", mixer_caps)
         element = self.getInterpipesrc(audio_or_video, inputsrc)
         element.set_property("listen-to", f"{audio_or_video}_{inputsrc}" )
+        pad = self.getPad(audio_or_video, inputsrc)
+        self.update_sources_from_pad(audio_or_video, inputsrc, pad)
+
 
 
     def getInterpipesrc(self, audio_or_video, inputsrc):
@@ -173,6 +187,9 @@ class Mixer(GSTBase, ABC):
         # Get the current caps of the compositor's sink pad
         sink_pad_template = mixer.get_pad_template("sink_%u")
         sink_pad = mixer.request_pad(sink_pad_template, None, None)
+        if audio_or_video == "video":
+            sink_pad.set_property('width', self.data.width)
+            sink_pad.set_property('height', self.data.height)
         mixer_src_pad = mixer.get_static_pad("src")
         mixer_caps = mixer_src_pad.get_current_caps()
         if mixer_caps is not None:
@@ -215,6 +232,7 @@ class Mixer(GSTBase, ABC):
                 xpos = pad.get_property("xpos"),
                 ypos = pad.get_property("ypos"),
                 zorder = pad.get_property("zorder"))
+
 
 
     def describe(self):

@@ -77,12 +77,18 @@ class mixerDTO(BaseModel):
             self.mix.src = new_mix_dto.src
 
     def update_mixer_input(self, src: UUID, **kwargs):
+        updatedSources = []
         for source in self.sources:
-            if source.src == src:
+            if UUID(str(source.src)) ==  UUID(str(src)):
                 for key, value in kwargs.items():
                     setattr(source, key, value)
-                break
-        
+            updatedSources.append(source)
+        self.sources = updatedSources
+
+    def get_mixer_input(self, src: UUID):
+        for source in self.sources:
+            if UUID(str(source.src)) ==  UUID(str(src)):
+                return source
 
     @field_validator("type")
     @classmethod

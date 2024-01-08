@@ -1,1 +1,0 @@
-import{_ as o,c as s,o as t,F as a,a as e}from"./entry.3875198b.js";const c={},n=e("h1",null,"About",-1),r=e("div",{class:"grid col-span-12"},null,-1);function _(l,d,p,u,i,f){return t(),s(a,null,[n,r],64)}const h=o(c,[["render",_]]);export{h as default};

@@ -2,6 +2,12 @@
   <div class="">
       <MixerPlayerHeader   :mixer="mixer" />
       <VideoPlayer   v-if="previewEnabled || mixerEnabled" :uid="mixer.uid" />
+      <div 
+        v-for="source in mergedSources" 
+        :key="source.src" 
+        class="grid  col-span-2 px-4 py-8">
+      <MixerPlayerInputs :source="source" :mixer="mixer"/>
+      </div> 
       <UTable :rows="mergedSources" :columns="columns" :empty-state="{}" >
         <template #empty-state>
       <div class="flex flex-col items-center justify-center py-6 gap-3">
@@ -41,21 +47,18 @@ const columns = [{
   label: 'alpha'
 }]
 
+
+
 const props = defineProps({
   mixer: Object,
   inputs: Object
 })
 
-// Computed property to flatten and merge mixerSources with inputs
-const mergedSources = computed(() => {
-  return props.mixer.sources.map(source => {
-    // Find the matching input by comparing source.src with input.uid
-    const matchingInput = props.inputs.find(input => input.uid === source.src);
-
-    // Merge source with matchingInput; if no match is found, return source as is
-    return matchingInput ? { ...source, ...matchingInput } : source;
-  });
-});
+// Add Input name to sources
+const mergedSources = computed(() => props.mixer.sources.map(source => ({
+  ...source,
+  name: props.inputs.find(input => input.uid === source.src)?.name || source.name
+})));
 
 
 console.log(props.mixer)

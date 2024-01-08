@@ -48,15 +48,10 @@ import { useEntities } from '@/composables/entities'; // Adjust the import path 
 const { sendWebSocketMessage } = useEntities();
 
 
-// Handle volume change and send WebSocket message
 const handleVolumeChange = (newVolume) => {
-  // Update the local volume state
   volume.value = newVolume;
-
-  // Calculate the volume to send, which is a value between 0 and 1
   const vol = newVolume / 100;
 
-  // Send WebSocket message with the new volume
   sendWebSocketMessage({
     type: 'input',
     action: 'UPDATE',

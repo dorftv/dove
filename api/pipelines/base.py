@@ -38,9 +38,6 @@ class GSTBase(BaseModel):
         bus.connect("message::state-changed", lambda e, b: asyncio.run(self._on_state_change(e, b)))
         bus.connect("message::eos", lambda e, b: asyncio.run(self._on_eos(e, b)))
         bus.connect("message::info", lambda e, b: asyncio.run(self._on_info(e, b)))
-        element = self.get_element_from_pipeline("uridecodebin3")
-        if element:
-            element.connect('about-to-finish', lambda e : asyncio.run(self._on_about_to_finish(e)))
         
     @staticmethod
     def run_on_master():
@@ -73,9 +70,6 @@ class GSTBase(BaseModel):
                 return element
         return None
 
-    async def _on_about_to_finish(self, playbin):
-        if self.data.loop:
-            playbin.set_property("uri", playbin.get_property('uri'))   
 
     async def _on_error(self, bus, message):
         err, debug = message.parse_error()

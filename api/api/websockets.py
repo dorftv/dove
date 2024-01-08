@@ -3,11 +3,12 @@ import json
 import orjson
 from fastapi import APIRouter, WebSocket
 import asyncio
-from api.inputs_dtos import InputDTO, InputDeleteDTO
-from api.mixers_dtos import mixerDTO, MixerDeleteDTO
-from api.outputs_dtos import OutputDTO, OutputDeleteDTO
+from uuid import UUID, uuid4
 
 router = APIRouter()
+from api.mixers_dtos import mixerDTO, MixerDeleteDTO
+from api.inputs_dtos import InputDTO, InputDeleteDTO
+from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -23,10 +24,7 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-        
+  
     async def broadcast(self, channel, data):
         type = ""
         if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
@@ -50,28 +48,20 @@ manager = ConnectionManager()
 
 
 @staticmethod
-async def get_pipe(self, websocket):
+async def update_pipe(data, websocket: WebSocket):
     handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
-    #handler = 
-    pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
-    print("pipeline")
-    print(pipeline)
-    return pipeline
+    pipeline = handler.getpipeline(UUID(data['data']['uid']) )
+    await pipeline.update(data['data'])
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+
     await manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
-            # handler = HandlerSingleton()
-            pipeline = handler.get_pipeline("inputs", "e0866247-0b40-4d1b-9ac6-ac1e5054c28a")
-            print("pipeline")
-            print(pipeline)
-            await manager.send_personal_message(f"You wrote: {data}", websocket)
-            
+            data = await websocket.receive_json()
+            update = await update_pipe(data, websocket)
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        #await manager.broadcast)

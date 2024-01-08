@@ -69,6 +69,17 @@ class PipelineHandler(object):
             if pipeline.data.uid == uid:
                 return pipeline
 
+    # return pipeline by uid
+    def getpipeline(self, uid: UUID):
+        for pipeline in self._pipelines.get('inputs'):
+            if pipeline.data.uid == uid:
+                return pipeline
+        for pipeline in self._pipelines.get('mixers'):
+            if pipeline.data.uid == uid:
+                return pipeline
+        for pipeline in self._pipelines.get('outputs'):
+            if pipeline.data.uid == uid:
+                return pipeline
         return None
 
     def get_preview_pipeline(self, src: UUID):

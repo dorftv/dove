@@ -29,6 +29,19 @@ class Mixer(GSTBase, ABC):
     async def handle_websocket(self):
         await manager.broadcast("UPDATE", self.data)
 
+    async def update(self, data):
+        #for source in data['sources']:
+        #    print(source.src)
+        #pipe = getInterpipesrc('video', data['src'])
+        pad = self.getPad('video', data['src'])
+        pad.set_property('alpha', data['alpha'])
+
+
+    def getPad(self, audio_or_video, inputsrc):
+        for pad in self.get_current_pads(self.getMixer(audio_or_video)):
+            if self.get_src_from_pad(pad) == inputsrc:
+                return pad
+
     def cut(self, input):
         logger.log(f"CUT: add {input.src} to {self.data.uid}" )
 

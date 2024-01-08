@@ -7,15 +7,17 @@ from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
 from typing import Union
 from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
+import asyncio
 
+from api.websockets import manager
 
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        return f"  queue ! interpipesink name=video_{self.data.uid} async=true sync=true"
+        return f" interpipesink name=video_{self.data.uid} async=true sync=true"
 
     def get_audio_end(self):
-        return f" queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
+        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
     def describe(self):
 
         return self
@@ -27,3 +29,11 @@ class Input(GSTBase, ABC):
 
     def remove_preview(self, handler, uid):
         handler.delete_pipeline("outputs", uid)
+
+    # for now we only have volume to update
+    async def update(self, data):
+        self.data.volume = data['volume']
+        pipeline = self.get_pipeline()
+        volume = pipeline.get_by_name('volume')
+        volume.set_property('volume', data['volume'])
+        await manager.broadcast("UPDATE", self.data)

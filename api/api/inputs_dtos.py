@@ -83,7 +83,14 @@ class WpeInputDTO(InputDTO):
     location: Optional[str] = "https://dorftv.at"
     draw_background: Optional[bool] = False
     height: Optional[int] = Field(default_factory=get_default_height)
-    width: Optional[int] = Field(default_factory=get_default_width)    
+    width: Optional[int] = Field(default_factory=get_default_width)
+
+
+class PlaylistInputDTO(InputDTO):
+    playlist_uri: Optional[str] = None
+    playlist: Optional[list] = None
+    next: Optional[dict] = None
+    looping: bool = False
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

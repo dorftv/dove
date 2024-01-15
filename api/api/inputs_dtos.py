@@ -1,7 +1,7 @@
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
@@ -32,6 +32,8 @@ class InputDTO(BaseModel):
     width: Optional[int] = None
     preview: Optional[bool] = True
     volume: Optional[float] = 0.8
+    duration: Optional[int] = None
+    position: Optional[int] = None
 
     @field_validator("type")
     @classmethod
@@ -85,12 +87,35 @@ class WpeInputDTO(InputDTO):
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
 
+    
+class PlaylistItemDTO(BaseModel):
+    uri: str
+    type: str
+    duration: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+    @validator("type")
+    @classmethod
+    def valid_type(cls, value: str):
+        ALLOWED_TYPES = ["uri", "html"]
+        if value not in ALLOWED_TYPES:
+            raise ValueError(f"Invalid Playlist Item types, must be one of {', '.join(ALLOWED_TYPES)}")    
+        return value
+
+    class Config:
+        arbitrary_types_allowed = True 
+
 
 class PlaylistInputDTO(InputDTO):
     playlist_uri: Optional[str] = None
+    playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
     playlist: Optional[list] = None
     next: Optional[dict] = None
     looping: bool = False
+    total_duration: Optional[int]
+    playlist_position: Optional[int]
+    current_clip: Optional[PlaylistItemDTO] = Field(default_factory=list)
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

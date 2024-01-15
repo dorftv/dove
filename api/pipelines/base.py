@@ -10,7 +10,7 @@ from orjson import orjson
 from pydantic import BaseModel
 
 from api.websockets import manager
-
+from api.inputs_dtos import InputDTO
 
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
@@ -38,6 +38,8 @@ class GSTBase(BaseModel):
         bus.connect("message::state-changed", lambda e, b: asyncio.run(self._on_state_change(e, b)))
         bus.connect("message::eos", lambda e, b: asyncio.run(self._on_eos(e, b)))
         bus.connect("message::info", lambda e, b: asyncio.run(self._on_info(e, b)))
+
+        
         
     @staticmethod
     def run_on_master():
@@ -86,7 +88,11 @@ class GSTBase(BaseModel):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
-
+            if issubclass(self.data.__class__, InputDTO) and self.data.state == "READY":
+                pipeline = self.get_pipeline()
+                duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND )
+                if duration and duration != -1:
+                    self.data.duration = duration
             await manager.broadcast("UPDATE", self.data)
 
     async def _on_eos(self, bus, message):

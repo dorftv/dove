@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, PlaylistInputDTO
 from caps import Caps
 from pipelines.description import Description
 from pipelines.base import GSTBase
@@ -11,6 +11,8 @@ from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
+from pipelines.inputs.playlist_input import PlaylistInput
+
 from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 from api.mixers_dtos import mixerDTO, mixerRemoveDTO
 from api.websockets import manager
@@ -22,7 +24,7 @@ from api.outputs_dtos import previewHlsOutputDTO
 
 router = APIRouter(prefix="/api")
 
-unionInputDTO = Union[TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO]
+unionInputDTO = Union[TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, PlaylistInputDTO]
 
 async def handle_input(request: Request, data: unionInputDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
@@ -34,7 +36,9 @@ async def handle_input(request: Request, data: unionInputDTO):
     elif isinstance(data, WpeInputDTO):
         input = WpeInput(data=data)    
     elif isinstance(data, ytDlpInputDTO):
-        input = ytDlpInput(data=data)              
+        input = ytDlpInput(data=data)
+    elif isinstance(data, PlaylistInputDTO):
+        input = PlaylistInput(data=data)                   
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 
@@ -67,7 +71,9 @@ async def getInputDTO(request: Request) -> unionInputDTO:
         elif input_type == "wpesrc":
             return WpeInputDTO(**json_data)
         elif input_type == "ytdlpsrc":
-            return ytDlpInputDTO(**json_data)                         
+            return ytDlpInputDTO(**json_data)     
+        elif input_type == "playlist":
+            return PlaylistInputDTO(**json_data)                             
         else:
             raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
     except ValidationError as e:

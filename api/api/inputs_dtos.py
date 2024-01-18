@@ -38,7 +38,7 @@ class InputDTO(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc"]
+        ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc", "playlist"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -98,7 +98,7 @@ class PlaylistItemDTO(BaseModel):
     @validator("type")
     @classmethod
     def valid_type(cls, value: str):
-        ALLOWED_TYPES = ["uri", "html"]
+        ALLOWED_TYPES = ["video", "html"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid Playlist Item types, must be one of {', '.join(ALLOWED_TYPES)}")    
         return value
@@ -108,13 +108,13 @@ class PlaylistItemDTO(BaseModel):
 
 
 class PlaylistInputDTO(InputDTO):
+    type: str = "playlist"
     playlist_uri: Optional[str] = None
     playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
-    playlist: Optional[list] = None
     next: Optional[dict] = None
     looping: bool = False
-    total_duration: Optional[int]
-    playlist_position: Optional[int]
+    total_duration: Optional[int] = None
+    playlist_position: Optional[int] = None
     current_clip: Optional[PlaylistItemDTO] = Field(default_factory=list)
 
 class InputDeleteDTO(BaseModel):

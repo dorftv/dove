@@ -8,6 +8,7 @@ from gi.repository import Gst, GObject, GLib
 from api.status_dto import StatusDTO
 from api.websockets import manager
 
+
 def is_subclass_str(cls, base_name):
     return base_name in [base.__name__ for base in cls.__bases__]
 
@@ -24,7 +25,7 @@ class PipelineHandler(object):
         self._tick()
 
     def _tick(self):
-            GLib.timeout_add_seconds(2, lambda: asyncio.run(self.on_tick()))
+        GLib.timeout_add_seconds(2, lambda: asyncio.run(self.on_tick()))
 
     async def on_tick(self):
         print("sending status...")
@@ -105,7 +106,7 @@ class PipelineHandler(object):
                 return pipeline
 
         return None
-    
+
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)
         pipeline.set_state(Gst.State.NULL)
@@ -128,4 +129,3 @@ class HandlerSingleton:
             cls.handler.build(pipes)
 
         return cls.handler
-

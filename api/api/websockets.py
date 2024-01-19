@@ -5,6 +5,8 @@ from fastapi import APIRouter, WebSocket
 import asyncio
 from uuid import UUID, uuid4
 
+from api.status_dto import StatusDTO
+
 router = APIRouter()
 from api.mixers_dtos import mixerDTO, MixerDeleteDTO
 from api.inputs_dtos import InputDTO, InputDeleteDTO
@@ -33,6 +35,8 @@ class ConnectionManager:
             type = "output"
         elif issubclass(data.__class__, mixerDTO) or isinstance(data, MixerDeleteDTO):
             type = "mixer"
+        elif issubclass(data.__class__, StatusDTO):
+            type = "status"
 
         final_dict = {
             "type": type,
@@ -50,7 +54,7 @@ manager = ConnectionManager()
 @staticmethod
 async def update_pipe(data, websocket: WebSocket):
     handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
-    pipeline = handler.getpipeline(UUID(data['data']['uid']) )
+    pipeline = handler.getpipeline(UUID(data['data']['uid']))
     await pipeline.update(data['data'])
 
 

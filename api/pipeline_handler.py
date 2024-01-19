@@ -1,7 +1,12 @@
+import asyncio
+import sys
 from typing import List, ClassVar, Any
 from uuid import UUID
 
-from gi.repository import Gst, GObject
+from gi.repository import Gst, GObject, GLib
+
+from api.status_dto import StatusDTO
+from api.websockets import manager
 
 def is_subclass_str(cls, base_name):
     return base_name in [base.__name__ for base in cls.__bases__]
@@ -16,6 +21,17 @@ class PipelineHandler(object):
         self._pipelines["inputs"] = []
         self._pipelines["outputs"] = []
         self._pipelines["mixers"] = []
+        self._tick()
+
+    def _tick(self):
+            GLib.timeout_add_seconds(2, lambda: asyncio.run(self.on_tick()))
+
+    async def on_tick(self):
+        print("sending status...")
+        await manager.broadcast("CREATE", StatusDTO(message="test"))
+        print("status sent")
+        sys.stdout.flush()
+        self._tick()
 
     def build(self, initial_pipelines: dict[str, List["GSTBase"]]):
         self._pipelines = initial_pipelines
@@ -97,8 +113,8 @@ class PipelineHandler(object):
         idx = self._pipelines[type].index(pipeline)
         self._pipelines[type].pop(idx)
         del pipeline
-        
-        
+
+
 class HandlerSingleton:
     handler: ClassVar[PipelineHandler] = None
 

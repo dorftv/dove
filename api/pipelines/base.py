@@ -12,9 +12,11 @@ from pydantic import BaseModel
 from api.websockets import manager
 from api.inputs_dtos import InputDTO
 
+
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
-    #attrs: BaseModel
+
+    # attrs: BaseModel
 
     @abstractmethod
     def build(self):
@@ -34,30 +36,27 @@ class GSTBase(BaseModel):
         pipeline.set_state(Gst.State.PLAYING)
         bus = pipeline.get_bus()
         bus.add_signal_watch()
-        bus.connect("message::error", lambda e, b: asyncio.run(self._on_error(e, b))),
-        bus.connect("message::state-changed", lambda e, b: asyncio.run(self._on_state_change(e, b)))
-        bus.connect("message::eos", lambda e, b: asyncio.run(self._on_eos(e, b)))
-        bus.connect("message::info", lambda e, b: asyncio.run(self._on_info(e, b)))
+        bus.connect("message::error", lambda b, m: self.run_on_master(self._on_error, b, m)),
+        bus.connect("message::state-changed", lambda b, m: self.run_on_master(self._on_state_change, b, m))
+        bus.connect("message::eos", lambda b, m: self.run_on_master(self._on_eos, b, m))
+        bus.connect("message::info", lambda b, m: self.run_on_master(self._on_info, b, m))
 
-        
-        
-    @staticmethod
-    def run_on_master():
-        def inner(func: Callable):
-            return functools.partial(GLib.idle_add, func)
-        return inner
+    def run_on_master(self, func: Callable, *args):
+        return GLib.idle_add(func, *args)
 
     def set_state(self, state: Gst.State):
         for pipeline in self.inner_pipelines:
             pipeline.set_state(state)
+
     # event handlers
 
     def has_audio_or_video(self, audio_or_video: str):
         #  @TODO proper handling
         #  disable audio for now.
-        #handler: GSTBase = request.app.state._state["pipeline_handler"]
-        #input =   handler.get_pipeline("inputs",self.data.uid)  
+        # handler: GSTBase = request.app.state._state["pipeline_handler"]
+        # input =   handler.get_pipeline("inputs",self.data.uid)
         return True
+
     def get_pipeline(self):
         return self.inner_pipelines[0]
 
@@ -72,40 +71,38 @@ class GSTBase(BaseModel):
                 return element
         return None
 
-
-    async def _on_error(self, bus, message):
+    def _on_error(self, bus, message):
         err, debug = message.parse_error()
         # await ws_message(orjson.dumps({
         #     "uid": self.uid,
         #     "type": "error",
         #     "message": f"Error:, {err}, {debug}",
         # }))
-        await manager.broadcast("ERROR", self.data)
+        asyncio.run(manager.broadcast("ERROR", self.data))
 
-    async def _on_state_change(self, bus, message):
-
+    def _on_state_change(self, bus, message):
         if isinstance(message.src, Gst.Pipeline):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
             if issubclass(self.data.__class__, InputDTO) and self.data.state == "READY":
                 pipeline = self.get_pipeline()
-                duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND )
+                duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
                 if duration and duration != -1:
                     self.data.duration = duration
-            await manager.broadcast("UPDATE", self.data)
+            asyncio.run(manager.broadcast("UPDATE", self.data))
 
-    async def _on_eos(self, bus, message):
+    def _on_eos(self, bus, message):
         self.data.state = "EOS"
-        await manager.broadcast("UPDATE", self.data)
+        asyncio.run(manager.broadcast("UPDATE", self.data))
 
-    async def _on_info(self, bus, message):
+    def _on_info(self, bus, message):
         # await ws_broadcast(orjson.dumps({
         #     "uid": self.uid,
         #     "type": "info",
         #     "message": str(message)
         # }))
-        manager.broadcast("INFO", {"message": str(message)})
+        asyncio.run(manager.broadcast("INFO", {"message": str(message)}))
 
     class Config:
         arbitrary_types_allowed = True

@@ -1,5 +1,7 @@
 from uuid import uuid4
 import gi
+gi.require_version('Gst', '1.0')
+
 import time
 from config_handler import ConfigReader
 
@@ -16,7 +18,6 @@ from pipelines.outputs.preview_hls_output import previewHlsOutput
 from api_thread import APIThread
 from pipeline_handler import HandlerSingleton
 
-gi.require_version('Gst', '1.0')
 
 config = ConfigReader('/app/config.toml')
 

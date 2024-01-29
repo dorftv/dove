@@ -44,21 +44,29 @@ class GSTBase(BaseModel):
     def run_on_master(self, func: Callable, *args):
         return GLib.idle_add(func, *args)
 
+    def get_pipeline(self):
+        return self.inner_pipelines[0]
+
     def set_state(self, state: Gst.State):
         for pipeline in self.inner_pipelines:
             pipeline.set_state(state)
 
-    # event handlers
-
     def has_audio_or_video(self, audio_or_video: str):
-        #  @TODO proper handling
-        #  disable audio for now.
-        # handler: GSTBase = request.app.state._state["pipeline_handler"]
-        # input =   handler.get_pipeline("inputs",self.data.uid)
-        return True
-
-    def get_pipeline(self):
-        return self.inner_pipelines[0]
+        pipeline = self.get_pipeline()
+        iterator = pipeline.iterate_elements()
+        while True:
+            result, element = iterator.next()
+            if result != Gst.IteratorResult.OK:
+                break
+            pads = element.pads
+            for pad in pads:
+                caps = pad.get_current_caps()
+                if caps:
+                    for i in range(caps.get_size()):
+                        structure = caps.get_structure(i)
+                        if structure and structure.has_name(audio_or_video):
+                            return True
+        return False
 
     def get_element_from_pipeline(self, element_name):
         pipeline = self.get_pipeline()

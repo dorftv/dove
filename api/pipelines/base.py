@@ -64,7 +64,7 @@ class GSTBase(BaseModel):
                 if caps:
                     for i in range(caps.get_size()):
                         structure = caps.get_structure(i)
-                        if structure and structure.has_name(audio_or_video):
+                        if structure and structure.get_name().startswith(audio_or_video):
                             return True
         return False
 

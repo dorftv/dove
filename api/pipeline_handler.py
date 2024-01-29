@@ -2,10 +2,11 @@ import asyncio
 import sys
 from typing import List, ClassVar, Any
 from uuid import UUID
-
+import gi
+gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GObject, GLib
 
-from api.status_dto import StatusDTO
+from api.status_dto import PositionDTO
 from api.websockets import manager
 
 
@@ -25,13 +26,18 @@ class PipelineHandler(object):
         self._tick()
 
     def _tick(self):
-        GLib.timeout_add_seconds(2, lambda: asyncio.run(self.on_tick()))
+        GLib.timeout_add_seconds(1, lambda: asyncio.run(self.on_tick()))
 
     async def on_tick(self):
-        print("sending status...")
-        await manager.broadcast("CREATE", StatusDTO(message="test"))
-        print("status sent")
-        sys.stdout.flush()
+        inputs = self.get_pipelines('inputs')
+        for input in inputs:
+            if input.data.type == "playlist":
+                input.get_pipeline().set_state(Gst.State.PLAYING)
+            pipeline = input.get_pipeline()
+            success, pos =pipeline.query_position(Gst.Format.TIME)
+            if success:
+                input.data.position = pos // Gst.SECOND
+                await manager.broadcast("UPDATE",  PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
         self._tick()
 
     def build(self, initial_pipelines: dict[str, List["GSTBase"]]):

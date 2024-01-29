@@ -5,15 +5,15 @@ from fastapi import APIRouter, WebSocket
 import asyncio
 from uuid import UUID, uuid4
 
-from api.status_dto import StatusDTO
-
-router = APIRouter()
 from api.mixers_dtos import mixerDTO, MixerDeleteDTO
 from api.inputs_dtos import InputDTO, InputDeleteDTO
 from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+
+router = APIRouter()
+
 
 
 class ConnectionManager:
@@ -27,16 +27,14 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
   
-    async def broadcast(self, channel, data):
-        type = ""
-        if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
-            type = "input"
-        elif issubclass(data.__class__, OutputDTO) or isinstance(data, OutputDeleteDTO):
-            type = "output"
-        elif issubclass(data.__class__, mixerDTO) or isinstance(data, MixerDeleteDTO):
-            type = "mixer"
-        elif issubclass(data.__class__, StatusDTO):
-            type = "status"
+    async def broadcast(self, channel, data, type=""):
+        if not type:
+            if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
+                type = "input"
+            elif issubclass(data.__class__, OutputDTO) or isinstance(data, OutputDeleteDTO):
+                type = "output"
+            elif issubclass(data.__class__, mixerDTO) or isinstance(data, MixerDeleteDTO):
+                type = "mixer"
 
         final_dict = {
             "type": type,

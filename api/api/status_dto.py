@@ -1,4 +1,7 @@
 from pydantic import BaseModel
+from typing import Annotated
+from uuid import UUID
 
-class StatusDTO(BaseModel):
-    message: str
+class PositionDTO(BaseModel):
+    uid: UUID
+    position: int

@@ -41,7 +41,6 @@ class InputDTO(BaseModel):
         ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc", "playlist"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
-
         return value
 
     @field_validator("state")
@@ -50,7 +49,6 @@ class InputDTO(BaseModel):
         ALLOWED_STATES = ["PLAYING", "READY"]
         if value not in ALLOWED_STATES:
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
-     
         return value
 
     def get_field_requirements(model):
@@ -111,7 +109,8 @@ class PlaylistInputDTO(InputDTO):
     type: str = "playlist"
     playlist_uri: Optional[str] = None
     playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
-    next: Optional[dict] = None
+    next: Optional[str] = None
+    index: Optional[int] = 0
     looping: bool = False
     total_duration: Optional[int] = None
     playlist_position: Optional[int] = None

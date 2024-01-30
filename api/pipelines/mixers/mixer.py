@@ -35,7 +35,6 @@ class Mixer(GSTBase, ABC):
         self.data.update_mixer_input(src, **data)
         self.update_pad_from_sources('video', src)
         await manager.broadcast("UPDATE", self.data)
-
         
     def update_pad_from_sources(self, audio_or_video, inputsrc):
         pad = self.getPad(audio_or_video, inputsrc)

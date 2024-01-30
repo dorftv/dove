@@ -27,7 +27,6 @@ class GSTBase(BaseModel):
         pass
 
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
-        print(pipeline)
         if type(pipeline) == str:
             pipeline = Gst.parse_launch(pipeline)
 
@@ -88,12 +87,14 @@ class GSTBase(BaseModel):
         # }))
         asyncio.run(manager.broadcast("ERROR", self.data))
 
+
     def _on_state_change(self, bus, message):
         if isinstance(message.src, Gst.Pipeline):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
-            if issubclass(self.data.__class__, InputDTO) and self.data.state == "READY":
+            if issubclass(self.data.__class__, InputDTO) and self.data.state == "PAUSED":
+                self.add_preview()
                 pipeline = self.get_pipeline()
                 duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
                 if duration and duration != -1:

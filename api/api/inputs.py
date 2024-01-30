@@ -20,6 +20,7 @@ from api.websockets import manager
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
 from api.outputs_dtos import previewHlsOutputDTO
+from pipeline_handler import HandlerSingleton
 
 
 router = APIRouter(prefix="/api")
@@ -48,13 +49,8 @@ async def handle_input(request: Request, data: unionInputDTO):
         existing_input.data = data
     else:
         handler.add_pipeline(input)
-        # @TODO find a better place 
-        # @TODO need a way to delete
-        output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
-        handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)
-    await manager.broadcast("CREATE", output.data)
 
     return data
 

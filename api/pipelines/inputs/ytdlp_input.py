@@ -21,16 +21,19 @@ class ytDlpInput(Input):
         playbin.set_property("audio-sink", audiosink_bin)
         # @TODO add config option for buffer
         playbin.set_property('buffer-duration', 1 * Gst.SECOND)
-        playbin.connect('about-to-finish', lambda e : asyncio.run(self._on_about_to_finish(e)))
         self.add_pipeline(playbin)
 
-    async def _on_about_to_finish(self, playbin):
+    def _on_eos(self, bus, message):
         if self.data.loop:
+            playbin = self.get_pipeline()
             playbin.set_property("uri", playbin.get_property('uri'))
+            playbin.set_state(Gst.State.PLAYING)
+        else:
+            super()._on_eos(bus, message)
 
     def extract_video_url(self, youtube_url):
         ydl_opts = {
-            'format': 'best',  # You can choose different formats as needed
+            'format': 'best',  # @TODO make selectable
             'quiet': True,
             'no_warnings': True,
             'force_generic_extractor': True,

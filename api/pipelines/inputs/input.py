@@ -11,6 +11,11 @@ import asyncio
 
 from api.websockets import manager
 
+from api.outputs_dtos import previewHlsOutputDTO
+from pipeline_handler import HandlerSingleton
+
+
+
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
@@ -18,22 +23,22 @@ class Input(GSTBase, ABC):
 
     def get_audio_end(self):
         return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
-    def describe(self):
-
-        return self
     
-    def add_preview(self, handler, uid, src):
-        output = previewHlsOutput(uid=uid, src=src, data=previewHlsOutputDTO(src=src))
-        handler.add_pipeline(output)
-        return uid
+    def add_preview(self):
+        handler = HandlerSingleton()
+        if not handler.get_preview_pipeline(self.data.uid) and self.data.enable_preview:
+            output = previewHlsOutput(data=previewHlsOutputDTO(src=self.data.uid))
+            handler.add_pipeline(output)
+            asyncio.run(manager.broadcast("CREATE", output.data))
 
-    def remove_preview(self, handler, uid):
-        handler.delete_pipeline("outputs", uid)
-
-    # for now we only have volume to update
     async def update(self, data):
         self.data.volume = data['volume']
         pipeline = self.get_pipeline()
         volume = pipeline.get_by_name('volume')
         volume.set_property('volume', data['volume'])
         await manager.broadcast("UPDATE", self.data)
+
+    def describe(self):
+
+        return self
+

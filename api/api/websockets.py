@@ -41,10 +41,18 @@ class ConnectionManager:
             "channel": channel,
             "data": data.dict()
         }        
+
+
+        disconnected_websockets = []
         for connection in self.active_connections:
-            await connection.send_text(orjson.dumps(final_dict).decode("utf-8"))
+            try:
+                await connection.send_text(orjson.dumps(final_dict).decode("utf-8"))
+            except RuntimeError as e:
+                if str(e) == "WebSocket connection is closed":
+                    disconnected_websockets.append(connection)
 
-
+        for connection in disconnected_websockets:
+            self.disconnect(connection)
 
 manager = ConnectionManager()
 

@@ -19,14 +19,14 @@ from pipeline_handler import HandlerSingleton
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        return f" interpipesink name=video_{self.data.uid} async=true sync=true"
+        return f" interpipesink name=video_{self.data.uid} async=true sync=true forward-eos=false"
 
     def get_audio_end(self):
-        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=true sync=true"
+        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=true sync=true forward-eos=false"
     
     def add_preview(self):
         handler = HandlerSingleton()
-        if not handler.get_preview_pipeline(self.data.uid) and self.data.enable_preview:
+        if not handler.get_preview_pipeline(self.data.uid):
             output = previewHlsOutput(data=previewHlsOutputDTO(src=self.data.uid))
             handler.add_pipeline(output)
             asyncio.run(manager.broadcast("CREATE", output.data))

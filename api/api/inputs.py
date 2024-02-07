@@ -4,7 +4,6 @@ from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, PlaylistInputDTO
-from caps import Caps
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
@@ -13,35 +12,29 @@ from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
 from pipelines.inputs.playlist_input import PlaylistInput
 
-from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 from api.mixers_dtos import mixerDTO, mixerRemoveDTO
 from api.websockets import manager
 
-# @TODO find a better place
-from pipelines.outputs.preview_hls_output import previewHlsOutput
-from api.outputs_dtos import previewHlsOutputDTO
 from pipeline_handler import HandlerSingleton
 
 
 router = APIRouter(prefix="/api")
 
-unionInputDTO = Union[TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, PlaylistInputDTO]
+INPUT_TYPE_MAPPING = {
+    "testsrc": (TestInputDTO, TestInput),
+    "urisrc": (UriInputDTO, UriInput),
+    "wpesrc": (WpeInputDTO, WpeInput),
+    "ytdlpsrc": (ytDlpInputDTO, ytDlpInput),
+    "playlist": (PlaylistInputDTO, PlaylistInput),
+}
 
+unionInputDTO = Union[tuple(cls for cls, _ in INPUT_TYPE_MAPPING.values())]
+
+# @TODO handle updates
 async def handle_input(request: Request, data: unionInputDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    # Handle based on the type of data
-    if isinstance(data, TestInputDTO):
-        input = TestInput(data=data)
-    elif isinstance(data, UriInputDTO):
-        input = UriInput(data=data)
-    elif isinstance(data, WpeInputDTO):
-        input = WpeInput(data=data)    
-    elif isinstance(data, ytDlpInputDTO):
-        input = ytDlpInput(data=data)
-    elif isinstance(data, PlaylistInputDTO):
-        input = PlaylistInput(data=data)                   
-    else:
-        raise HTTPException(status_code=400, detail="Invalid input type")
+    input_class = INPUT_TYPE_MAPPING[data.type][1]
+    input = input_class(data=data)
 
     existing_input = handler.get_pipeline("inputs", data.uid)
 
@@ -55,25 +48,22 @@ async def handle_input(request: Request, data: unionInputDTO):
     return data
 
 
-
 async def getInputDTO(request: Request) -> unionInputDTO:
     json_data = await request.json()
     input_type = json_data.get("type")
     try:
-        if input_type == "testsrc":
-            return TestInputDTO(**json_data)
-        elif input_type == "urisrc":
-            return UriInputDTO(**json_data)
-        elif input_type == "wpesrc":
-            return WpeInputDTO(**json_data)
-        elif input_type == "ytdlpsrc":
-            return ytDlpInputDTO(**json_data)     
-        elif input_type == "playlist":
-            return PlaylistInputDTO(**json_data)                             
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
+        dto_class = INPUT_TYPE_MAPPING[input_type][0]
+        return dto_class(**json_data)
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Invalid input type: {input_type}")
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
+
+
+@router.put("/inputs")
+async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
+    return await handle_input(request, data)
+
 
 @router.get("/inputs")
 async def all(request: Request):
@@ -85,11 +75,6 @@ async def all(request: Request):
         descriptions.append(pipeline.describe())
 
     return descriptions
-
-# @TODO handle updates
-@router.put("/inputs")
-async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
-    return await handle_input(request, data)
 
 
 @router.delete("/inputs", response_model=SuccessDTO)

@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional
+from pipeline_handler import HandlerSingleton
 
 from pipelines.outputs.output import Output
 from api.outputs_dtos import srtOutputDTO
@@ -14,8 +15,11 @@ class srtOutput(Output):
 
         # @TODO get source element
         pipeline_audio_str = ""
-        if self.has_audio_or_video("audio"):
+        handler = HandlerSingleton()
+        input = handler.getpipeline(self.data.src)        
+        if input.has_audio_or_video("audio"):
                 pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! {audio_caps} ! voaacenc  ! aacparse ! audio/mpeg, mpegversion=4 ! queue ! mux."
+
 
 
         self.add_pipeline(self.get_video_start() + f"  videoconvert ! videoscale ! videorate  !  "

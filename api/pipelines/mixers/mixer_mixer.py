@@ -16,9 +16,9 @@ class mixerMixer(Mixer):
         print(self.data.uid)
         self.add_pipeline("videotestsrc pattern=0 is-live=true ! "
             f" { caps }!  queue !"
-            f" compositor name=videomixer_{self.data.uid} sink_0::alpha=1 sink_1::alpha=1 ! { caps } ! videoconvert ! videoscale ! videorate ! queue  ! "
+            f" compositor name=videomixer_{self.data.uid} sink_0::alpha=1 sink_1::alpha=1 ! { caps } ! "
             + self.get_video_end() + 
-            f" audiotestsrc volume=0 ! { audio_caps } ! audiomixer name=audiomixer_{self.data.uid} ! audioconvert ! audioresample ! { audio_caps } !  queue !"
+            f" audiotestsrc volume=0 ! { audio_caps } ! audiomixer name=audiomixer_{self.data.uid} ! "
             + self.get_audio_end())
 
     def switch_src(self, src: str):

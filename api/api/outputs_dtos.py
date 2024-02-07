@@ -31,12 +31,11 @@ class OutputDTO(BaseModel):
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
-    volume: Optional[float] = 0.8
 
     @field_validator("type")
     @classmethod
     def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["preview_hls", "srtsink"]
+        ALLOWED_TYPES = ["preview_hls", "srtsink", "decklinksink"]
         if value not in ALLOWED_TYPES:
             raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
 
@@ -56,19 +55,21 @@ class previewHlsOutputDTO(OutputDTO):
     type: str = "preview_hls"
     height: Optional[int] = 180
     width: Optional[int] = 320
-    
-# @TODO use default from config file
+
 class fakeOutputDTO(OutputDTO):
     type: str = "fakesink"
 
-
-# @TODO use default from config file
+# @TODO add encoder options
 class srtOutputDTO(OutputDTO):
     type: str = "srtsink"
     uri: str
     streamid: Optional[str] = ''
-    
 
+class decklinkOutputDTO(OutputDTO):
+    type: str = "decklinksink"
+    device: int
+    mode: int
+    interlaced: bool
 
 class OutputDeleteDTO(BaseModel):
     uid: UUID

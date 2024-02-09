@@ -4,6 +4,7 @@ from uuid import UUID
 from pipeline_handler import HandlerSingleton
 from pipelines.outputs.output import Output
 from api.outputs_dtos import previewHlsOutputDTO
+from gi.repository import Gst
 
 
 class previewHlsOutput(Output):
@@ -16,7 +17,6 @@ class previewHlsOutput(Output):
             preview_path.mkdir(parents=True, exist_ok=False)
         
         audio_caps = "audio/x-raw, format=S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2"
-        video_caps = "video/x-raw,mode=I420,width=320,height=180"
         handler = HandlerSingleton()
         input = handler.getpipeline(self.data.src)
         pipeline_audio_str = ""
@@ -25,13 +25,21 @@ class previewHlsOutput(Output):
                 pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! {audio_caps} ! voaacenc  ! aacparse !  queue ! mux."
 
 
-        self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! {video_caps} ! queue  !  "
-        f" x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! mpegtsmux name=mux ! "
-        f" hlssink async-handling=true target-duration=1  max-files=3 "
+        self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! "
+         + self.get_encoder_string() + 
+        f" mpegtsmux name=mux ! hlssink async-handling=true target-duration=1  max-files=3 "
         f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} "
         f" { pipeline_audio_str }")
 
-        
+    def get_encoder_string(self):
+        vaapi = Gst.ElementFactory.make("vaapipostproc", "vaapitest")
+        if vaapi is not None:
+            video_caps = "video/x-raw,width=640,height=360"
+            return f"{video_caps} ! vaapipostproc format=i420 ! vaapih264enc tune=1  quality-factor=1 quality-level=3 ! video/x-h264,profile=high ! h264parse ! "
+        else:
+            video_caps = "video/x-raw,width=640,height=360"            
+            return f" x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
+
         
 
     def describe(self):

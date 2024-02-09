@@ -49,12 +49,12 @@ class ElementsFactory:
 
                     if type == "testsrc":
                         inputs.append(
-                            TestInput(data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=1)))
+                            TestInput(data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=details.get('pattern', 1), wave=details.get('wave', 4))))
                     elif type == "urisrc":
                         inputs.append(UriInput(data=UriInputDTO(name=name, uid=uuid, uri=details.get('uri', None),
                                                                 loop=details.get('loop', None))))
                     elif type == "wpesrc":
-                        inputs.append(WpeInput(data=WpeInputDTO(name=name, uid=uuid, volume=1.0, pattern=1)))
+                        inputs.append(WpeInput(data=WpeInputDTO(name=name, uid=uuid, location=details.get('location', 'https://github.com/dorftv/dove'),  draw_background=details.get('draw-background', True))))
                     elif type == "ytdlpsrc":
                         inputs.append(ytDlpInput(data=ytDlpInputDTO(name=name, uid=uuid, uri=details.get('uri', None))))
 
@@ -66,5 +66,5 @@ if __name__ == "__main__":
     handler = HandlerSingleton()
     api = APIThread(pipeline_handler=handler)
     api.start()
-    
+
     handler.start()

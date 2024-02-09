@@ -8,7 +8,7 @@ from caps import Caps
 from helpers import generateId
 from config_handler import ConfigReader  
 
-config = ConfigReader('/app/config.toml')
+config = ConfigReader()
 
 # @TODO add function that returns dict of DTOS for using in api
 # see get_field_requirements(model)
@@ -27,7 +27,7 @@ class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     name: str = Field(default_factory=lambda: next(uniqueId))
     type: str
-    state: Optional[str] = "PLAYING"
+    state: Optional[str] = "NEW"
     height: Optional[int] = None
     width: Optional[int] = None
     preview: Optional[bool] = True
@@ -108,13 +108,13 @@ class PlaylistItemDTO(BaseModel):
 class PlaylistInputDTO(InputDTO):
     type: str = "playlist"
     playlist_uri: Optional[str] = None
-    playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
     next: Optional[str] = None
     index: Optional[int] = 0
+    current_clip: Optional[PlaylistItemDTO] = Field(default_factory=list)
     looping: bool = False
     total_duration: Optional[int] = None
-    playlist_position: Optional[int] = None
-    current_clip: Optional[PlaylistItemDTO] = Field(default_factory=list)
+    playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
+
 
 class InputDeleteDTO(BaseModel):
     uid: UUID

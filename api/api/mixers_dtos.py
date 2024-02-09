@@ -7,7 +7,7 @@ from caps import Caps
 from helpers import generateId
 from config_handler import ConfigReader  
 
-config = ConfigReader('/app/config.toml')
+config = ConfigReader()
 
 uniqueId = generateId("Mixer ")
 

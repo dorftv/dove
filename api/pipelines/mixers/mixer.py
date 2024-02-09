@@ -9,8 +9,6 @@ from uuid import UUID, uuid4
 
 
 
-
-
 class Mixer(GSTBase, ABC):
 
     data: mixerDTO
@@ -20,8 +18,6 @@ class Mixer(GSTBase, ABC):
 
     def get_audio_end(self):
         return f" queue ! interpipesink name=audio_{self.data.uid} async=false sync=true"
-    def describe(self):
-        return self
 
     def test(self, handler, uid, src):
         print(f"check: {src}  {data.uid}")
@@ -231,7 +227,6 @@ class Mixer(GSTBase, ABC):
                 xpos = pad.get_property("xpos"),
                 ypos = pad.get_property("ypos"),
                 zorder = pad.get_property("zorder"))
-
 
 
     def describe(self):

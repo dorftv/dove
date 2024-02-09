@@ -20,7 +20,7 @@ class ytDlpInput(Input):
         playbin.set_property("video-sink", videosink_bin)
         playbin.set_property("audio-sink", audiosink_bin)
         # @TODO add config option for buffer
-        playbin.set_property('buffer-duration', 1 * Gst.SECOND)
+        playbin.set_property('buffer-duration', 3 * Gst.SECOND)
         self.add_pipeline(playbin)
 
     def _on_eos(self, bus, message):
@@ -38,11 +38,15 @@ class ytDlpInput(Input):
             'no_warnings': True,
             'force_generic_extractor': True,
         }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(youtube_url, download=False)
+                video_url = info_dict.get("url", None)
+                return video_url
+        except yt_dlp.utils.DownloadError:
+            print(f"Unsupported URL: {youtube_url}")
+            return None
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(youtube_url, download=False)
-            video_url = info_dict.get("url", None)
-            return video_url
 
     def describe(self):
 

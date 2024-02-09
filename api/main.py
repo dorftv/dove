@@ -19,56 +19,52 @@ from api_thread import APIThread
 from pipeline_handler import HandlerSingleton
 
 
-config = ConfigReader('/app/config.toml')
+config = ConfigReader()
+
+
 
 
 class ElementsFactory:
     mixer_list = config.get_mixers()
-    preview_enabled = True  # config.get_preview_enabled()
+    #RODO  config.get_preview_enabled()    
+    preview_enabled = True  
 
     def create_pipelines(self):
         inputs = []
-        outputs = []
         mixers = []
+        preview_outputs = []
 
-        for mixer, input_list in self.mixer_list.items():
-            # print(f"Mixer: {mixer_list}")
-            mixerUuid = uuid4()
-            mixers.append(mixerMixer(data=mixerMixerDTO(uid=mixerUuid, type="mixer")))
-            # if self.preview_enabled:
-            # @TODO check if output
-            outputs.append(previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid)))
+        uid_dict = {}
 
-            for name, details in input_list.items():
-                type = details['type']
-                uuid = uuid4()
-                if type == "testsrc":
-                    inputs.append(
-                        TestInput(data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=1)))
-                elif type == "urisrc":
-                    inputs.append(UriInput(data=UriInputDTO(name=name, uid=uuid, uri=details.get('uri', None),
-                                                            loop=details.get('loop', None))))
-                elif type == "wpesrc":
-                    inputs.append(WpeInput(data=WpeInputDTO(name=name, uid=uuid, volume=1.0, pattern=1)))
-                elif type == "ytdlpsrc":
-                    inputs.append(ytDlpInput(data=ytDlpInputDTO(name=name, uid=uuid, uri=details.get('uri', None))))
+        #@TODO add standalone Inputs and Outputs
+        if self.mixer_list is not None:
+            for mixer, input_list in self.mixer_list.items():
+                mixerUuid = uuid4()
+                mixers.append(mixerMixer(data=mixerMixerDTO(uid=mixerUuid, type="mixer")))
+                preview_outputs.append(previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid)))
 
-                # if self.preview_enabled:
-                # @TODO check if output
-                outputs.append(previewHlsOutput(data=previewHlsOutputDTO(src=uuid)))
-                # print(preview_enabled)
-                pipelines = {"mixers": mixers, "inputs": inputs, "outputs": outputs}
+                for name, details in input_list.items():
+                    type = details['type']
+                    uuid = uuid4()
 
+                    if type == "testsrc":
+                        inputs.append(
+                            TestInput(data=TestInputDTO(name=name, uid=uuid, volume=details.get('volume', 0.8), pattern=1)))
+                    elif type == "urisrc":
+                        inputs.append(UriInput(data=UriInputDTO(name=name, uid=uuid, uri=details.get('uri', None),
+                                                                loop=details.get('loop', None))))
+                    elif type == "wpesrc":
+                        inputs.append(WpeInput(data=WpeInputDTO(name=name, uid=uuid, volume=1.0, pattern=1)))
+                    elif type == "ytdlpsrc":
+                        inputs.append(ytDlpInput(data=ytDlpInputDTO(name=name, uid=uuid, uri=details.get('uri', None))))
+
+        pipelines = {"mixers": mixers, "inputs": inputs, "outputs": preview_outputs}
         return pipelines
-
-    def create_input(self):
-        print("x")
 
 
 if __name__ == "__main__":
     handler = HandlerSingleton()
     api = APIThread(pipeline_handler=handler)
     api.start()
-
-    time.sleep(1)
+    
     handler.start()

@@ -30,6 +30,8 @@ class GSTBase(BaseModel):
         if type(pipeline) == str:
             pipeline = Gst.parse_launch(pipeline)
 
+        if pipeline is None:
+            return
         self.inner_pipelines.append(pipeline)
         pipeline.set_name(str(self.data.uid))
         pipeline.set_state(Gst.State.PLAYING)
@@ -39,6 +41,7 @@ class GSTBase(BaseModel):
         bus.connect("message::state-changed", lambda b, m: self.run_on_master(self._on_state_change, b, m))
         bus.connect("message::eos", lambda b, m: self.run_on_master(self._on_eos, b, m))
         bus.connect("message::info", lambda b, m: self.run_on_master(self._on_info, b, m))
+
 
     def run_on_master(self, func: Callable, *args):
         return GLib.idle_add(func, *args)
@@ -60,6 +63,7 @@ class GSTBase(BaseModel):
             pads = element.pads
             for pad in pads:
                 caps = pad.get_current_caps()
+
                 if caps:
                     for i in range(caps.get_size()):
                         structure = caps.get_structure(i)
@@ -80,12 +84,9 @@ class GSTBase(BaseModel):
 
     def _on_error(self, bus, message):
         err, debug = message.parse_error()
-        # await ws_message(orjson.dumps({
-        #     "uid": self.uid,
-        #     "type": "error",
-        #     "message": f"Error:, {err}, {debug}",
-        # }))
-        asyncio.run(manager.broadcast("ERROR", self.data))
+
+        self.data.state = "ERROR"
+        asyncio.run(manager.broadcast("UPDATE", self.data))
 
 
     def _on_state_change(self, bus, message):

@@ -69,7 +69,7 @@ async def create(request: Request, data: unionInputDTO = Depends(getInputDTO)):
 @router.get("/inputs")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    inputs: list[Input] = handler._pipelines["inputs"]
+    inputs: list[Input] = handler._pipelines["inputs"] if handler._pipelines is not None else []
     descriptions: list[Description] = []
 
     for pipeline in inputs:
@@ -81,16 +81,18 @@ async def all(request: Request):
 @router.delete("/inputs", response_model=SuccessDTO)
 async def delete(request: Request, data: InputDeleteDTO):
     handler: "PipelineHandler" = request.app.state._state["pipeline_handler"]
-    handler.delete_pipeline("inputs", data.uid)
-    # cleanup related stuff
-    preview = handler.get_preview_pipeline(data.uid)
-    handler.delete_pipeline("outputs", preview.data.uid)
-    mixers = handler.get_pipelines('mixers')
-    for mixer in mixers:
-       mixer.remove(mixerRemoveDTO(src=data.uid))
+    if handler.get_pipeline("inputs", data.uid) is not None:
+        handler.delete_pipeline("inputs", data.uid)
+        await manager.broadcast("DELETE", data)
+        # cleanup related stuff
+        preview = handler.get_preview_pipeline(data.uid)
+        if preview is not None:
+            handler.delete_pipeline("outputs", preview.data.uid)
+            await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
 
-    await manager.broadcast("DELETE", data)
-    await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
+        mixers = handler.get_pipelines('mixers')
+        for mixer in mixers:
+            mixer.remove(mixerRemoveDTO(src=data.uid))
 
     return SuccessDTO(code=200, details="OK")
 

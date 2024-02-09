@@ -64,7 +64,7 @@ async def create(request: Request, data: unionOutputDTO = Depends(getOutputDTO))
 @router.get("/outputs")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    outputs: list[Output] = handler._pipelines["outputs"]
+    outputs: list[Output] = handler._pipelines["outputs"] if handler._pipelines is not None else []
     descriptions: list[Description] = []
 
     for pipeline in outputs:

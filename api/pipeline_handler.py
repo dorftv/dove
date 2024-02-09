@@ -20,6 +20,7 @@ class PipelineHandler(object):
 
     def __init__(self):
         Gst.init()
+
         self._pipelines["inputs"] = []
         self._pipelines["outputs"] = []
         self._pipelines["mixers"] = []
@@ -30,22 +31,27 @@ class PipelineHandler(object):
 
     async def on_tick(self):
         inputs = self.get_pipelines('inputs')
-        for input in inputs:
-            if input.data.type == "playlist":
-                input.get_pipeline().set_state(Gst.State.PLAYING)
-            pipeline = input.get_pipeline()
-            success, pos =pipeline.query_position(Gst.Format.TIME)
-            if success:
-                input.data.position = pos // Gst.SECOND
-                await manager.broadcast("UPDATE",  PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
+        if inputs is not None:
+            for input in inputs:
+                if input.data.type == "playlist":
+                    input.get_pipeline().set_state(Gst.State.PLAYING)
+                pipeline = input.get_pipeline()
+                success, pos =pipeline.query_position(Gst.Format.TIME)
+                if success:
+                    input.data.position = pos // Gst.SECOND
+                    await manager.broadcast("UPDATE",  PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
         self._tick()
 
     def build(self, initial_pipelines: dict[str, List["GSTBase"]]):
-        self._pipelines = initial_pipelines
+        for pl_type, pipelines in initial_pipelines.items():
+            if pl_type in self._pipelines:
+                self._pipelines[pl_type].extend(pipelines)
+            else:
+                self._pipelines[pl_type] = pipelines
 
         for pl_type in ("inputs", "mixers", "outputs"):
             assert pl_type in self._pipelines
-            for pipeline_cls in initial_pipelines[pl_type]:
+            for pipeline_cls in self._pipelines[pl_type]:
                 pipeline_cls.build()
                 for inner in pipeline_cls.inner_pipelines:
                     inner.set_state(Gst.State.PLAYING)
@@ -55,6 +61,8 @@ class PipelineHandler(object):
         self.mainloop.run()
 
     def add_pipeline(self, pipeline: "GSTBase", start=True):
+        if self._pipelines is None:
+            self._pipelines = {"inputs": [], "outputs": [], "mixers": []}
         if is_subclass_str(pipeline.__class__, "Input"):
             try:
                 pipeline.build()
@@ -84,13 +92,19 @@ class PipelineHandler(object):
             for inner in pipeline.inner_pipelines:
                 inner.set_state(Gst.State.PLAYING)
 
-    def get_pipelines(self, type: str):
-        return self._pipelines.get(type)
+
+
+    def get_pipelines(self, type):
+            if self._pipelines is not None:
+                return self._pipelines.get(type)
+            else:
+                return None
 
     def get_pipeline(self, type: str, uid: UUID):
-        for pipeline in self._pipelines.get(type):
-            if pipeline.data.uid == uid:
-                return pipeline
+        if self._pipelines is not None:
+            for pipeline in self._pipelines.get(type):
+                if pipeline.data.uid == uid:
+                    return pipeline
 
     # return pipeline by uid
     def getpipeline(self, uid: UUID):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter
 
 from config_handler import ConfigReader  # make sure to replace with your actual module name
-config = ConfigReader('/app/config.toml')
+config = ConfigReader()
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ from config_handler import ConfigReader
 from caps import Caps
 from helpers import generateId
 
-config = ConfigReader('/app/config.toml')
+config = ConfigReader()
 
 uniqueId = generateId("Output ")
 

@@ -58,7 +58,7 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
 @router.get("/mixers")
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
-    mixers: list[Mixer] = handler._pipelines["mixers"]
+    mixers: list[Mixer] = handler._pipelines["mixers"] if handler._pipelines is not None else []
     descriptions: list[Description] = []
 
     for pipeline in mixers:

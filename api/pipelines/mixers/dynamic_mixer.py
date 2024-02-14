@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 from pipelines.mixers.mixer import Mixer
-from api.mixers_dtos import mixerMixerDTO
+from api.mixers_dtos import dynamicMixerDTO
 
 
-class mixerMixer(Mixer):
-    data: mixerMixerDTO
+class dynamicMixer(Mixer):
+    data: dynamicMixerDTO
     
 
     def build(self):

@@ -31,7 +31,7 @@ class Mixer(GSTBase, ABC):
         self.data.update_mixer_input(src, **data)
         self.update_pad_from_sources('video', src)
         await manager.broadcast("UPDATE", self.data)
-        
+
     def update_pad_from_sources(self, audio_or_video, inputsrc):
         pad = self.getPad(audio_or_video, inputsrc)
         if audio_or_video == "video":
@@ -64,7 +64,7 @@ class Mixer(GSTBase, ABC):
     def overlay(self, input):
         logger.log(f"OVERLAY: add {input.src} to {self.data.uid}" )
         try:
-            self.data.overlay_source(input.src)
+            self.data.overlay_source(input)
             self.sync_pads("video")
             self.sync_pads("audio")
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
@@ -91,6 +91,8 @@ class Mixer(GSTBase, ABC):
             # Create pads that should be there but aren't
             for src_name in set(desired_sources.keys()) - set(current_sources.keys()):
                 self.createInterpipesrc(audio_or_video, src_name)
+                self.updateInterpipesrc(audio_or_video, src_name)
+
         
             # Update pads that are already there and should be there
             for src_name in set(desired_sources.keys()) & set(current_sources.keys()):
@@ -149,7 +151,6 @@ class Mixer(GSTBase, ABC):
                 mixerpipe.remove(element_remove)              
 
 
-
     def updateInterpipesrc(self, audio_or_video, inputsrc):
         mixerpipe = self.get_pipeline()
         mixer = self.getMixer(audio_or_video)
@@ -197,13 +198,12 @@ class Mixer(GSTBase, ABC):
             convert_str = "audioconvert !  audioresample "
 
         src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{inputsrc}_src"
-        f" format=time allow-renegotiation=true is-live=true stream-sync=restart-ts leaky-type=upstream ! "
+        f" format=time allow-renegotiation=true is-live=true stream-sync=restart-ts leaky-type=upstream listen-to=None ! "
         f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter ! queue  ", True)
         src.set_name(f"{audio_or_video}_{inputsrc}_bin")
         interpipesrc = src.get_by_name(f"{audio_or_video}_{inputsrc}_src")
         capsfilter = src.get_by_name(f"{audio_or_video}_capsfilter")
         capsfilter.set_property("caps", mixer_caps)
-        interpipesrc.set_property("listen-to", f"{audio_or_video}_{inputsrc}" )
         self.update_sources_from_pad(audio_or_video, inputsrc, sink_pad)
         mixerpipe.add(src)
         src_pad = src.get_static_pad("src")

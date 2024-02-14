@@ -3,14 +3,14 @@ from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, mixerMixerDTO, outputMixerDTO
+from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, outputMixerDTO
 from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
 from pipelines.mixers.output_mixer import outputMixer
-from pipelines.mixers.mixer_mixer import mixerMixer
+from pipelines.mixers.dynamic_mixer import dynamicMixer
 
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
@@ -20,13 +20,13 @@ from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/api")
 
-unionMixerDTO = Union[mixerMixerDTO, outputMixerDTO]
+unionMixerDTO = Union[dynamicMixerDTO, outputMixerDTO]
 async def handle_mixer(request: Request, data: unionMixerDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
 
     # Handle based on the type of data
-    if isinstance(data, mixerMixerDTO):
-        mixer = mixerMixer(data=data)
+    if isinstance(data, dynamicMixerDTO):
+        mixer = dynamicMixer(data=data)
     elif isinstance(data, outputMixerDTO):
         mixer = outputMixer(data=data)
     else:
@@ -47,7 +47,7 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
     mixer_type = json_data.get("type")
     try:
         if mixer_type == "mixer":
-            return mixerMixerDTO(**json_data)
+            return dynamicMixerDTO(**json_data)
         elif mixer_type == "preview" or mixer_type == "program":
             return outputMixerDTO(**json_data)
         else:

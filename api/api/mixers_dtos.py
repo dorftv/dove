@@ -55,27 +55,22 @@ class mixerDTO(BaseModel):
 
         self.sources = [source for source in self.sources if source.src == src]
         return False
-    
-    # add src to mixer
-    def overlay_source(self, src: UUID):
-        new_source = mixerInputDTO(src=src)
-
-        if not any(source.src == new_source.src for source in self.sources):
-            self.sources.append(new_source)
+        
+    def overlay_source(self, src: mixerInputDTO):
+        if not any(source.src == src.src for source in self.sources):
+            self.sources.append(src)   
 
     def remove_source(self, src: UUID):
         index_to_remove = next((i for i, source in enumerate(self.sources) if source.src == src), None)
         if index_to_remove is not None:
             self.sources.pop(index_to_remove)
-        
-    def update_or_set_mix(self, new_mix_dto: mixerInputDTO):
-        if self.mix is None or self.mix.target != new_mix_dto.target:
-            # If there is no existing mix, or the target UID doesn't match, set the new mixerInputsDTO
-            self.mix = new_mix_dto
-        else:
-            # If the target UID matches, update the existing mix
-            self.mix.src = new_mix_dto.src
-
+            
+    def add_input(self, new_input_dto: mixerInputDTO):
+        sources_copy = self.sources.copy()
+        if not any(input_dto.src == new_input_dto.src for input_dto in sources_copy):
+            sources_copy.append(new_input_dto)
+        self.sources = sources_copy     
+    
     def update_mixer_input(self, src: UUID, **kwargs):
         updatedSources = []
         for source in self.sources:
@@ -121,7 +116,7 @@ class mixerRemoveDTO(BaseModel):
 
 # @TODO use default from config file
 # used for preview and program
-class mixerMixerDTO(mixerDTO):
+class dynamicMixerDTO(mixerDTO):
     type: Optional[str] = "mixer"
 
 

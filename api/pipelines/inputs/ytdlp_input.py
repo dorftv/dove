@@ -12,7 +12,7 @@ class ytDlpInput(Input):
     data: ytDlpInputDTO
 
     def build(self):
-        videosink_bin = Gst.parse_bin_from_description(self.get_video_end(), True)
+        videosink_bin = Gst.parse_bin_from_description(f"videoconvert ! video/x-raw,format=BGRA ! queue ! {self.get_video_end()}", True)
         audiosink_bin = Gst.parse_bin_from_description(self.get_audio_end(), True)
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
         playbin.set_property("uri", f"{self.extract_video_url(self.data.uri)}")

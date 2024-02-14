@@ -40,6 +40,11 @@ class ConfigReader:
         else:
             return None
 
+    def get_inputs(self):
+        if 'inputs' in self.config:
+            return self.config['inputs']
+        else:
+            return None
 
     def get_resolutions(self):
         return self.config['resolutions']

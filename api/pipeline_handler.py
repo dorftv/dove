@@ -42,19 +42,6 @@ class PipelineHandler(object):
                     await manager.broadcast("UPDATE",  PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
         self._tick()
 
-    def build(self, initial_pipelines: dict[str, List["GSTBase"]]):
-        for pl_type, pipelines in initial_pipelines.items():
-            if pl_type in self._pipelines:
-                self._pipelines[pl_type].extend(pipelines)
-            else:
-                self._pipelines[pl_type] = pipelines
-
-        for pl_type in ("inputs", "mixers", "outputs"):
-            assert pl_type in self._pipelines
-            for pipeline_cls in self._pipelines[pl_type]:
-                pipeline_cls.build()
-                for inner in pipeline_cls.inner_pipelines:
-                    inner.set_state(Gst.State.PLAYING)
 
     def start(self):
         self.mainloop = GObject.MainLoop()
@@ -106,6 +93,12 @@ class PipelineHandler(object):
                 if pipeline.data.uid == uid:
                     return pipeline
 
+    async def get_pipeline_by_name(self, type: str, name: str):
+        if self._pipelines is not None:
+            for pipeline in self._pipelines.get(type):
+                if pipeline.data.name == name:
+                    return pipeline
+
     # return pipeline by uid
     def getpipeline(self, uid: UUID):
         for pipeline in self._pipelines.get('inputs'):
@@ -140,12 +133,7 @@ class HandlerSingleton:
     handler: ClassVar[PipelineHandler] = None
 
     def __new__(cls):
-        from main import ElementsFactory
-
         if cls.handler is None:
-            elements = ElementsFactory()
-            pipes = elements.create_pipelines()
             cls.handler = PipelineHandler()
-            cls.handler.build(pipes)
 
-        return cls.handler
+        return cls.handler  

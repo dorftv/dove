@@ -44,7 +44,7 @@ class ytDlpInput(Input):
                 video_url = info_dict.get("url", None)
                 return video_url
         except yt_dlp.utils.DownloadError:
-            print(f"Unsupported URL: {youtube_url}")
+            logger.log(f"Unsupported URL: {youtube_url}", level='DEBUG')
             return None
 
 

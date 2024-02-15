@@ -1,12 +1,12 @@
 from pathlib import Path
-#from typing import Optional
+from typing import Optional
 
 from pipelines.mixers.mixer import Mixer
-from api.mixers_dtos import dynamicMixerDTO
+from api.mixers_dtos import doveProgramMixerDTO
 
 
-class dynamicMixer(Mixer):
-    data: dynamicMixerDTO
+class doveProgramMixer(Mixer):
+    data: doveProgramMixerDTO
     
 
     def build(self):
@@ -18,6 +18,8 @@ class dynamicMixer(Mixer):
             f" { caps }!  queue !"
             f" compositor name=videomixer_{self.data.uid} sink_0::alpha=1 sink_1::alpha=1 ! { caps } ! "
             + self.get_video_end() + 
+            f"interpipesrc name=x listen-to=None ! videomixer_{self.data.uid}. "
+            f"interpipesrc name=y listen-to=None ! videomixer_{self.data.uid}. "            
             f" audiotestsrc volume=0 ! { audio_caps } ! audiomixer name=audiomixer_{self.data.uid} ! "
             + self.get_audio_end())
 

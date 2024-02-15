@@ -43,8 +43,6 @@ class DebugLogger:
         else:
             self.logger.info(message)
 
-# Usage
+
 logger = DebugLogger()
-#logger.log("This is an info message.")
-#logger.log("This is a debug message.", level='DEBUG')
-#logger.log("This is a warning message.", level='WARNING')
+

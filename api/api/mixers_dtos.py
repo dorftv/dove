@@ -35,16 +35,19 @@ def get_default_width() -> int:
 def get_default_volume() -> int:
     return config.get_default_volume()
 
-class mixerDTO(BaseModel):
+class mixerBaseDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
-    type: Optional[str] = "mixer"
     preview: Optional[bool] = True
     name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = Field(default_factory=get_default_volume)
+
+class mixerDTO(mixerBaseDTO):
+    type: Optional[str] = "mixer"    
+    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
+
 
     # remove all sources but src
     def cut_source(self, src: UUID):
@@ -120,14 +123,16 @@ class dynamicMixerDTO(mixerDTO):
     type: Optional[str] = "mixer"
 
 
+class doveProgramMixerDTO(mixerBaseDTO):
+    type: str = "program"
+    sink_1: Optional[UUID] = None
+    sink_2: Optional[UUID] = None
+    active: Optional[str] = "sink_1"
+    transition: Optional[str] = None
 
-# @TODO use default from config file
-# used for preview and program
-class outputMixerDTO(mixerDTO):
-    type: str
-
-
-
+class dovePreviewMixerDTO(mixerBaseDTO):
+    type: str = "preview"
+    src: Optional[UUID] = None
 
 class MixerDeleteDTO(BaseModel):
     uid: UUID

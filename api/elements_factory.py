@@ -1,7 +1,9 @@
 from uuid import uuid4
 
-from api.mixers_dtos import dynamicMixerDTO, mixerInputDTO
+from api.mixers_dtos import dynamicMixerDTO, mixerInputDTO, doveProgramMixerDTO, dovePreviewMixerDTO
 from pipelines.mixers.dynamic_mixer import dynamicMixer
+from pipelines.mixers.dove_program_mixer import doveProgramMixer
+from pipelines.mixers.dove_preview_mixer import dovePreviewMixer
 
 from api.inputs_dtos import InputDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 from pipelines.inputs.test_input import TestInput
@@ -97,3 +99,19 @@ class ElementsFactory:
             for name, input_details in self.input_list.items():
                 inputUuid =  uuid4()
                 pipeline = self.create_input(input_details['type'], name, input_details)
+
+
+        if True:
+            programUuid = uuid4()
+            programDTO = doveProgramMixerDTO(uid=programUuid, name="program", type="program")
+            programwMixer = doveProgramMixer(data=programDTO) 
+            self.handler.add_pipeline(programwMixer)
+            programPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=programUuid)))
+            self.handler.add_pipeline(programPreviewOutput)
+
+            previewUuid = uuid4()
+            previewDTO = dovePreviewMixerDTO(uid=previewUuid, name="preview", type="preview")
+            previewMixer = dovePreviewMixer(data=previewDTO) 
+            self.handler.add_pipeline(previewMixer)
+            previewPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=previewUuid)))
+            self.handler.add_pipeline(previewPreviewOutput)            

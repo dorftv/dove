@@ -3,13 +3,12 @@ from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, outputMixerDTO
+from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, doveProgramMixerDTO
 from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
-from pipelines.mixers.output_mixer import outputMixer
 from pipelines.mixers.dynamic_mixer import dynamicMixer
 
 # @TODO find a better place
@@ -20,40 +19,44 @@ from uuid import UUID, uuid4
 
 router = APIRouter(prefix="/api")
 
-unionMixerDTO = Union[dynamicMixerDTO, outputMixerDTO]
+MIXER_TYPE_MAPPING = {
+    "mixer": (dynamicMixerDTO, dynamicMixer),
+}
+
+
+unionMixerDTO = Union[dynamicMixerDTO]
+
 async def handle_mixer(request: Request, data: unionMixerDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
+    mixer_class = MIXER_TYPE_MAPPING[data.type][1]
+    mixer = mixer_class(data=data)
 
-    # Handle based on the type of data
-    if isinstance(data, dynamicMixerDTO):
-        mixer = dynamicMixer(data=data)
-    elif isinstance(data, outputMixerDTO):
-        mixer = outputMixer(data=data)
+    existing_mixer = handler.get_pipeline("mixers", data.uid)
+
+    if existing_mixer:
+        existing_mixer.data = data
     else:
-        raise HTTPException(status_code=400, detail="Invalid mixer type")
+        handler.add_pipeline(mixer)
+        output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
+        handler.add_pipeline(output) 
 
-    handler.add_pipeline(mixer)
-    # @TODO find a better place 
-    # @TODO need a way to delete       
-    output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
-    handler.add_pipeline(output)    
     await manager.broadcast("CREATE", data)
+
     return data
 
 
+
 async def getMixerDTO(request: Request) -> unionMixerDTO:
-    print("req", await request.body())
     json_data = await request.json()
     mixer_type = json_data.get("type")
     try:
-        if mixer_type == "mixer":
-            return dynamicMixerDTO(**json_data)
-        elif mixer_type == "preview" or mixer_type == "program":
-            return outputMixerDTO(**json_data)
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid mixer type: {mixer_type}")
+        dto_class = MIXER_TYPE_MAPPING[mixer_type][0]
+        return dto_class(**json_data)
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Invalid mixer type: {mixer_type}")
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
+
 
 @router.get("/mixers")
 async def all(request: Request):
@@ -66,8 +69,7 @@ async def all(request: Request):
 
     return descriptions
 
-# @TODO handle updates
-unionMixerDTO = unionMixerDTO
+
 @router.put("/mixers")
 async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
     return await handle_mixer(request, data)
@@ -82,6 +84,6 @@ async def delete(request: Request, data: MixerDeleteDTO):
 
     await manager.broadcast("DELETE", data)
     await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
-    
+    # @TODO handle output deletion
     return SuccessDTO(code=200, details="OK")
 

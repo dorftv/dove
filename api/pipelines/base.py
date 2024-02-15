@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from api.websockets import manager
 from api.inputs_dtos import InputDTO
+from logger import logger
 
 
 class GSTBase(BaseModel):
@@ -28,6 +29,8 @@ class GSTBase(BaseModel):
 
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
         if type(pipeline) == str:
+            logger.log(f"Added pipeline: {pipeline}", level='DEBUG')
+
             pipeline = Gst.parse_launch(pipeline)
 
         if pipeline is None:

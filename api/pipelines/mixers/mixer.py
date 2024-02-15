@@ -14,10 +14,10 @@ class Mixer(GSTBase, ABC):
     data: mixerDTO
     
     def get_video_end(self) -> str:
-        return f" queue ! interpipesink name=video_{self.data.uid} async=false sync=true"
+        return f" queue ! interpipesink name=video_{self.data.uid} async=false sync=true "
 
     def get_audio_end(self):
-        return f" queue ! interpipesink name=audio_{self.data.uid} async=false sync=true"
+        return f" queue ! interpipesink name=audio_{self.data.uid} async=false sync=true "
 
     def test(self, handler, uid, src):
         print(f"check: {src}  {data.uid}")
@@ -49,7 +49,7 @@ class Mixer(GSTBase, ABC):
                 return pad
 
     def cut(self, input):
-        logger.log(f"CUT: add {input.src} to {self.data.uid}" )
+        logger.log(f"CUT: add {input.src} to {self.data.uid}", level='DEBUG')
 
         try:
             if self.data.cut_source(input.src):
@@ -62,7 +62,7 @@ class Mixer(GSTBase, ABC):
             print(e)
 
     def overlay(self, input):
-        logger.log(f"OVERLAY: add {input.src} to {self.data.uid}" )
+        logger.log(f"OVERLAY: add {input.src} to {self.data.uid}", level='DEBUG')
         try:
             self.data.overlay_source(input)
             self.sync_pads("video")
@@ -73,7 +73,7 @@ class Mixer(GSTBase, ABC):
 
 
     def remove(self, input):
-        logger.log(f"REMOVE: remove {input.src} from {self.data.uid}" )
+        logger.log(f"REMOVE: remove {input.src} from {self.data.uid}", level='DEBUG')
         try:
             self.data.remove_source(input.src)
             self.sync_pads("video")
@@ -96,7 +96,7 @@ class Mixer(GSTBase, ABC):
         
             # Update pads that are already there and should be there
             for src_name in set(desired_sources.keys()) & set(current_sources.keys()):
-                logger.log(f"Update {src_name} already in mix {self.data.uid}" )
+                logger.log(f"Update {src_name} already in mix {self.data.uid}", level='DEBUG')
                 self.updateInterpipesrc(audio_or_video, src_name)
                 #self.updatePad(audio_or_video, current_sources[src_name], src_name)
         
@@ -104,7 +104,7 @@ class Mixer(GSTBase, ABC):
             for src_name in set(current_sources.keys()) - set(desired_sources.keys()):
                 if src_name:
                     pad = current_sources[src_name]
-                    logger.log(f"remove {self.get_src_from_pad(pad)} from {self.data.uid}" )
+                    logger.log(f"remove {self.get_src_from_pad(pad)} from {self.data.uid}", level='DEBUG')
                     self.deleteInterpipesrc(audio_or_video, pad)
     
     # get src pipeline name ( uid )
@@ -176,7 +176,7 @@ class Mixer(GSTBase, ABC):
                 return element
         
     def createInterpipesrc(self, audio_or_video, inputsrc):
-        logger.log(f"create input {inputsrc} in {self.data.uid}" )
+        logger.log(f"create input {inputsrc} in {self.data.uid}", level='DEBUG')
         mixerpipe = self.get_pipeline()
         mixer = self.getMixer(audio_or_video)
 
@@ -189,9 +189,9 @@ class Mixer(GSTBase, ABC):
         mixer_src_pad = mixer.get_static_pad("src")
         mixer_caps = mixer_src_pad.get_current_caps()
         if mixer_caps is not None:
-            logger.log(f"Current Caps: {mixer_caps.to_string()}")
+            logger.log(f"Current Caps: {mixer_caps.to_string()}", level='DEBUG')
         else:
-            logger.log(f"Current Caps: Not found")            
+            logger.log(f"Current Caps: Not found", level='DEBUG')            
         if audio_or_video == "video":
             convert_str = "videoconvert !  videoscale ! videorate"
         elif audio_or_video == "audio":

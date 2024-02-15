@@ -84,7 +84,7 @@ async def delete(request: Request, data: InputDeleteDTO):
     if handler.get_pipeline("inputs", data.uid) is not None:
         handler.delete_pipeline("inputs", data.uid)
         await manager.broadcast("DELETE", data)
-        # cleanup related stuff
+
         preview = handler.get_preview_pipeline(data.uid)
         if preview is not None:
             handler.delete_pipeline("outputs", preview.data.uid)

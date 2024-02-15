@@ -1,0 +1,25 @@
+[main]
+default_resolution = "qHD"
+
+[mixers]
+
+[mixers.live]
+type="dynamic"
+
+[mixers.live.inputs.testsrc]
+type = "testsrc"
+pattern = 1
+wave = 4
+
+
+[mixers.test]
+
+# @todo adding seconf time is still buggy. error when removing.
+#[mixers.test.inputs.testsrc]
+
+
+
+[inputs.testsrc2]
+type = "testsrc"
+pattern = 4
+wave = 4

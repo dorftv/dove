@@ -3,5 +3,7 @@ __pycache__/
 .nuxt/
 .output/
 node_modules/
+pyvenv.cfg
+.vscode
 
 

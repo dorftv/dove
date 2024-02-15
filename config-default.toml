@@ -1,4 +1,5 @@
 [main]
+type = "default" # default | dynamic
 default_resolution = "HD720"
 default_volume = 0.7
 

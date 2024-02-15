@@ -18,14 +18,18 @@ class ConfigReader:
     def load_config(self):
         with open(self.default_config_path, 'r') as default_config_file:
             config_default = toml.load(default_config_file)
-            merged_config = config_default
         if self.args.config is not None:
             self.override_config_path = self.args.config
             with open(self.override_config_path, 'r') as override_config_file:
                 config_override = toml.load(override_config_file)
-                merged_config = {**config_default, **config_override}
-        return merged_config
-        
+                for section, values in config_override.items():
+                    if section in config_default:
+                        config_default[section].update(values)
+                    else:
+                        config_default[section] = values
+        return config_default        
+
+
     def get_config(self):
         return self.config
 

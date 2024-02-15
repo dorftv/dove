@@ -1,0 +1,22 @@
+version: "3.5"
+services:
+  api:
+    build:
+      context: .
+    volumes:
+      - .:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix 
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+    environment:
+      - XDG_RUNTIME_DIR=/tmp/runtime-dir
+      - DISPLAY=$DISPLAY
+      - LOG_LEVEL=debug
+      - LIBGL_ALWAYS_SOFTWARE=true
+    restart: always
+    ports:
+      - 5000:5000
+networks:
+  dove:
+

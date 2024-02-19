@@ -1,9 +1,10 @@
 from uuid import uuid4
 
-from api.mixers_dtos import dynamicMixerDTO, mixerInputDTO, doveProgramMixerDTO, dovePreviewMixerDTO
+from api.mixers_dtos import mixerDTO, dynamicMixerDTO, mixerInputDTO, programMixerDTO, previewMixerDTO
 from pipelines.mixers.dynamic_mixer import dynamicMixer
-from pipelines.mixers.dove_program_mixer import doveProgramMixer
-from pipelines.mixers.dove_preview_mixer import dovePreviewMixer
+from pipelines.mixers.mixer_mixer import mixerMixer
+from pipelines.mixers.program_mixer import programMixer
+from pipelines.mixers.preview_mixer import previewMixer
 
 from api.inputs_dtos import InputDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 from pipelines.inputs.test_input import TestInput
@@ -46,17 +47,28 @@ class ElementsFactory:
         self.handler.add_pipeline(newInput)
         return newInput
 
+    def create_mixer(self, type, name, mixer):
+        mixerUuid = uuid4()        
+        if type == "dynamic":
+            newMixerDTO = dynamicMixerDTO(uid=mixerUuid, name=name, type="dynamic")
+            newMixer = dynamicMixer(data=newMixerDTO)
+        elif type == "mixer":
+            newMixerDTO = mixerDTO(uid=mixerUuid, name=name, type="mixer", n=2)
+            newMixer = mixerMixer(data=newMixerDTO)    
+        self.handler.add_pipeline(newMixer)
+        previewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid)))
+        self.handler.add_pipeline(previewOutput)        
+        return newMixer
 
     async def create_pipelines(self):
         if self.mixer_list is not None:
             for mixer, mixer_details in self.mixer_list.items():
-                mixerUuid = uuid4()
-                newMixerDTO = dynamicMixerDTO(uid=mixerUuid, name=mixer, type="mixer")
-                newMixer = dynamicMixer(data=newMixerDTO)                
-                self.handler.add_pipeline(newMixer)
+                mixer_type = mixer_details.get('type')
 
-                previewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid)))
-                self.handler.add_pipeline(previewOutput)
+                if mixer_type is not None:
+                    newMixer = self.create_mixer(mixer_type, mixer, mixer_details)
+
+                
 
                 # Add Inputs assigned to Mixers
                 if 'inputs' in mixer_details:
@@ -71,15 +83,18 @@ class ElementsFactory:
                             else:
                                 pipeline = await self.handler.get_pipeline_by_name("inputs", name)
                             if pipeline is not None:
-                                # @TODO make props work
-                                uid = pipeline.data.uid
-                                mixerInput = mixerInputDTO(src=uid, xpos=input.get('xpos', 0), ypos=input.get('ypos', 0), width=input.get('width', None), height=input.get('height', None), alpha=input.get('alpha', 1), zorder=input.get('zorder', i), immutable=input.get('immutable', False))
-                                newMixerDTO.add_input(mixerInput)
-                                newMixer.overlay(mixerInput)                         
-                                i += 1
+                                if mixer_type == "dynamic":
+                                    # @TODO make props work
+                                    uid = pipeline.data.uid
+                                    mixerInput = mixerInputDTO(src=uid, xpos=input.get('xpos', 0), ypos=input.get('ypos', 0), width=input.get('width', None), height=input.get('height', None), alpha=input.get('alpha', 1), zorder=input.get('zorder', i), immutable=input.get('immutable', False))
+                                    #newMixerDTO.add_input(mixerInput)
+                                    newMixer.overlay(mixerInput)                         
+                                    i += 1
+                                elif mixer_type == "mixer":
+                                    print("mixer")
 
                     # Add Outputs to Mixers
-                    if 'inputs' in mixer_details:
+                    if 'outputs' in mixer_details:
                         outputs = mixer_details.get('outputs')
                         if outputs is not None:
                             for name, output in mixer_details['outputs'].items():
@@ -101,17 +116,17 @@ class ElementsFactory:
                 pipeline = self.create_input(input_details['type'], name, input_details)
 
 
-        if True:
-            programUuid = uuid4()
-            programDTO = doveProgramMixerDTO(uid=programUuid, name="program", type="program")
-            programwMixer = doveProgramMixer(data=programDTO) 
-            self.handler.add_pipeline(programwMixer)
-            programPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=programUuid)))
-            self.handler.add_pipeline(programPreviewOutput)
-
-            previewUuid = uuid4()
-            previewDTO = dovePreviewMixerDTO(uid=previewUuid, name="preview", type="preview")
-            previewMixer = dovePreviewMixer(data=previewDTO) 
-            self.handler.add_pipeline(previewMixer)
-            previewPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=previewUuid)))
-            self.handler.add_pipeline(previewPreviewOutput)            
+#        if True:
+#            programUuid = uuid4()
+#            programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
+#            programwMixer = programMixer(data=programDTO) 
+#            self.handler.add_pipeline(programwMixer)
+#            programPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=programUuid)))
+#            self.handler.add_pipeline(programPreviewOutput)
+#
+#            previewUuid = uuid4()
+#            previewDTO = previewMixerDTO(uid=previewUuid, name="preview", type="preview")
+#            previewMixer = previewMixer(data=previewDTO) 
+#            self.handler.add_pipeline(previewMixer)
+#            previewPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=previewUuid)))
+#            self.handler.add_pipeline(previewPreviewOutput)  

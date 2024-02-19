@@ -32,13 +32,13 @@ class previewHlsOutput(Output):
         f" { pipeline_audio_str }")
 
     def get_encoder_string(self):
+        video_caps = f"video/x-raw,width={self.data.width},height={self.data.height}"
+
         vaapi = Gst.ElementFactory.make("vaapipostproc", "vaapitest")
         if vaapi is not None:
-            video_caps = "video/x-raw,width=640,height=360"
             return f"{video_caps} ! vaapipostproc format=i420 ! vaapih264enc tune=1  quality-factor=1 quality-level=3 ! video/x-h264,profile=high ! h264parse ! "
         else:
-            video_caps = "video/x-raw,width=640,height=360"            
-            return f" x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
+            return f"{video_caps} ! x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
 
         
 

@@ -47,8 +47,44 @@ class mixerBaseDTO(BaseModel):
 class mixerDTO(mixerBaseDTO):
     type: Optional[str] = "mixer"    
     sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
+    n: Optional[int] = 0
+    immutable: Optional[bool] = False
 
 
+
+    @field_validator("type")
+    @classmethod
+    def valid_type(cls, value: str, info: FieldValidationInfo):
+        ALLOWED_TYPES = ["mixer", "dynamic", "program", "preview"]
+        if value not in ALLOWED_TYPES:
+            raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
+
+        return value
+
+    @field_validator("state")
+    @classmethod
+    def valid_state(cls, value: str, info: FieldValidationInfo):
+        ALLOWED_STATES = ["PLAYING", "READY"]
+        if value not in ALLOWED_STATES:
+            raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
+
+        return value
+
+
+class mixerCutDTO(BaseModel):
+    src: UUID
+    target: UUID
+
+class mixerRemoveDTO(BaseModel):
+    src: UUID
+
+
+
+
+# @TODO use default from config file
+# used for preview and program
+class dynamicMixerDTO(mixerDTO):
+    type: Optional[str] = "dynamic"
     # remove all sources but src
     def cut_source(self, src: UUID):
         if not any(source.src == src for source in self.sources):
@@ -88,49 +124,14 @@ class mixerDTO(mixerBaseDTO):
             if UUID(str(source.src)) ==  UUID(str(src)):
                 return source
 
-    @field_validator("type")
-    @classmethod
-    def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["mixer", "program", "preview"]
-        if value not in ALLOWED_TYPES:
-            raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
-
-        return value
-
-    @field_validator("state")
-    @classmethod
-    def valid_state(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_STATES = ["PLAYING", "READY"]
-        if value not in ALLOWED_STATES:
-            raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
-
-        return value
-
-
-class mixerCutDTO(BaseModel):
-    src: UUID
-    target: UUID
-
-class mixerRemoveDTO(BaseModel):
-    src: UUID
-
-
-
-
-# @TODO use default from config file
-# used for preview and program
-class dynamicMixerDTO(mixerDTO):
-    type: Optional[str] = "mixer"
-
-
-class doveProgramMixerDTO(mixerBaseDTO):
+class programMixerDTO(mixerBaseDTO):
     type: str = "program"
     sink_1: Optional[UUID] = None
     sink_2: Optional[UUID] = None
     active: Optional[str] = "sink_1"
     transition: Optional[str] = None
 
-class dovePreviewMixerDTO(mixerBaseDTO):
+class previewMixerDTO(mixerBaseDTO):
     type: str = "preview"
     src: Optional[UUID] = None
 

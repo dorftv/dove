@@ -3,7 +3,8 @@ from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
-from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, doveProgramMixerDTO
+
+from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, programMixerDTO
 from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler

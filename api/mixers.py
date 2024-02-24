@@ -4,13 +4,14 @@ from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 
-from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, dynamicMixerDTO, programMixerDTO
+from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
 from api.websockets import manager
 from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
-from pipelines.mixers.dynamic_mixer import dynamicMixer
+from pipelines.mixers.scene_mixer import sceneMixer
+
 
 # @TODO find a better place
 from pipelines.outputs.preview_hls_output import previewHlsOutput
@@ -21,11 +22,11 @@ from uuid import UUID, uuid4
 router = APIRouter(prefix="/api")
 
 MIXER_TYPE_MAPPING = {
-    "mixer": (dynamicMixerDTO, dynamicMixer),
+    "scene": (sceneMixerDTO, sceneMixer),
 }
 
 
-unionMixerDTO = Union[dynamicMixerDTO]
+unionMixerDTO = Union[sceneMixerDTO]
 
 async def handle_mixer(request: Request, data: unionMixerDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]

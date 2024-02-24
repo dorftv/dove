@@ -5,7 +5,7 @@ from fastapi import APIRouter, WebSocket
 import asyncio
 from uuid import UUID, uuid4
 
-from api.mixers_dtos import mixerDTO, MixerDeleteDTO
+from api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from api.inputs_dtos import InputDTO, InputDeleteDTO
 from api.outputs_dtos import OutputDTO, OutputDeleteDTO
 
@@ -33,7 +33,7 @@ class ConnectionManager:
                 type = "input"
             elif issubclass(data.__class__, OutputDTO) or isinstance(data, OutputDeleteDTO):
                 type = "output"
-            elif issubclass(data.__class__, mixerDTO) or isinstance(data, MixerDeleteDTO):
+            elif issubclass(data.__class__, mixerBaseDTO) or isinstance(data, MixerDeleteDTO):
                 type = "mixer"
 
         final_dict = {

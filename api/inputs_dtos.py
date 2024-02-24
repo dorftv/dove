@@ -26,7 +26,6 @@ def get_default_width() -> int:
 class InputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     name: str = Field(default_factory=lambda: next(uniqueId))
-    type: str
     state: Optional[str] = "NEW"
     height: Optional[int] = None
     width: Optional[int] = None
@@ -35,13 +34,6 @@ class InputDTO(BaseModel):
     duration: Optional[int] = None
     position: Optional[int] = None
 
-    @field_validator("type")
-    @classmethod
-    def valid_type(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_TYPES = ["testsrc", "urisrc", "wpesrc", "ytdlpsrc", "playlist"]
-        if value not in ALLOWED_TYPES:
-            raise ValueError(f"Invalid input types, must be one of {', '.join(ALLOWED_TYPES)}")
-        return value
 
     @field_validator("state")
     @classmethod

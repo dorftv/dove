@@ -92,7 +92,11 @@ async def delete(request: Request, data: InputDeleteDTO):
 
         mixers = handler.get_pipelines('mixers')
         for mixer in mixers:
-            mixer.remove(mixerRemoveDTO(src=data.uid))
-
+            print(mixer.data)
+            while True:
+                mixerInput = mixer.data.getMixerInputDTObySource(data.uid)
+                if mixerInput is None:
+                    break
+                mixer.remove_source(mixerRemoveDTO(src=data.uid, sink=mixerInput.sink))
     return SuccessDTO(code=200, details="OK")
 

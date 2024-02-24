@@ -87,7 +87,7 @@ class GSTBase(BaseModel):
 
     def _on_error(self, bus, message):
         err, debug = message.parse_error()
-
+        # @TODO add err message to data
         self.data.state = "ERROR"
         asyncio.run(manager.broadcast("UPDATE", self.data))
 
@@ -97,7 +97,7 @@ class GSTBase(BaseModel):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
-            if issubclass(self.data.__class__, InputDTO) and self.data.state == "READY":
+            if issubclass(self.data.__class__, InputDTO) and self.data.state == "PAUSED":
                 self.add_preview()
                 pipeline = self.get_pipeline()
                 duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)

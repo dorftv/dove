@@ -58,7 +58,6 @@ class sceneMixer(Mixer):
 
                     else:
                         self.link_pad(audio_or_video, sink)
-                        self.set_pad_source(audio_or_video, sink)
          
             pad = self.update_pad_from_sources(audio_or_video, sink)
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
@@ -161,6 +160,7 @@ class sceneMixer(Mixer):
                 self.unlink_pad(audio_or_video, sink_name)
 
         src = self.create_source_element(audio_or_video, sink_name)
+        self.set_pad_source(audio_or_video, sink_name)
         src.sync_state_with_parent()
         src_pad = src.get_static_pad("src")
         logger.log(f"Linkin sink pad {sink_name} in Mixer {self.data.uid}", level='DEBUG')                  

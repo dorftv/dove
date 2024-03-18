@@ -16,13 +16,12 @@ class previewHlsOutput(Output):
         if not preview_path.is_dir():
             preview_path.mkdir(parents=True, exist_ok=False)
         
-        audio_caps = "audio/x-raw, format=S16LE, layout=(string)interleaved, rate=(int)44100, channels=(int)2"
         handler = HandlerSingleton()
         input = handler.getpipeline(self.data.src)
         pipeline_audio_str = ""
 
         if input.has_audio_or_video("audio"):
-                pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! {audio_caps} ! voaacenc  ! aacparse !  queue ! mux."
+                pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! voaacenc  ! aacparse !  queue ! mux."
 
 
         self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! "
@@ -34,9 +33,9 @@ class previewHlsOutput(Output):
     def get_encoder_string(self):
         video_caps = f"video/x-raw,width={self.data.width},height={self.data.height}"
 
-        vaapi = Gst.ElementFactory.make("vaapipostproc", "vaapitest")
-        if vaapi is not None:
-            return f"{video_caps} ! vaapipostproc format=i420 ! vaapih264enc tune=1  quality-factor=1 quality-level=3 ! video/x-h264,profile=high ! h264parse ! "
+        vaapitest = Gst.ElementFactory.make("vah264enc", "vaapitest")
+        if vaapitest is not None:
+            return f"{video_caps} ! vapostproc ! vah264enc  ! video/x-h264,profile=high ! h264parse ! "
         else:
             return f"{video_caps} ! x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
 

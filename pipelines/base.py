@@ -91,6 +91,29 @@ class GSTBase(BaseModel):
         self.data.state = "ERROR"
         asyncio.run(manager.broadcast("UPDATE", self.data))
 
+    def add_duration(self):
+        pipeline = self.get_pipeline()
+        duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
+        if duration and duration != -1:
+            self.data.duration = duration
+
+    def add_resolution(self):
+        pipeline = self.get_pipeline()
+        factory_name = pipeline.get_factory().get_name()
+        if factory_name == 'playbin3':  
+            video_sink = pipeline.get_property('video-sink')
+            if video_sink:
+                pad = video_sink.get_static_pad('sink')
+                if pad:
+                    caps = pad.get_current_caps()
+                    if caps:
+                        structure = caps.get_structure(0)
+                        if structure:
+                            width = structure.get_int('width')[1]
+                            height = structure.get_int('height')[1]
+                            if width and height:
+                                self.data.width = width
+                                self.data.height = height
 
     def _on_state_change(self, bus, message):
         if isinstance(message.src, Gst.Pipeline):
@@ -99,10 +122,8 @@ class GSTBase(BaseModel):
             self.data.state = Gst.Element.state_get_name(new_state)
             if issubclass(self.data.__class__, InputDTO) and self.data.state == "PAUSED":
                 self.add_preview()
-                pipeline = self.get_pipeline()
-                duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
-                if duration and duration != -1:
-                    self.data.duration = duration
+                self.add_duration()
+                self.add_resolution()
             asyncio.run(manager.broadcast("UPDATE", self.data))
 
     def _on_eos(self, bus, message):

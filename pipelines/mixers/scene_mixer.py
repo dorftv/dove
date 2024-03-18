@@ -22,7 +22,7 @@ class sceneMixer(Mixer):
         self.add_pipeline(f"videotestsrc is-live=true pattern=18 ! {caps} ! "
             f" compositor zero-size-is-unscaled=false background=black force-live=true ignore-inactive-pads=true name=videomixer_{self.data.uid} sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps }  ! queue !  "
             f" {self.get_video_end()} "
-            f" audiotestsrc wave=4 ! { audio_caps } ! audiomixer force-live=true name=audiomixer_{self.data.uid} ! audiorate ! audioresample ! audioconvert ! { audio_caps } ! queue !  "
+            f" audiotestsrc wave=4 ! { audio_caps } ! audiomixer name=audiomixer_{self.data.uid} !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! queue !  "
             + self.get_audio_end())
 
         loop = self.data.countMixerInputs()
@@ -59,7 +59,7 @@ class sceneMixer(Mixer):
                     else:
                         self.link_pad(audio_or_video, sink)
          
-            pad = self.update_pad_from_sources(audio_or_video, sink)
+                pad = self.update_pad_from_sources(audio_or_video, sink)
             asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
 
@@ -122,13 +122,14 @@ class sceneMixer(Mixer):
 
     def update_pad_from_sources(self, audio_or_video, sink):
             pad = self.get_pad(audio_or_video, sink)
+            source = vars(self.data.getMixerInputDTO(sink))
             if audio_or_video == "video":
-                properties = ['alpha', 'xpos', 'ypos', 'width', 'height']
+                properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder']
             if audio_or_video == "audio":
-                properties = ['volume']
+                properties = ['volume', 'mute']
             source = vars(self.data.getMixerInputDTO(sink))
             for prop in properties:
-                if source[prop]:
+                if source[prop] is not None:
                     pad.set_property(prop, source[prop])
                 else:
                     source[prop] = pad.get_property(prop)
@@ -205,20 +206,16 @@ class sceneMixer(Mixer):
         source = f"{audio_or_video}_{mixerInputDTO.src}"
         if src is None:
             if audio_or_video == "video":
-                caps = f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA"
-                convert_str = f"   videoscale !  videorate ! videoconvert ! {caps } "        
+                convert_str = f"   videoconvert ! videoscale !  videorate  "
             elif audio_or_video == "audio":
-                caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"                
-                convert_str = f" audioresample ! audioconvert !  audiorate !  {caps }"
+                convert_str = f" audioresample ! audioconvert !  audiorate ! queue max-size-time=300000000"
 
             src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{self.data.uid}_{sink_name}"
-            f" format=time allow-renegotiation=true leaky-type=upstream  is-live=true stream-sync=restart-ts do-timestamp=true listen-to={source} !  "
+            f" max-time=2000000000 format=time allow-renegotiation=true leaky-type=upstream  is-live=true stream-sync=restart-ts do-timestamp=true listen-to={source} !  "
             f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter ! queue  ", True)
             src.set_name(src_name)
             pipeline.add(src)
-            self.set_capsfilter(audio_or_video, sink_name)
-            logger.log(f"Create source bin {src_name} in Mixer {self.data.uid}", level='DEBUG')            
-
+            logger.log(f"Create source bin {src_name} in Mixer {self.data.uid}", level='DEBUG')
         return src
 
 
@@ -226,9 +223,12 @@ class sceneMixer(Mixer):
         mixer = self.getMixer(audio_or_video)
         mixer_src_pad = mixer.get_static_pad("src")
         mixer_caps = mixer_src_pad.get_current_caps()
-        bin = self.get_mixer_source_bin(audio_or_video, sink_name)
-        capsfilter = bin.get_by_name(f"{audio_or_video}_capsfilter")
-        capsfilter.set_property("caps", mixer_caps)
+        if mixer_caps:
+            bin = self.get_mixer_source_bin(audio_or_video, sink_name)
+            capsfilter = bin.get_by_name(f"{audio_or_video}_capsfilter")
+            capsfilter.set_property("caps", mixer_caps)
+            logger.log(f"Set pad caps to {mixer_caps.to_string()} for  {sink_name}", level='DEBUG')            
+
 
     def get_mixer_source_bin(self, audio_or_video, sink_name):
         pipe = self.get_pipeline()

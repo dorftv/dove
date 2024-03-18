@@ -22,9 +22,10 @@ class mixerInputDTO(BaseModel):
     ypos: Optional[int] = 0
     width: Optional[int] = None
     height: Optional[int] = None
-    alpha: Optional[float] = 1
+    alpha: Optional[float] = 0.0
     zorder: Optional[int] = None
-    volume: Optional[int] = 1
+    volume: Optional[float] = 1
+    mute: Optional[bool] = False
     locked: Optional[bool] = False
     src_locked: Optional[bool] = False
 
@@ -99,6 +100,8 @@ class sceneMixerDTO(mixerBaseDTO):
         for source in self.sources:
             if str(source.sink) == str(sink):
                 for key, value in kwargs.items():
+                    if key == "alpha":
+                        value = float(value)
                     setattr(source, key, value)
             updatedSources.append(source)
         self.sources = updatedSources

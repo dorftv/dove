@@ -19,10 +19,12 @@ from pipeline_handler import HandlerSingleton
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        return f" interpipesink name=video_{self.data.uid} async=false sync=true forward-eos=false"
+        caps = f"video/x-raw,width=1280,height=720,format=BGRA"
+
+        return f"  videoconvert ! videoscale !  videorate !  {caps } ! queue !  interpipesink name=video_{self.data.uid} async=true sync=true forward-eos=false"
 
     def get_audio_end(self):
-        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=false sync=true forward-eos=false"
+        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue ! interpipesink name=audio_{self.data.uid} async=true sync=true forward-eos=false"
     
     def add_preview(self):
         handler = HandlerSingleton()

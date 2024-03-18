@@ -1,5 +1,5 @@
 from uuid import uuid4
-
+import time
 from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, previewMixerDTO, mixerCutDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
@@ -36,13 +36,13 @@ class ElementsFactory:
                 TestInput(data=TestInputDTO(name=name, uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4))))
         elif type == "urisrc":
             newInput = (
-                UriInput(data=UriInputDTO(name=name, uid=uid, uri=input.get('uri', ''), loop=input.get('loop', False))))
+                UriInput(data=UriInputDTO(name=name, uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False))))
         elif type == "wpesrc":
             newInput = (
                 WpeInput(data=WpeInputDTO(name=name, uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True))))
         elif type == "ytdlpsrc":
             newInput = (
-                ytDlpInput(data=ytDlpInputDTO(name=name, uid=uid, uri=input.get('uri', ''), loop=input.get('loop', False))))
+                ytDlpInput(data=ytDlpInputDTO(name=name, uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False))))
         self.handler.add_pipeline(newInput)
         return newInput
 
@@ -92,6 +92,8 @@ class ElementsFactory:
 
                             if pipeline is not None:
                                 uid = pipeline.data.uid
+                                # @TODO without this audio is distorted. find a better way.
+                                time.sleep(0.3)
                                 mixer.data.update_mixer_input(sink, src=uid)
                                 cutInput = mixerCutDTO(src=uid, target=mixer.data.uid, sink=sink)
                                 mixer.add_source(cutInput)

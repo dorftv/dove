@@ -1,6 +1,7 @@
 from api.inputs_dtos import UriInputDTO
 from .input import Input
 from gi.repository import Gst, GLib
+from logger import logger
 
 from pipelines.description import Description
 from pipelines.inputs.input import Input
@@ -11,7 +12,7 @@ class UriInput(Input):
     data: UriInputDTO
 
     def build(self):
-        videosink_bin = Gst.parse_bin_from_description(f"videoconvert ! video/x-raw,format=BGRA ! queue ! {self.get_video_end()}", True)
+        videosink_bin = Gst.parse_bin_from_description(f"{self.get_video_end()}", True)
         audiosink_bin = Gst.parse_bin_from_description(self.get_audio_end(), True)
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
         playbin.set_name("playbin")
@@ -21,19 +22,35 @@ class UriInput(Input):
         playbin.set_property("audio-sink", audiosink_bin)
         # @TODO add config option for buffer
         playbin.set_property('buffer-duration', 1 * Gst.SECOND)
-        # use EOS for now. about-to-finish is emitted to soon
-        #playbin.connect('about-to-finish', lambda e : asyncio.run(self._on_about_to_finish(e)))
+        playbin.connect('element-setup', self.on_element_setup)
 
         self.add_pipeline(playbin)
 
     def _on_eos(self, bus, message):
         if self.data.loop:
             playbin = self.get_pipeline()
-            playbin.set_property("uri", playbin.get_property('uri'))
+            playbin.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 0)
             playbin.set_state(Gst.State.PLAYING)
         else:
             super()._on_eos(bus, message)
 
+    def on_element_setup(self, playbin, element):
+        factory = element.get_factory()
+        if factory:
+            name = factory.get_name()
+            if name == "urisourcebin":
+                element.connect('pad-added', self.on_pad_added)
+
+    def on_pad_added(self, urisourcebin, pad):
+        caps = pad.query_caps()
+        if caps:
+            structure = caps.get_structure(0)
+            if structure and structure.get_name().startswith('video/'):
+                width = structure.get_int('width')[1]
+                height = structure.get_int('height')[1]
+                if width and height:
+                    self.data.width = width
+                    self.data.height = height
 
     def describe(self):
 

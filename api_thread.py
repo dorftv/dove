@@ -10,6 +10,7 @@ from api import mixer
 from api import outputs
 from api import websockets
 from api import configuration
+from api import graphviz
 from api import hls_preview
 from pipeline_handler import PipelineHandler
 
@@ -36,6 +37,7 @@ class APIThread(Thread):
         fastapi.include_router(outputs.router)
         fastapi.include_router(mixers.router)
         fastapi.include_router(mixer.router)
+        fastapi.include_router(graphviz.router)
 
         # websockets handler
         fastapi.include_router(websockets.router)

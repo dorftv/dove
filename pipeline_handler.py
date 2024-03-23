@@ -99,6 +99,12 @@ class PipelineHandler(object):
                 if pipeline.data.name == name:
                     return pipeline
 
+    def get_program(self):
+        if self._pipelines is not None:
+            for pipeline in self._pipelines.get("mixers"):
+                if pipeline.data.type == "program":
+                    return pipeline
+
     # return pipeline by uid
     def getpipeline(self, uid: UUID):
         for pipeline in self._pipelines.get('inputs'):

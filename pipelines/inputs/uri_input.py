@@ -21,7 +21,7 @@ class UriInput(Input):
         playbin.set_property("video-sink", videosink_bin)
         playbin.set_property("audio-sink", audiosink_bin)
         # @TODO add config option for buffer
-        playbin.set_property('buffer-duration', 1 * Gst.SECOND)
+        playbin.set_property('buffer-duration', 3 * Gst.SECOND)
         playbin.connect('element-setup', self.on_element_setup)
 
         self.add_pipeline(playbin)

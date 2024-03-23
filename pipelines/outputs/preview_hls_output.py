@@ -26,7 +26,7 @@ class previewHlsOutput(Output):
 
         self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! "
          + self.get_encoder_string() + 
-        f" mpegtsmux name=mux ! hlssink async-handling=true target-duration=1  max-files=3 "
+        f" mpegtsmux name=mux ! hlssink async-handling=true target-duration=1  playlist-length=3 max-files=3  "
         f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} "
         f" { pipeline_audio_str }")
 

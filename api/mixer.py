@@ -1,11 +1,21 @@
 # main.py
 from fastapi import Request, APIRouter, HTTPException
 from pydantic import ValidationError
-from api.mixers_dtos import mixerDTO, mixerCutDTO, mixerInputDTO, mixerInputsDTO, mixerPadDTO
+from api.mixers_dtos import mixerDTO, mixerCutDTO, mixerInputDTO, mixerInputsDTO, mixerPadDTO, mixerCutProgramDTO
 from pipelines.base import GSTBase
 import json
 
 router = APIRouter(prefix="/api")
+
+
+
+@router.post("/mixer/cut_program")
+async def action_cur_program(request: Request, data: mixerCutProgramDTO):
+    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    program: mixerMixerDTO = handler.get_program()
+    print(program)
+    response = program.cut_program(data)
+    return response
 
 
 # @ TODO check if mixer and input exist

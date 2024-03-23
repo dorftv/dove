@@ -28,10 +28,12 @@ RUN apt-get update && \
     graphviz \
     curl
 
-RUN apt install -yq git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools
+RUN apt install -yq git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools wget libva-dev gstreamer1.0-vaapi
 
 RUN git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git /install/interpipe && \
     cd /install/interpipe && \
+    wget https://github.com/RidgeRun/gst-interpipe/pull/102.diff && \
+    patch -p1 < 102.diff && \
     mkdir -p build && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
@@ -52,4 +54,4 @@ RUN pip install yt_dlp
 
 EXPOSE 5000
 
-CMD ["python3", "/app/main.py"]
+CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]

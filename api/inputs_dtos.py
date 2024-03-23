@@ -38,7 +38,7 @@ class InputDTO(BaseModel):
     @field_validator("state")
     @classmethod
     def valid_state(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_STATES = ["PLAYING", "READY"]
+        ALLOWED_STATES = ["PLAYING", "READY", "PAUSED", "NEW", "NULL"]
         if value not in ALLOWED_STATES:
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
         return value

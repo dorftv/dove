@@ -9,7 +9,7 @@ from config_handler import ConfigReader
 
 config = ConfigReader()
 
-uniqueId = generateId("Mixer ")
+uniqueId = generateId("Scene ")
 uniqueIntId = generateId()
 
 
@@ -22,7 +22,7 @@ class mixerInputDTO(BaseModel):
     ypos: Optional[int] = 0
     width: Optional[int] = None
     height: Optional[int] = None
-    alpha: Optional[float] = 0.0
+    alpha: Optional[float] = 1
     zorder: Optional[int] = None
     volume: Optional[float] = 1
     mute: Optional[bool] = False
@@ -45,6 +45,7 @@ def get_default_volume() -> int:
 
 class mixerBaseDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
+    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
     preview: Optional[bool] = True
     name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
@@ -52,29 +53,9 @@ class mixerBaseDTO(BaseModel):
     width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = Field(default_factory=get_default_volume)
 
-class mixerDTO(mixerBaseDTO):
-    type: Optional[str] = "mixer"    
-    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
-
-
-class sceneMixerDTO(mixerBaseDTO):
-    type: Optional[str] = "scene"
-    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
-    n: Optional[int] = 0
-    locked: Optional[bool] = False
-
-    def update_sources_with_defaults(self):
-        for source in self.sources:
-            if source.width is None:
-                source.width = self.width
-            if source.height is None:
-                source.height = self.height
-
-    def getMixerInputN(self, n):
-        return self.sources[n] if len(self.sources) > n else None
-
-    def countMixerInputs(self):
-        return len(self.sources) if self.sources else None
+    def addInput(self, src: mixerInputDTO):
+        if not any(source.sink == src.sink for source in self.sources):
+            self.sources.append(src)
 
     def getMixerInputDTO(self, sink: str):
         for source in self.sources:
@@ -82,19 +63,13 @@ class sceneMixerDTO(mixerBaseDTO):
                 return source
         return None
 
-    def getMixerInputDTObySource(self, src: UUID):
+    def update_sources_with_defaults(self):
         for source in self.sources:
-            print(source.src)
-            if str(source.src) == str(src):
-                return source
-
-    def addInput(self, src: mixerInputDTO):
-        if not any(source.sink == src.sink for source in self.sources):
-            self.sources.append(src)
-
-    def removeInput(self, sink):
-        self.sources = [source for source in self.sources if source.sink != sink]
-
+            if source.width is None:
+                source.width = self.width
+            if source.height is None:
+                source.height = self.height
+                
     def update_mixer_input(self, sink: str, **kwargs):
         updatedSources = []
         for source in self.sources:
@@ -104,7 +79,40 @@ class sceneMixerDTO(mixerBaseDTO):
                         value = float(value)
                     setattr(source, key, value)
             updatedSources.append(source)
-        self.sources = updatedSources
+        self.sources = updatedSources                           
+
+class mixerDTO(mixerBaseDTO):
+    type: Optional[str] = "mixer"    
+    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
+
+
+class sceneMixerDTO(mixerBaseDTO):
+    type: Optional[str] = "scene"
+    n: Optional[int] = 0
+    locked: Optional[bool] = False
+
+
+
+    def getMixerInputN(self, n):
+        return self.sources[n] if len(self.sources) > n else None
+
+    def countMixerInputs(self):
+        return len(self.sources) if self.sources else None
+
+
+
+    def getMixerInputDTObySource(self, src: UUID):
+        for source in self.sources:
+            print(source.src)
+            if str(source.src) == str(src):
+                return source
+
+
+
+    def removeInput(self, sink):
+        self.sources = [source for source in self.sources if source.sink != sink]
+
+
 
     @field_validator("type")
     @classmethod
@@ -127,14 +135,7 @@ class sceneMixerDTO(mixerBaseDTO):
 
 class programMixerDTO(mixerBaseDTO):
     type: str = "program"
-    sink_1: Optional[UUID] = None
-    sink_2: Optional[UUID] = None
-    active: Optional[str] = "sink_1"
-    transition: Optional[str] = None
-
-class previewMixerDTO(mixerBaseDTO):
-    type: str = "preview"
-    src: Optional[UUID] = None
+    active: Optional[str] = None
 
 class MixerDeleteDTO(BaseModel):
     uid: UUID
@@ -147,6 +148,12 @@ class mixerCutDTO(BaseModel):
     src: Union[UUID, str] = "None"
     target: UUID
     sink: Optional[str] = None
+
+class mixerCutProgramDTO(BaseModel):
+    src: Union[UUID, str] = "None"
+    transition: Optional[str] = None
+    duration: Optional[int] = None
+
 
 class mixerRemoveDTO(BaseModel):
     src: UUID

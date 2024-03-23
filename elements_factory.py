@@ -1,9 +1,8 @@
 from uuid import uuid4
 import time
-from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, previewMixerDTO, mixerCutDTO
+from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
-from pipelines.mixers.preview_mixer import previewMixer
 
 from api.inputs_dtos import InputDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
 from pipelines.inputs.test_input import TestInput
@@ -85,7 +84,7 @@ class ElementsFactory:
                             if input.get("sink") is not None:
                                 sink = input.get("sink")
 
-                            properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked']
+                            properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute']
                             for prop in properties:
                                 if input.get(prop):
                                     mixer.data.update_mixer_input(sink ,  **{prop: input.get(prop)})
@@ -120,17 +119,11 @@ class ElementsFactory:
                 pipeline = self.create_input(input_details['type'], name, input_details)
 
 
-#        if True:
-#            programUuid = uuid4()
-#            programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
-#            programwMixer = programMixer(data=programDTO) 
-#            self.handler.add_pipeline(programwMixer)
-#            programPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=programUuid)))
-#            self.handler.add_pipeline(programPreviewOutput)
-#
-#            previewUuid = uuid4()
-#            previewDTO = previewMixerDTO(uid=previewUuid, name="preview", type="preview")
-#            previewMixer = previewMixer(data=previewDTO) 
-#            self.handler.add_pipeline(previewMixer)
-#            previewPreviewOutput = (previewHlsOutput(data=previewHlsOutputDTO(src=previewUuid)))
-#            self.handler.add_pipeline(previewPreviewOutput)  
+        if True:
+            programUuid = uuid4()
+            programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
+            programwMixer = programMixer(data=programDTO) 
+            self.handler.add_pipeline(programwMixer)
+            programPreviewOutput = previewHlsOutput(data=previewHlsOutputDTO(src=programUuid))
+            self.handler.add_pipeline(programPreviewOutput)
+

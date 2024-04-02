@@ -82,6 +82,7 @@ class Mixer(GSTBase, ABC):
             source = vars(self.data.getMixerInputDTO(sink))
             for prop in properties:
                 if source[prop] is not None:
+                    #print(source[prop])
                     pad.set_property(prop, source[prop])
                 else:
                     source[prop] = pad.get_property(prop)
@@ -100,7 +101,7 @@ class Mixer(GSTBase, ABC):
                 convert_str = f" audioresample ! audioconvert !  audiorate "
 
             src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{self.data.uid}_{sink_name}"
-            f" max-time=3000000000 handle-segment-change=true format=time allow-renegotiation=true  is-live=true stream-sync=restart-ts do-timestamp=true listen_to={source} !  queue ! "
+            f" max-time=3000000000 handle-segment-change=true format=time  is-live=true stream-sync=restart-ts do-timestamp=true listen_to={source} ! "
             f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue  max-size-time=3000000000 ", True) #max-size-time=1000000000
             src.set_name(src_name)
             pipeline.add(src)

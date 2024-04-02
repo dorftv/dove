@@ -24,7 +24,7 @@ preview_enabled = true
 [resolutions."WSVGA"]
 {width = 1024, height = 576}
 [resolutions."qHD"]
-{width = 640, height = 360}
+{width = 960, height = 540}
 [resolutions."Preview"]
 {width = 480, height = 270}
 [resolutions."SmallPreview"]

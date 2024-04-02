@@ -30,6 +30,7 @@ class InputDTO(BaseModel):
     height: Optional[int] = None
     width: Optional[int] = None
     preview: Optional[bool] = True
+    locked: Optional[bool] = False
     volume: Optional[float] = 0.8
     duration: Optional[int] = None
     position: Optional[int] = None
@@ -106,6 +107,13 @@ class PlaylistInputDTO(InputDTO):
     looping: bool = False
     total_duration: Optional[int] = None
     playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
+
+class updateInputDTO(BaseModel):
+    uid: UUID
+    type: str = 'update'
+    position: Optional[int] = None
+    state: Optional[str] = None
+    volume: Optional[float] = None
 
 
 class InputDeleteDTO(BaseModel):

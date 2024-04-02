@@ -19,10 +19,10 @@ class programMixer(Mixer):
         caps = f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA"
         audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
 
-        self.add_pipeline(f"videotestsrc pattern=2 is-live=true ! { caps } ! "
-            f" compositor zero-size-is-unscaled=false background=black force-live=true  name=videomixer_{self.data.uid} sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !  "
+        self.add_pipeline(f"videotestsrc pattern=18 is-live=true ! { caps } ! "
+            f" compositor zero-size-is-unscaled=false name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !  "
             + self.get_video_end() +
-            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder name=audiomixer_{self.data.uid}  ! audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
+            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder  name=audiomixer_{self.data.uid}  force-live=true ignore-inactive-pads=true ! audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
             + self.get_audio_end())
 
         # Pads for scene sources
@@ -57,6 +57,7 @@ class programMixer(Mixer):
                 self.unlink_pad(audio_or_video, old_sink)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
+    # @TODO implement fade
     def get_alpha_controller(pad):
         cs = GstController.InterpolationControlSource()
         cs.set_property('mode', GstController.InterpolationMode.LINEAR)

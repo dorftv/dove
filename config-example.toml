@@ -1,0 +1,91 @@
+[main]
+default_resolution = "qHD"
+
+
+[scenes]
+
+[scenes.scene1]
+type="scene"
+name="Example Scene"
+
+[scenes.scene1.input_1]
+alpha=0.5
+[scenes.scene1.input_1.input]
+type = "testsrc"
+pattern = 1
+wave = 4
+
+[scenes.scene1.input_2]
+alpha=0.5
+[scenes.scene1.input_2.input]
+name="musikvideo"
+type = "ytdlpsrc"
+loop=true
+uri="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+volume=0.5
+
+
+[scenes.scene2]
+type="scene"
+name="Locked Scene"
+locked=true
+src_locked=true
+
+[scenes.scene2.newinput]
+alpha=0.5
+locked=true
+src_locked=true
+[scenes.scene2.newinput.input]
+locked=true
+src_locked=true
+type="testsrc"
+pattern=0
+wave=4
+
+[scenes.scene2.logo]
+alpha=0.5
+locked=true
+src_locked=true
+[scenes.scene2.logo.input]
+type="wpesrc"
+locked=true
+location="https://static.dev.dorftv.at/logo.html"
+draw_background=false
+
+
+[scenes.videowall]
+type="scene"
+name="Reuse Inputs"
+locked=false
+
+[scenes.videowall.lefttop]
+width=480
+height=270
+xpos=0
+input="input_1"
+
+[scenes.videowall.righttop]
+width=480
+height=270
+xpos=480
+input="input_2"
+
+[scenes.videowall.leftbottom]
+width=480
+height=270
+xpos=0
+ypos=270
+input="newinput"
+
+[scenes.videowall.rightbottom]
+width=480
+height=270
+xpos=480
+ypos=270
+[scenes.videowall.rightbottom.input]
+type="testsrc"
+pattern=9
+wave=4
+
+
+[scenes.custom]

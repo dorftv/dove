@@ -37,18 +37,47 @@ class ConfigReader:
     def get_preview_enabled(self):
         #print(self.config.preview_enabled)
         return True
+    def get_scenes(self):
+        if 'scenes' in self.config:
+            return list(self.config['scenes'].keys())
+        else:
+            return []
 
-    def get_mixers(self):
-        if 'mixers' in self.config:
-            return self.config['mixers']
+    def get_scene_details(self, scene_name):
+        if 'scenes' in self.config and scene_name in self.config['scenes']:
+            return self.config['scenes'][scene_name]
         else:
             return None
+
+    def get_scene_inputs(self, scene_name):
+        scene_section = scene_name
+        inputs = {}
+
+        for section, values in self.config['scenes'].items():
+            if section == scene_section:
+                for key, value in values.items():
+                    if isinstance(value, dict):
+                        inputs[key] = value
+        return inputs
+
+    def get_input_details(self, scene_name, input_name):
+        scene_inputs = self.get_scene_inputs(scene_name)
+        if scene_inputs and input_name in scene_inputs:
+            return scene_inputs[input_name]
+        else:
+            return None      
 
     def get_inputs(self):
         if 'inputs' in self.config:
             return self.config['inputs']
         else:
             return None
+
+    def get_outputs(self):
+        if 'outputs' in self.config:
+            return self.config['outputs']
+        else:
+            return None            
 
     def get_resolutions(self):
         return self.config['resolutions']

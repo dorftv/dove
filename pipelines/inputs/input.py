@@ -6,12 +6,12 @@ from caps import Caps
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls_output import previewHlsOutput
 from typing import Union
-from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
+from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, updateInputDTO
 import asyncio
 from gi.repository import Gst, GLib
 
 from api.websockets import manager
-
+import time
 from api.outputs_dtos import previewHlsOutputDTO
 from pipeline_handler import HandlerSingleton
 
@@ -28,11 +28,12 @@ class Input(GSTBase, ABC):
         return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue max-size-time=3000000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true forward-eos=false"
     
     def add_preview(self):
-        handler = HandlerSingleton()
-        if not handler.get_preview_pipeline(self.data.uid):
-            output = previewHlsOutput(data=previewHlsOutputDTO(src=self.data.uid))
-            handler.add_pipeline(output)
-            asyncio.run(manager.broadcast("CREATE", output.data))
+        if self.data.preview == True:
+            handler = HandlerSingleton()
+            if not handler.get_preview_pipeline(self.data.uid):
+                output = previewHlsOutput(data=previewHlsOutputDTO(src=self.data.uid))
+                handler.add_pipeline(output)
+                asyncio.run(manager.broadcast("CREATE", output.data))
 
     def seek_to_position(self, position):
         position_nanoseconds = position * Gst.SECOND
@@ -48,20 +49,25 @@ class Input(GSTBase, ABC):
 
     async def update(self, data):
         pipeline = self.get_pipeline()
-        if data.get('volume') is not None:
-            self.data.volume = data['volume']
+        if not isinstance(data, updateInputDTO):
+            data = updateInputDTO.parse_obj(data)
+        if data.volume is not None:
+            self.data.volume = data.volume
             volume = pipeline.get_by_name('volume')
-            volume.set_property('volume', data['volume'])
-        if data.get('position') is not None:
-            self.seek_to_position(data['position'])
-            self.data.position = data['position']
-
-        if data.get('state') is not None:
+            volume.set_property('volume', data.volume)
+        if data.state is not None:
             state_map = {
                 'PLAYING': Gst.State.PLAYING,
                 'PAUSED': Gst.State.PAUSED
             }
-            pipeline.set_state(Gst.State.PAUSED)
+            pipeline.set_state(state_map[data.state])            
+        if data.position is not None:
+            self.seek_to_position(data.position)
+            self.data.position = data.position
+            # @TODO fix preview after seeking when state=paused
+            #if self.data.state == "PAUSED":
+
+
 
         await manager.broadcast("UPDATE", self.data)
 

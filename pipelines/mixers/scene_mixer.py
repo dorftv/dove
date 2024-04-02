@@ -22,7 +22,7 @@ class sceneMixer(Mixer):
         self.add_pipeline(f"videotestsrc is-live=true pattern=18 ! {caps} ! "
             f" compositor zero-size-is-unscaled=false background=black force-live=true ignore-inactive-pads=true name=videomixer_{self.data.uid} sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } ! "
             f" {self.get_video_end()} "
-            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder name=audiomixer_{self.data.uid} !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
+            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder latency=50 name=audiomixer_{self.data.uid} force-live=true ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
             + self.get_audio_end())
 
         loop = self.data.countMixerInputs()
@@ -75,25 +75,7 @@ class sceneMixer(Mixer):
                 asyncio.create_task(manager.broadcast("UPDATE", self.data))
             return
         
-
-    def update_pad_from_sources(self, audio_or_video, sink):
-            pad = self.get_pad(audio_or_video, sink)
-            source = vars(self.data.getMixerInputDTO(sink))
-            if audio_or_video == "video":
-                properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder']
-            if audio_or_video == "audio":
-                properties = ['volume', 'mute']
-            source = vars(self.data.getMixerInputDTO(sink))
-            for prop in properties:
-                if source[prop] is not None:
-                    pad.set_property(prop, source[prop])
-                else:
-                    source[prop] = pad.get_property(prop)
-            return pad
-
-
-
-             
+           
 
     def remove_mixer_pad(self, audio_or_video, sink_name):
         mixerpipe = self.get_pipeline()

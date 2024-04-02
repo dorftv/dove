@@ -31,6 +31,7 @@ class OutputDTO(BaseModel):
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
+    locked: Optional[bool] = False
 
     @field_validator("type")
     @classmethod

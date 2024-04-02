@@ -2,19 +2,18 @@ from typing import Annotated, Optional, List
 from uuid import UUID, uuid4
 from typing import Union, Literal
 
-from pydantic import BaseModel, Field, field_validator, validator, model_validator, root_validator
+from pydantic import BaseModel, Field, field_validator, validator, model_validator, root_validator, PrivateAttr
 from pydantic_core.core_schema import FieldValidationInfo
 from helpers import generateId
-from config_handler import ConfigReader  
+from config_handler import ConfigReader
 
 config = ConfigReader()
 
 uniqueId = generateId("Scene ")
 uniqueIntId = generateId()
 
-
 class mixerInputDTO(BaseModel):
-    index: int =  Field(default_factory=lambda: int(next(uniqueIntId)))
+    index: Optional[int] = None
     name: Optional[str] = None
     sink: Optional[str] = None
     src: Union[UUID, str] = "None"
@@ -45,13 +44,17 @@ def get_default_volume() -> int:
 
 class mixerBaseDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
+    #sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
+    sources: Optional[List[mixerInputDTO]] = []
+
     preview: Optional[bool] = True
     name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = Field(default_factory=get_default_volume)
+
+
 
     def addInput(self, src: mixerInputDTO):
         if not any(source.sink == src.sink for source in self.sources):
@@ -69,7 +72,7 @@ class mixerBaseDTO(BaseModel):
                 source.width = self.width
             if source.height is None:
                 source.height = self.height
-                
+
     def update_mixer_input(self, sink: str, **kwargs):
         updatedSources = []
         for source in self.sources:
@@ -79,10 +82,10 @@ class mixerBaseDTO(BaseModel):
                         value = float(value)
                     setattr(source, key, value)
             updatedSources.append(source)
-        self.sources = updatedSources                           
+        self.sources = updatedSources
 
 class mixerDTO(mixerBaseDTO):
-    type: Optional[str] = "mixer"    
+    type: Optional[str] = "mixer"
     sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
 
 
@@ -90,6 +93,7 @@ class sceneMixerDTO(mixerBaseDTO):
     type: Optional[str] = "scene"
     n: Optional[int] = 0
     locked: Optional[bool] = False
+    src_locked: Optional[bool] = False
 
 
 

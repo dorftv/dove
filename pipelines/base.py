@@ -89,6 +89,9 @@ class GSTBase(BaseModel):
         err, debug = message.parse_error()
         # @TODO add err message to data
         self.data.state = "ERROR"
+        error_message = GLib.Error(err).message
+        print(error_message)
+        self.data.details = str(error_message)
         asyncio.run(manager.broadcast("UPDATE", self.data))
 
     def add_duration(self):
@@ -100,7 +103,7 @@ class GSTBase(BaseModel):
     def add_resolution(self):
         pipeline = self.get_pipeline()
         factory_name = pipeline.get_factory().get_name()
-        if factory_name == 'playbin3':  
+        if factory_name == 'playbin3':
             video_sink = pipeline.get_property('video-sink')
             if video_sink:
                 pad = video_sink.get_static_pad('sink')

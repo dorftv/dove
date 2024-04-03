@@ -6,7 +6,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 
 from caps import Caps
 from helpers import generateId
-from config_handler import ConfigReader  
+from config_handler import ConfigReader
 
 config = ConfigReader()
 
@@ -34,6 +34,7 @@ class InputDTO(BaseModel):
     volume: Optional[float] = 0.8
     duration: Optional[int] = None
     position: Optional[int] = None
+    details: Optional[str] = None
 
 
     @field_validator("state")
@@ -78,7 +79,7 @@ class WpeInputDTO(InputDTO):
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
 
-    
+
 class PlaylistItemDTO(BaseModel):
     uri: str
     type: str
@@ -91,11 +92,11 @@ class PlaylistItemDTO(BaseModel):
     def valid_type(cls, value: str):
         ALLOWED_TYPES = ["video", "html"]
         if value not in ALLOWED_TYPES:
-            raise ValueError(f"Invalid Playlist Item types, must be one of {', '.join(ALLOWED_TYPES)}")    
+            raise ValueError(f"Invalid Playlist Item types, must be one of {', '.join(ALLOWED_TYPES)}")
         return value
 
     class Config:
-        arbitrary_types_allowed = True 
+        arbitrary_types_allowed = True
 
 
 class PlaylistInputDTO(InputDTO):

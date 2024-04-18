@@ -1,7 +1,7 @@
 # main.py
 from fastapi import Request, APIRouter, HTTPException
 from pydantic import ValidationError
-from api.mixers_dtos import mixerDTO, mixerCutDTO, mixerInputDTO, mixerInputsDTO, mixerPadDTO, mixerCutProgramDTO
+from api.mixers_dtos import mixerDTO, mixerCutDTO, mixerInputDTO, mixerInputsDTO, mixerSlotDTO, mixerCutProgramDTO, mixerRemoveSlotDTO
 from pipelines.base import GSTBase
 import json
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api")
 
 
 @router.post("/mixer/cut_program")
-async def action_cur_program(request: Request, data: mixerCutProgramDTO):
+async def action_cut_program(request: Request, data: mixerCutProgramDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     program: mixerMixerDTO = handler.get_program()
     print(program)
@@ -35,18 +35,17 @@ async def action_remove_source(request: Request, data: mixerCutDTO):
     response = mixer.remove_source(data)
     return response
 
-@router.post("/mixer/add_pad")
-async def action_add_pad(request: Request, data: mixerPadDTO):
+@router.post("/mixer/add_slot")
+async def action_add_slot(request: Request, data: mixerSlotDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     mixer: mixerMixerDTO = handler.get_pipeline("mixers", data.uid)
-
-    response = mixer.add_pads()
+    response = mixer.add_slot(data.slot)
     return response
 
-@router.post("/mixer/remove_pad")
-async def action_remove_pad(request: Request, data: mixerPadDTO):
+@router.post("/mixer/remove_slot")
+async def action_remove_slot(request: Request, data: mixerRemoveSlotDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     mixer: mixerMixerDTO = handler.get_pipeline("mixers", data.uid)
-
-    response = mixer.remove_pads(data.sink)
+    inputDTO: mixerInputDTO = mixer.data.getMixerInputDTO(data.index)
+    response = mixer.remove_slot(inputDTO)
     return response

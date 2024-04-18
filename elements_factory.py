@@ -68,53 +68,49 @@ class ElementsFactory:
 
         if self.scene_list is not None:
             for scene_name in self.scene_list:
-                print(scene_name)
                 scene_details = config.get_scene_details(scene_name)
                 #print(scene_details)
 
-                scene_pads = config.get_scene_inputs(scene_name)
-                #print(scene_pads)
+                scene_slots = config.get_scene_inputs(scene_name)
+
                 n = scene_details.get('n', 0)
-                if scene_pads is not None:
-                    s = len(scene_pads)
+                if scene_slots is not None:
+                    s = len(scene_slots)
                     if s > n:
                         scene_details["n"] = s
                 scene = self.create_mixer(scene_details.get('name', scene_name), scene_details)
 
-
-                if scene_pads is not None:
-                    i = 0
-                    for name, details in scene_pads.items():
+                index = 0
+                if scene_slots is not None:
+                    for name, details in scene_slots.items():
                         if details.get("name", None) is None:
                             details["name"] = name
 
-                        if details.get("sink", None) is None:
-                            i += 1
-                            sink = f"sink_{i}"
-                        else:
-                            sink = details.get("sink")
                         properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute', 'preview', 'name']
                         for prop in properties:
                             value = details.get(prop)
                             if value is not None:
-                                scene.data.update_mixer_input(sink ,  **{prop: value})
-                        scene.update_pad_from_sources("video", sink)
+                                scene.data.update_mixer_input(index ,  **{prop: value})
 
                         input = details.get('input', None)
                         if input:
 
                             if isinstance(input, str):
-                                pipeline =  self.handler.get_pipeline("inputs", inputs[input])
+                                pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                             elif input.get('type', None) is not None:
                                 pipeline = self.create_input(input.get('type'), name, input)
-                                inputs[name] =  pipeline.data.uid
+                                inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
                             if pipeline is not None:
                                 uid = pipeline.data.uid
                                 # @TODO without this audio is distorted. find a better way.
                                 #time.sleep(0.3)
-                                scene.data.update_mixer_input(sink, src=uid)
-                                cutInput = mixerCutDTO(src=uid, target=scene.data.uid, sink=sink)
+                                scene.data.update_mixer_input(index, src=uid)
+                                cutInput = mixerCutDTO(src=uid, target=scene.data.uid, index=index)
                                 scene.add_source(cutInput)
+                                scene.update_pad_from_sources("video", index)
+                        index += 1
+
+
         if self.output_list is not None:
             for name, output in self.output_list.items():
                 type = output.get('type')

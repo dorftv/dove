@@ -102,5 +102,5 @@ async def delete(request: Request, data: InputDeleteDTO):
                     mixerInput = mixer.data.getMixerInputDTObySource(data.uid)
                     if mixerInput is None:
                         break
-                    mixer.remove_source(mixerRemoveDTO(src=data.uid, sink=mixerInput.sink))
+                    mixer.remove_source(mixerRemoveDTO(src=data.uid, index=mixerInput.index))
     return SuccessDTO(code=200, details="OK")

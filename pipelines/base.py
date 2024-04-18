@@ -16,8 +16,7 @@ from logger import logger
 
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
-
-    # attrs: BaseModel
+    _clock = None  # <--- Use a private class variable
 
     @abstractmethod
     def build(self):
@@ -27,17 +26,25 @@ class GSTBase(BaseModel):
     def describe(self):
         pass
 
+    def get_clock(cls) -> Gst.Clock:
+        if cls._clock is None:
+            cls._clock = Gst.SystemClock.obtain()
+        return cls._clock
+
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
         if type(pipeline) == str:
             logger.log(f"Added pipeline: {pipeline}", level='DEBUG')
 
             pipeline = Gst.parse_launch(pipeline)
+            pipeline.use_clock(self.get_clock())
+
 
         if pipeline is None:
             return
         self.inner_pipelines.append(pipeline)
         pipeline.set_name(str(self.data.uid))
         pipeline.set_state(Gst.State.PLAYING)
+
         bus = pipeline.get_bus()
         bus.add_signal_watch()
         bus.connect("message::error", lambda b, m: self.run_on_master(self._on_error, b, m)),

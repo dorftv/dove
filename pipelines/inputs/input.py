@@ -20,13 +20,15 @@ from pipeline_handler import HandlerSingleton
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        caps = f"video/x-raw,width=1280,height=720,format=BGRA"
+        caps = f"video/x-raw,format=BGRA"
 
-        return f"  videoconvert ! videoscale !  videorate !  {caps } ! queue max-size-time=3000000000 !  interpipesink name=video_{self.data.uid} async=true sync=true forward-eos=false"
+        return f"  videoconvert ! videoscale !  videorate !  {caps } ! queue  max-size-time=300000000 !  interpipesink name=video_{self.data.uid} async=true sync=true max-buffers=10 drop=true"
 
     def get_audio_end(self):
-        return f" audioconvert ! volume name=volume volume={self.data.volume} ! queue max-size-time=3000000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true forward-eos=false"
-    
+        audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
+
+        return f" volume name=volume volume={self.data.volume} ! audioconvert ! audiorate ! audioresample ! { audio_caps }  !  queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true max-buffers=10 drop=true"
+
     def add_preview(self):
         if self.data.preview == True:
             handler = HandlerSingleton()
@@ -60,7 +62,7 @@ class Input(GSTBase, ABC):
                 'PLAYING': Gst.State.PLAYING,
                 'PAUSED': Gst.State.PAUSED
             }
-            pipeline.set_state(state_map[data.state])            
+            pipeline.set_state(state_map[data.state])
         if data.position is not None:
             self.seek_to_position(data.position)
             self.data.position = data.position

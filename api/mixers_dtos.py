@@ -53,36 +53,59 @@ class mixerBaseDTO(BaseModel):
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = Field(default_factory=get_default_volume)
+    details: Optional[str] = None
+
+    def add_slot(self, source: mixerInputDTO = None):
+        if source == None:
+            source = mixerInputDTO()
+        source.index = len(self.sources)
+        self.sources.append(source)
+        data = dict(source)
+        data.pop('index', None)
+        self.update_mixer_input(source.index, **data)
+        self.update_source_with_defaults(source.index)
 
 
+    def remove_slot(self, source: mixerInputDTO):
+        if source in self.sources:
+            self.sources.remove(source)
+            self._reindex_sources()
+
+    def _reindex_sources(self):
+        for i, source in enumerate(self.sources):
+            source.index = i
 
     def addInput(self, src: mixerInputDTO):
         if not any(source.sink == src.sink for source in self.sources):
             self.sources.append(src)
 
-    def getMixerInputDTO(self, sink: str):
+    def getMixerInputDTO(self, index: int):
         for source in self.sources:
-            if (str(source.sink)) ==  (str(sink)):
+            if source.index ==  index:
                 return source
         return None
 
-    def update_sources_with_defaults(self):
+    def update_source_with_defaults(self, index: int):
         for source in self.sources:
-            if source.width is None:
-                source.width = self.width
-            if source.height is None:
-                source.height = self.height
+            if source.index == index:
+                if source.width is None:
+                    source.width = self.width
+                if source.height is None:
+                    source.height = self.height
+                if source.zorder is None:
+                    source.zorder = source.index + 1
+                if source.name is None:
+                    source.name = f"Slot {source.index}"
+                break
 
-    def update_mixer_input(self, sink: str, **kwargs):
-        updatedSources = []
+    def update_mixer_input(self, index: int, **kwargs):
         for source in self.sources:
-            if str(source.sink) == str(sink):
+            if source.index == index:
                 for key, value in kwargs.items():
                     if key == "alpha":
                         value = float(value)
                     setattr(source, key, value)
-            updatedSources.append(source)
-        self.sources = updatedSources
+                break
 
 class mixerDTO(mixerBaseDTO):
     type: Optional[str] = "mixer"
@@ -139,19 +162,23 @@ class sceneMixerDTO(mixerBaseDTO):
 
 class programMixerDTO(mixerBaseDTO):
     type: str = "program"
-    active: Optional[str] = None
+    active: Optional[int] = None
 
 class MixerDeleteDTO(BaseModel):
     uid: UUID
 
-class mixerPadDTO(BaseModel):
+class mixerRemoveSlotDTO(BaseModel):
     uid: UUID
-    sink: Optional[mixerInputDTO] = None
+    index: Optional[int] = None
+
+class mixerSlotDTO(BaseModel):
+    uid: UUID
+    slot:  Optional[mixerInputDTO] = None
 
 class mixerCutDTO(BaseModel):
     src: Union[UUID, str] = "None"
     target: UUID
-    sink: Optional[str] = None
+    index: Optional[int] = None
 
 class mixerCutProgramDTO(BaseModel):
     src: Union[UUID, str] = "None"
@@ -161,7 +188,7 @@ class mixerCutProgramDTO(BaseModel):
 
 class mixerRemoveDTO(BaseModel):
     src: UUID
-    sink: Optional[str] = None
+    index: Optional[int] = None
 
 class SuccessDTO(BaseModel):
     code: int

@@ -13,48 +13,56 @@ from gi.repository import GObject, Gst, GstController
 
 class programMixer(Mixer):
     data: programMixerDTO
-    
+
     def build(self):
         # @TODO improve caps handling
         caps = f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA"
         audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
 
-        self.add_pipeline(f"videotestsrc pattern=18 is-live=true ! { caps } ! "
-            f" compositor zero-size-is-unscaled=false name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !  "
+        self.add_pipeline(f"videotestsrc pattern=18 ! { caps } ! "
+            f" compositor latency=70000000  name=videomixer_{self.data.uid} background=black ignore-inactive-pads=true sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !   "
             + self.get_video_end() +
-            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder  name=audiomixer_{self.data.uid}  force-live=true ignore-inactive-pads=true ! audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
+            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder  latency=70 name=audiomixer_{self.data.uid}  force-live=true ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
             + self.get_audio_end())
-
         # Pads for scene sources
-        self.add_pads()
-        self.add_pads()
-        # @TODO add overays
+        self.add_slot()
+        self.add_slot()
+        # @TODO add overays index >= 2
 
     def cut_program(self, data: mixerCutProgramDTO):
         print(data.src)
-        if self.data.active == "sink_1" or self.data.active is None:
-            self.set_input("sink_1", "sink_2", data)
-        elif self.data.active == "sink_2":
-            self.set_input("sink_2", "sink_1", data)
+        if self.data.active == None:
+            old_sink = None
+            index = 0
+        else:
+            mixerInputDTO = self.data.getMixerInputDTO(self.data.active)
+            old_sink = mixerInputDTO.sink
+            index = 0 if self.data.active == 1 else 1
 
-    def set_input(self, old_sink, new_sink, data):
-        self.data.update_mixer_input(new_sink, src=data.src)
-        self.data.active = new_sink
+
+        self.data.update_mixer_input(index, src=data.src)
+        self.data.active = index
         for audio_or_video in ["audio", "video"]:
-            bin = self.create_source_element(audio_or_video, new_sink)
-            src_pad = bin.get_static_pad("src")
+            sink = self.add_mixer_pad(audio_or_video, index)
 
-            self.set_pad_source(audio_or_video, new_sink)
-            self.link_pad(audio_or_video, new_sink)
+            #bin = self.create_source_element(audio_or_video, new_sink)
+            #src_pad = bin.get_static_pad("src")
+
+            #self.set_pad_source(audio_or_video, new_sink)
+            #self.link_pad(audio_or_video, new_sink)
+
 
             if data.transition == "cut" or data.transition is None:
-                self.data.update_mixer_input(new_sink, alpha=1)
-                self.update_pad_from_sources(audio_or_video, new_sink)
+                self.link_pad(audio_or_video, index)
+                if old_sink is not None:
+                    print(type(old_sink))
+                    self.unlink_pad(audio_or_video, old_sink)
+                #self.data.update_mixer_input(index, alpha=1)
+                #self.update_pad_from_sources(audio_or_video, new_sink)
 
-
-                self.data.update_mixer_input(old_sink, src=None, alpha=0)
-                self.update_pad_from_sources(audio_or_video, old_sink)
-                self.unlink_pad(audio_or_video, old_sink)
+                #self.data.update_mixer_input(old_sink, src=None, alpha=0)
+                #self.update_pad_from_sources(audio_or_video, old_sink)
+                #self.unlink_pad(audio_or_video, old_sink)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
     # @TODO implement fade

@@ -20,19 +20,18 @@ class UriInput(Input):
         playbin.set_property("instant-uri", True)
         playbin.set_property("video-sink", videosink_bin)
         playbin.set_property("audio-sink", audiosink_bin)
+
+
         # @TODO add config option for buffer
         playbin.set_property('buffer-duration', 3 * Gst.SECOND)
         playbin.connect('element-setup', self.on_element_setup)
-
+        playbin.connect('about-to-finish', self._on_about_to_finish)
         self.add_pipeline(playbin)
 
-    def _on_eos(self, bus, message):
+    def _on_about_to_finish(self, playbin):
         if self.data.loop:
             playbin = self.get_pipeline()
-            playbin.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, 0)
-            playbin.set_state(Gst.State.PLAYING)
-        else:
-            super()._on_eos(bus, message)
+            playbin.set_property("uri",  playbin.get_property("uri"))
 
     def on_element_setup(self, playbin, element):
         factory = element.get_factory()

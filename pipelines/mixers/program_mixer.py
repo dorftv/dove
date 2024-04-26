@@ -20,9 +20,9 @@ class programMixer(Mixer):
         audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
 
         self.add_pipeline(f"videotestsrc pattern=18 ! { caps } ! "
-            f" compositor latency=70000000  name=videomixer_{self.data.uid} background=black ignore-inactive-pads=true sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !   "
+            f" compositor latency=70000000  name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } !   "
             + self.get_video_end() +
-            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder  latency=70 name=audiomixer_{self.data.uid}  force-live=true ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
+            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder  latency=70 name=audiomixer_{self.data.uid} force-live=true  ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
             + self.get_audio_end())
         # Pads for scene sources
         self.add_slot()
@@ -45,24 +45,11 @@ class programMixer(Mixer):
         for audio_or_video in ["audio", "video"]:
             sink = self.add_mixer_pad(audio_or_video, index)
 
-            #bin = self.create_source_element(audio_or_video, new_sink)
-            #src_pad = bin.get_static_pad("src")
-
-            #self.set_pad_source(audio_or_video, new_sink)
-            #self.link_pad(audio_or_video, new_sink)
-
-
             if data.transition == "cut" or data.transition is None:
                 self.link_pad(audio_or_video, index)
                 if old_sink is not None:
-                    print(type(old_sink))
                     self.unlink_pad(audio_or_video, old_sink)
-                #self.data.update_mixer_input(index, alpha=1)
-                #self.update_pad_from_sources(audio_or_video, new_sink)
 
-                #self.data.update_mixer_input(old_sink, src=None, alpha=0)
-                #self.update_pad_from_sources(audio_or_video, old_sink)
-                #self.unlink_pad(audio_or_video, old_sink)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
     # @TODO implement fade

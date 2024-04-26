@@ -159,8 +159,8 @@ class Mixer(GSTBase, ABC):
                 convert_str = f" audioresample ! audioconvert !  audiorate "
 
             src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{self.data.uid}_{sink_name}"
-            f" leaky-type=downstream max-buffers=0 max-bytes=0 max-time=500000000  format=time stream-sync=restart-ts listen_to={source} ! "
-            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue max-size-buffers=0 max-size-bytes=0 max-size-time=500000000 leaky=upstream ", True)
+            f" leaky-type=upstream is-live=true format=time stream-sync=restart-ts listen_to={source} ! "
+            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue leaky=upstream ", True)
             src.set_name(src_name)
             src.set_clock(self.get_clock())
             pipeline.add(src)

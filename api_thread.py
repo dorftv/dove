@@ -12,7 +12,12 @@ from api import websockets
 from api import configuration
 from api import graphviz
 from api import hls_preview
+
+from proxy import srtrelay
+
 from pipeline_handler import PipelineHandler
+
+
 
 
 
@@ -20,6 +25,7 @@ class APIThread(Thread):
     def __init__(self, pipeline_handler: PipelineHandler):
         super().__init__()
         self.pipeline_handler = pipeline_handler
+
 
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):
@@ -41,10 +47,16 @@ class APIThread(Thread):
 
         # websockets handler
         fastapi.include_router(websockets.router)
-        fastapi.include_router(hls_preview.router)  
+        fastapi.include_router(hls_preview.router)
 
-        # serve frontend with StaticFiles        
+        #proxies
+        fastapi.include_router(srtrelay.router)
+
+        # serve frontend with StaticFiles
         fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+
+
         config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
         server = uvicorn.Server(config)
         server.run()

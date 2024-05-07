@@ -27,3 +27,8 @@ def get_config():
 @router.get("/config/default_resolution")
 def get_config():
     return config.get_default_resolution()
+
+@router.get("/config/proxy_types")
+def get_config():
+    return config.get_proxy_types()
+

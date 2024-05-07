@@ -1,7 +1,17 @@
 [main]
-type = "default" # default | dynamic
-default_resolution = "HD720"
-default_volume = 0.7
+
+# Video
+resolution = "HD720"
+framerate = "30/1"
+
+# Audio
+volume = 0.7
+audio_format = "F32LE"
+audio_rate = 48000
+audio_channels = 2
+
+hls_path = "/var/dove/hls"
+
 
 #preview settings
 preview_format = "hls" # | webrtc

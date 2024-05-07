@@ -17,13 +17,15 @@ class UriInput(Input):
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
         playbin.set_name("playbin")
         playbin.set_property("uri", f"{ self.data.uri }")
-        playbin.set_property("instant-uri", True)
+
+        # @TODO add config option for buffer
+        playbin.set_property("buffer-size", 1048576  )
+        playbin.set_property("async-handling", True)
+        playbin.set_property('buffer-duration', 1 * Gst.SECOND)
+
         playbin.set_property("video-sink", videosink_bin)
         playbin.set_property("audio-sink", audiosink_bin)
 
-
-        # @TODO add config option for buffer
-        playbin.set_property('buffer-duration', 3 * Gst.SECOND)
         playbin.connect('element-setup', self.on_element_setup)
         playbin.connect('about-to-finish', self._on_about_to_finish)
         self.add_pipeline(playbin)

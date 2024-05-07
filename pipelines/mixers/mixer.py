@@ -14,10 +14,10 @@ class Mixer(GSTBase, ABC):
 
 
     def get_video_end(self) -> str:
-        return f" queue max-size-time=300000000 ! interpipesink name=video_{self.data.uid} async=true sync=true  max-buffers=10 drop=true"
+        return f" queue max-size-time=300000000 ! interpipesink name=video_{self.data.uid} async=true sync=true " #ASYNC=False????
 
     def get_audio_end(self):
-        return f" queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true  max-buffers=10 drop=true "
+        return f" queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true "
 
 
     def add_slot(self, mixerSource: mixerInputDTO = None):
@@ -154,13 +154,13 @@ class Mixer(GSTBase, ABC):
         source = f"{audio_or_video}_{mixerInputDTO.src}"
         if src is None:
             if audio_or_video == "video":
-                convert_str = f"   videoconvert ! videoscale !  videorate  "
+                convert_str = f" videorate drop-only=true ! videoconvert ! videoscale "
             elif audio_or_video == "audio":
-                convert_str = f" audioresample ! audioconvert !  audiorate "
+                convert_str = f" audioconvert "
 
             src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{self.data.uid}_{sink_name}"
             f" leaky-type=upstream is-live=true format=time stream-sync=restart-ts listen_to={source} ! "
-            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue leaky=upstream ", True)
+            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue leaky=downstream ", True)
             src.set_name(src_name)
             src.set_clock(self.get_clock())
             pipeline.add(src)
@@ -177,7 +177,7 @@ class Mixer(GSTBase, ABC):
         src = self.get_mixer_source(audio_or_video, index)
         mixerInputDTO = self.data.getMixerInputDTO(index)
         src.set_property("listen-to", f"{audio_or_video}_{mixerInputDTO.src}")
-        self.set_capsfilter(audio_or_video, mixerInputDTO.sink)
+        #self.set_capsfilter(audio_or_video, mixerInputDTO.sink)
 
     def get_pad(self, audio_or_video, sink):
         mixer = self.getMixer(audio_or_video)
@@ -209,14 +209,14 @@ class Mixer(GSTBase, ABC):
         mixer_src_pad = mixer.get_static_pad("src")
         bin = self.get_mixer_source_bin(audio_or_video, sink)
         capsfilter = bin.get_by_name(f"{audio_or_video}_capsfilter")
-        capsfilter_sink_pad = capsfilter.get_static_pad("sink")
+        capsfilter_src_pad = capsfilter.get_static_pad("src")
 
         # Get the peer pad of the capsfilter sink pad
-        peer_pad = capsfilter_sink_pad.get_peer()
+        peer_pad = capsfilter_src_pad.get_peer()
 
         # Get the current caps of the peer pad
-        negotiated_caps = peer_pad.get_current_caps()
+        caps = capsfilter_src_pad.get_current_caps()
 
-        if negotiated_caps:
-            capsfilter.set_property("caps", negotiated_caps)
-            logger.log(f"Set pad caps to {negotiated_caps.to_string()} for {sink}", level='DEBUG')
+        if caps:
+            capsfilter.set_property("caps", caps)
+            logger.log(f"Set pad caps to {caps.to_string()} for {sink}", level='DEBUG')

@@ -13,15 +13,20 @@ class ytDlpInput(Input):
     data: ytDlpInputDTO
 
     def build(self):
-        videosink_bin = Gst.parse_bin_from_description(f"videoconvert ! video/x-raw,format=BGRA ! queue ! {self.get_video_end()}", True)
+        videosink_bin = Gst.parse_bin_from_description(f"{self.get_video_end()}", True)
         audiosink_bin = Gst.parse_bin_from_description(self.get_audio_end(), True)
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
+        playbin.set_name("playbin")
         playbin.set_property("uri", f"{self.extract_video_url(self.data.uri)}")
+
+        # @TODO add config option for buffer
+        playbin.set_property("buffer-size", 1048576  )
+        playbin.set_property("async-handling", True)
+        playbin.set_property('buffer-duration', 1 * Gst.SECOND)
+
         playbin.set_property("video-sink", videosink_bin)
         playbin.set_property("audio-sink", audiosink_bin)
 
-        # @TODO add config option for buffer
-        playbin.set_property('buffer-duration', 3 * Gst.SECOND)
         playbin.connect('element-setup', self.on_element_setup)
         playbin.connect('about-to-finish', self._on_about_to_finish)
         self.add_pipeline(playbin)

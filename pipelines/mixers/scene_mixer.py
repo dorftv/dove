@@ -15,14 +15,11 @@ class sceneMixer(Mixer):
 
 
     def build(self):
-        # @TODO improve caps handling
-        caps = f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA"
-        audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
 
-        self.add_pipeline(f"videotestsrc is-live=true pattern=18 ! {caps} ! "
-            f" compositor zero-size-is-unscaled=false background=black force-live=true ignore-inactive-pads=true name=videomixer_{self.data.uid} sink_0::alpha=1 ! videoconvert ! videoscale ! videorate ! { caps } ! "
+        self.add_pipeline(f"videotestsrc is-live=true pattern=18 ! { self.get_caps('video') } ! "
+            f" compositor zero-size-is-unscaled=false background=black force-live=true ignore-inactive-pads=true name=videomixer_{self.data.uid} sink_0::alpha=1 ! videorate ! videoconvert ! videoscale ! { self.get_caps('video') } ! "
             f" {self.get_video_end()} "
-            f" audiotestsrc wave=4 ! { audio_caps } ! liveadder   name=audiomixer_{self.data.uid} force-live=true ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { audio_caps } ! "
+            f" audiotestsrc wave=4 ! { self.get_caps('audio') } ! liveadder   name=audiomixer_{self.data.uid} force-live=true ignore-inactive-pads=true !  audioconvert ! audiorate ! audioresample ! { self.get_caps('audio') } ! "
             + self.get_audio_end())
 
         loop = self.data.countMixerInputs()

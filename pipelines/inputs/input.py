@@ -20,14 +20,10 @@ from pipeline_handler import HandlerSingleton
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        caps = f"video/x-raw,format=BGRA"
-
-        return f"  videoconvert ! videoscale !  videorate !  {caps } ! queue  max-size-time=300000000 !  interpipesink name=video_{self.data.uid} async=true sync=true max-buffers=10 drop=true"
+        return f"  videorate ! videoconvert ! videoscale !  {self.get_caps('video') } ! queue  max-size-time=300000000 !  interpipesink name=video_{self.data.uid} async=true sync=true "
 
     def get_audio_end(self):
-        audio_caps = "audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)48000, channels=(int)2"
-
-        return f" volume name=volume volume={self.data.volume} ! audioconvert ! audiorate ! audioresample ! { audio_caps }  !  queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true max-buffers=10 drop=true"
+        return f" volume name=volume volume={self.data.volume} ! audioconvert ! audiorate ! audioresample ! { self.get_caps('audio') }  !  queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true "
 
     def add_preview(self):
         if self.data.preview == True:
@@ -68,7 +64,6 @@ class Input(GSTBase, ABC):
             self.data.position = data.position
             # @TODO fix preview after seeking when state=paused
             #if self.data.state == "PAUSED":
-
 
 
         await manager.broadcast("UPDATE", self.data)

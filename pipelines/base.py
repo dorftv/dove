@@ -13,6 +13,9 @@ from api.websockets import manager
 from api.inputs_dtos import InputDTO
 from logger import logger
 
+from config_handler import ConfigReader
+config = ConfigReader()
+
 
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
@@ -30,6 +33,18 @@ class GSTBase(BaseModel):
         if cls._clock is None:
             cls._clock = Gst.SystemClock.obtain()
         return cls._clock
+
+    def get_caps(self, audio_or_video):
+        if audio_or_video == "audio":
+            caps = f"audio/x-raw,format={config.get_default_audio_format()},layout=interleaved,rate={ config.get_default_audio_rate() },channels={ config.get_default_audio_channels()}"
+        elif audio_or_video == "video":
+            caps = f"video/x-raw,format=BGRA"
+            if self.data.width is not None:
+                caps += f",width={self.data.width}"
+            if self.data.height is not None:
+                caps += f",height={self.data.height}"
+        return caps
+
 
     def add_pipeline(self, pipeline: str | Gst.Pipeline):
         if type(pipeline) == str:

@@ -27,16 +27,38 @@ class ConfigReader:
                         config_default[section].update(values)
                     else:
                         config_default[section] = values
-        return config_default        
+        return config_default
 
 
     def get_config(self):
         return self.config
 
-    # @TODO use real value
     def get_preview_enabled(self):
-        #print(self.config.preview_enabled)
-        return True
+        return self.config.preview_enabled
+
+    def get_proxies(self):
+        if 'srtrelay' in self.config:
+            return True
+        else:
+            return False
+
+    def get_proxy_types(self):
+        if 'proxy' in self.config:
+            return list(self.config['proxy'].keys())
+
+        return []
+
+    def get_proxy(self, proxy_type):
+        if proxy_type in self.config['proxy']:
+            return list(self.config['proxy'][proxy_type].keys())
+        return []
+
+    def get_proxy_details(self, proxy_type, proxy_name):
+        # Get specific proxy details
+        if proxy_type in self.config['proxy'] and proxy_name in self.config['proxy'][proxy_type]:
+            return self.config['proxy'][proxy_type][proxy_name]
+        return None
+
     def get_scenes(self):
         if 'scenes' in self.config:
             return list(self.config['scenes'].keys())
@@ -65,7 +87,7 @@ class ConfigReader:
         if scene_inputs and input_name in scene_inputs:
             return scene_inputs[input_name]
         else:
-            return None      
+            return None
 
     def get_inputs(self):
         if 'inputs' in self.config:
@@ -77,7 +99,7 @@ class ConfigReader:
         if 'outputs' in self.config:
             return self.config['outputs']
         else:
-            return None            
+            return None
 
     def get_resolutions(self):
         return self.config['resolutions']
@@ -90,8 +112,28 @@ class ConfigReader:
     def get_preview_resolution(self):
         preview_resolution = self.config['main']['preview_resolution']
         resolutions = self.get_resolutions()
-        return resolutions[preview_resolution]        
+        return resolutions[preview_resolution]
+
+    def get_default_framerate(self):
+        default_framerate = self.config['main']['default_framerate']
+        return default_framerate
+
+    def get_default_audio_format(self):
+        audio_format = self.config['main']['audio_format']
+        return audio_format
+
+    def get_default_audio_rate(self):
+        audio_rate = self.config['main']['audio_rate']
+        return audio_rate
+
+    def get_default_audio_channels(self):
+        audio_channels = self.config['main']['audio_channels']
+        return audio_channels
 
     def get_default_volume(self):
-        default_volume = self.config['main']['default_volume']
+        default_volume = self.config['main']['volume']
         return default_volume
+
+    def get_hls_path(self):
+        hls_path = self.config['main']['hls_path']
+        return hls_path

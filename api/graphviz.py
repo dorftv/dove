@@ -19,19 +19,14 @@ async def debug_pipelines(request: Request):
         if not pipelines:
             continue
 
-    for pipeline in pipelines:
-        inner_pipeline = pipeline.inner_pipelines[0]
-        dot_graph = Gst.debug_bin_to_dot_data(inner_pipeline, Gst.DebugGraphDetails.ALL)
-        
-        # Create a Graphviz graph from the DOT data
-        graph = graphviz.Source(dot_graph)
-        
-        # Render the graph as SVG
-        svg_image = graph.pipe(format='svg').decode('utf-8')
-        
-        graph_images.append(svg_image)
+        for pipeline in pipelines:
+            inner_pipeline = pipeline.inner_pipelines[0]
+            dot_graph = Gst.debug_bin_to_dot_data(inner_pipeline, Gst.DebugGraphDetails.ALL)
 
-    # Create an HTML template with the graph images
+            graph = graphviz.Source(dot_graph)
+            svg_image = graph.pipe(format='svg').decode('utf-8')
+            graph_images.append(svg_image)
+
     html_content = """
     <html>
     <head>

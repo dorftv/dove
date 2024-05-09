@@ -177,7 +177,6 @@ class Mixer(GSTBase, ABC):
         src = self.get_mixer_source(audio_or_video, index)
         mixerInputDTO = self.data.getMixerInputDTO(index)
         src.set_property("listen-to", f"{audio_or_video}_{mixerInputDTO.src}")
-        #self.set_capsfilter(audio_or_video, mixerInputDTO.sink)
 
     def get_pad(self, audio_or_video, sink):
         mixer = self.getMixer(audio_or_video)
@@ -205,16 +204,12 @@ class Mixer(GSTBase, ABC):
             return None
 
     def set_capsfilter(self, audio_or_video, sink):
+        #@TODO find a way to handle re(sizing)
         mixer = self.getMixer(audio_or_video)
         mixer_src_pad = mixer.get_static_pad("src")
         bin = self.get_mixer_source_bin(audio_or_video, sink)
         capsfilter = bin.get_by_name(f"{audio_or_video}_capsfilter")
         capsfilter_src_pad = capsfilter.get_static_pad("src")
-
-        # Get the peer pad of the capsfilter sink pad
-        peer_pad = capsfilter_src_pad.get_peer()
-
-        # Get the current caps of the peer pad
         caps = capsfilter_src_pad.get_current_caps()
 
         if caps:

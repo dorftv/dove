@@ -18,8 +18,6 @@ preview_format = "hls" # | webrtc
 preview_resolution = "SmallPreview"
 preview_enabled = true
 
-#inputs = [ "test_src", "uri" ]
-#outputs = [ "srt", "rtmp", "decklink", "tcpserver" ]
 
 [resolutions."QHD"]
 {width = 2560, height = 1440}
@@ -47,9 +45,11 @@ add_mixer = true
 add_output = true
 input_preview_auto= true
 
+
+[scenes]
+
+
 [inputs]
-
-
 
 
 [outputs]

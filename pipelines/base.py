@@ -34,11 +34,15 @@ class GSTBase(BaseModel):
             cls._clock = Gst.SystemClock.obtain()
         return cls._clock
 
-    def get_caps(self, audio_or_video):
+    def get_caps(self, audio_or_video, format = None):
         if audio_or_video == "audio":
-            caps = f"audio/x-raw,format={config.get_default_audio_format()},layout=interleaved,rate={ config.get_default_audio_rate() },channels={ config.get_default_audio_channels()}"
+            if format is None:
+                format=config.get_default_audio_format()
+            caps = f"audio/x-raw,format={format},layout=interleaved,rate={ config.get_default_audio_rate() },channels={ config.get_default_audio_channels()}"
         elif audio_or_video == "video":
-            caps = f"video/x-raw,format=BGRA"
+            if format is None:
+                format="BGRA"
+            caps = f"video/x-raw,format={ format }"
             if self.data.width is not None:
                 caps += f",width={self.data.width}"
             if self.data.height is not None:

@@ -34,15 +34,13 @@ class previewHlsOutput(Output):
         f" { pipeline_audio_str }")
 
     def get_encoder_string(self):
-        video_caps = f"video/x-raw,width={self.data.width},height={self.data.height}"
-        #video_caps = self.get_caps('video')
+        video_caps = self.get_caps('video', 'I420')
 
         vaapitest = Gst.ElementFactory.make("vah264enc", "vaapitest")
         if vaapitest is not None:
             return f"{video_caps} ! vapostproc ! vah264enc  ! video/x-h264,profile=high ! h264parse ! "
         else:
             return f"{video_caps} ! x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
-
 
 
     def describe(self):

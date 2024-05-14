@@ -16,7 +16,7 @@ class programMixer(Mixer):
 
     def build(self):
 
-        self.add_pipeline(f" "
+        self.add_pipeline(f"videotestsrc is-live=true pattern=2 ! { self.get_caps('video') } ! "
             f" compositor latency=70000000  name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videorate ! videoconvert ! videoscale ! { self.get_caps('video') } !   "
             + self.get_video_end() +
             f" audiotestsrc wave=4 ! { self.get_caps('audio') } ! liveadder  latency=70 name=audiomixer_{self.data.uid} force-live=true  ignore-inactive-pads=true !   { self.get_caps('audio') } ! "
@@ -48,6 +48,7 @@ class programMixer(Mixer):
                     self.unlink_pad(audio_or_video, old_sink)
 
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
+        return data
 
     # @TODO implement fade
     def get_alpha_controller(pad):

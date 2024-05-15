@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
-from config_handler import ConfigReader  
+from config_handler import ConfigReader
 
 from caps import Caps
 from helpers import generateId
@@ -32,6 +32,7 @@ class OutputDTO(BaseModel):
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
     locked: Optional[bool] = False
+    details: Optional[str] = None
 
     @field_validator("type")
     @classmethod
@@ -50,7 +51,7 @@ class OutputDTO(BaseModel):
             raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
 
         return value
-        
+
 
 class previewHlsOutputDTO(OutputDTO):
     type: str = "preview_hls"
@@ -71,6 +72,14 @@ class decklinkOutputDTO(OutputDTO):
     device: int
     mode: int
     interlaced: bool
+
+class shout2sendOutputDTO(OutputDTO):
+    type: str = "shout2send"
+    mount: str
+    ip: str
+    port: int
+    username: str
+    password: str
 
 class OutputDeleteDTO(BaseModel):
     uid: UUID

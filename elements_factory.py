@@ -10,10 +10,13 @@ from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
 
-from api.outputs_dtos import OutputDTO, srtOutputDTO, decklinkOutputDTO, previewHlsOutputDTO
+from api.outputs_dtos import OutputDTO, srtOutputDTO, decklinkOutputDTO, previewHlsOutputDTO, shout2sendOutputDTO
 from pipelines.outputs.srt_output import srtOutput
 from pipelines.outputs.decklink_output import decklinkOutput
+from pipelines.outputs.shout2send_output import shout2sendOutput
+
 from pipelines.outputs.preview_hls_output import previewHlsOutput
+
 
 from config_handler import ConfigReader
 config = ConfigReader()
@@ -122,6 +125,9 @@ class ElementsFactory:
                     if type == "decklinksink":
                         newOutput = (
                             decklinkOutput(data=srtOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))
+                    if type == "shout2send":
+                        newOutput = (
+                            shout2sendOutput(data=shout2sendOutputDTO(src=programUuid, ip=output.get('ip', None), port=output.get('port', None), mount=output.get('mount', None), codec=output.get('codec', None),username=output.get('username', None),  password=output.get('password', None),  locked=output.get('locked', False))))
                     if newOutput is not None:
                         self.handler.add_pipeline(newOutput)
 

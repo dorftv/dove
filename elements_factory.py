@@ -10,12 +10,19 @@ from pipelines.inputs.uri_input import UriInput
 from pipelines.inputs.wpe_input import WpeInput
 from pipelines.inputs.ytdlp_input import ytDlpInput
 
-from api.outputs_dtos import OutputDTO, srtOutputDTO, decklinkOutputDTO, previewHlsOutputDTO, shout2sendOutputDTO
-from pipelines.outputs.srt_output import srtOutput
-from pipelines.outputs.decklink_output import decklinkOutput
-from pipelines.outputs.shout2send_output import shout2sendOutput
+from api.output_models import OutputDTO, PreviewHlsOutputDTO
+from pipelines.outputs.preview_hls import PreviewHlsOutput
 
-from pipelines.outputs.preview_hls_output import previewHlsOutput
+from pipelines.outputs.srtsink import SrtsinkOutput
+from api.outputs.srtsink import SrtsinkOutputDTO
+
+from api.outputs.decklink import DecklinkOutputDTO
+from pipelines.outputs.decklink import DecklinkOutput
+
+from pipelines.outputs.shout2send import Shout2sendOutput
+from api.outputs.shout2send import Shout2sendOutputDTO
+
+
 
 
 from config_handler import ConfigReader
@@ -54,7 +61,7 @@ class ElementsFactory:
         mixerDTO = sceneMixerDTO(uid=mixerUuid, name=name, type="scene", n=scene_details.get('n', 0), locked=scene_details.get('locked', False), src_locked=scene_details.get('src_locked', False))
         mixer = sceneMixer(data=mixerDTO)
         self.handler.add_pipeline(mixer)
-        previewOutput = previewHlsOutput(data=previewHlsOutputDTO(src=mixerUuid))
+        previewOutput = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=mixerUuid))
         self.handler.add_pipeline(previewOutput)
         return mixer
 
@@ -65,7 +72,7 @@ class ElementsFactory:
             programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
             programwMixer = programMixer(data=programDTO)
             self.handler.add_pipeline(programwMixer)
-            programPreviewOutput = previewHlsOutput(data=previewHlsOutputDTO(src=programUuid))
+            programPreviewOutput = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=programUuid))
             self.handler.add_pipeline(programPreviewOutput)
 
 
@@ -121,13 +128,13 @@ class ElementsFactory:
                     uid = uuid4()
                     if type == "srtsink":
                         newOutput = (
-                            srtOutput(data = srtOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))
+                            srtOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))
                     if type == "decklinksink":
                         newOutput = (
-                            decklinkOutput(data=srtOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))
+                            DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))
                     if type == "shout2send":
                         newOutput = (
-                            shout2sendOutput(data=shout2sendOutputDTO(src=programUuid, ip=output.get('ip', None), port=output.get('port', None), mount=output.get('mount', None), codec=output.get('codec', None),username=output.get('username', None),  password=output.get('password', None),  locked=output.get('locked', False))))
+                            Shout2sendOutput(data=Shout2sendOutputDTO(src=programUuid, ip=output.get('ip', None), port=output.get('port', None), mount=output.get('mount', None), codec=output.get('codec', None),username=output.get('username', None),  password=output.get('password', None),  locked=output.get('locked', False))))
                     if newOutput is not None:
                         self.handler.add_pipeline(newOutput)
 

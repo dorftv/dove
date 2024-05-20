@@ -1,8 +1,7 @@
 from abc import ABC
 from uuid import UUID
 
-from caps import Caps
-from api.outputs_dtos import OutputDTO
+from api.output_models import OutputDTO
 
 from pipelines.base import GSTBase
 

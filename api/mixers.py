@@ -6,7 +6,6 @@ from pydantic import ValidationError
 
 from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
 from api.websockets import manager
-from caps import Caps
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
@@ -14,8 +13,8 @@ from pipelines.mixers.scene_mixer import sceneMixer
 
 
 # @TODO find a better place
-from pipelines.outputs.preview_hls_output import previewHlsOutput
-from api.outputs_dtos import previewHlsOutputDTO, OutputDTO, OutputDeleteDTO
+from pipelines.outputs.preview_hls import PreviewHlsOutput
+from api.output_models import PreviewHlsOutputDTO, OutputDTO, OutputDeleteDTO
 
 from uuid import UUID, uuid4
 
@@ -39,8 +38,8 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
         existing_mixer.data = data
     else:
         handler.add_pipeline(mixer)
-        output = previewHlsOutput(data=previewHlsOutputDTO(src=data.uid))
-        handler.add_pipeline(output) 
+        output = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=data.uid))
+        handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)
 

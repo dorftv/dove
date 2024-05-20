@@ -1,10 +1,8 @@
 from abc import ABC
 from uuid import UUID, uuid4
 
-from api.outputs_dtos import previewHlsOutputDTO
-from caps import Caps
 from pipelines.base import GSTBase
-from pipelines.outputs.preview_hls_output import previewHlsOutput
+from pipelines.outputs.preview_hls import PreviewHlsOutput
 from typing import Union
 from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, updateInputDTO
 import asyncio
@@ -12,7 +10,7 @@ from gi.repository import Gst, GLib
 
 from api.websockets import manager
 import time
-from api.outputs_dtos import previewHlsOutputDTO
+from api.output_models import PreviewHlsOutputDTO
 from pipeline_handler import HandlerSingleton
 
 
@@ -29,7 +27,7 @@ class Input(GSTBase, ABC):
         if self.data.preview == True:
             handler = HandlerSingleton()
             if not handler.get_preview_pipeline(self.data.uid):
-                output = previewHlsOutput(data=previewHlsOutputDTO(src=self.data.uid))
+                output = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=self.data.uid))
                 handler.add_pipeline(output)
                 asyncio.run(manager.broadcast("CREATE", output.data))
 

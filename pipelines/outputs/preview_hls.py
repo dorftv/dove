@@ -3,15 +3,15 @@ from typing import Optional
 from uuid import UUID
 from pipeline_handler import HandlerSingleton
 from pipelines.outputs.output import Output
-from api.outputs_dtos import previewHlsOutputDTO
+from api.output_models import PreviewHlsOutputDTO
 from gi.repository import Gst
 from config_handler import ConfigReader
 
 config = ConfigReader()
 
 
-class previewHlsOutput(Output):
-    data: previewHlsOutputDTO
+class PreviewHlsOutput(Output):
+    data: PreviewHlsOutputDTO
     output_base: Optional[Path] = Path(config.get_hls_path())
 
     def build(self):
@@ -33,6 +33,7 @@ class previewHlsOutput(Output):
         f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} "
         f" { pipeline_audio_str }")
 
+    #@TODO: add more encoder options
     def get_encoder_string(self):
         video_caps = self.get_caps('video', 'I420')
 

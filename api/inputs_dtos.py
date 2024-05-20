@@ -4,7 +4,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, validator
 from pydantic_core.core_schema import FieldValidationInfo
 
-from caps import Caps
 from helpers import generateId
 from config_handler import ConfigReader
 

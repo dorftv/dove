@@ -3,11 +3,11 @@ from typing import Optional
 from pipeline_handler import HandlerSingleton
 
 from pipelines.outputs.output import Output
-from api.outputs_dtos import srtOutputDTO
+from api.outputs.srtsink import SrtsinkOutputDTO
 
 
-class srtOutput(Output):
-    data: srtOutputDTO
+class SrtsinkOutput(Output):
+    data: SrtsinkOutputDTO
 
     def build(self):
 

@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 from api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from api.inputs_dtos import InputDTO, InputDeleteDTO
-from api.outputs_dtos import OutputDTO, OutputDeleteDTO
+from api.output_models import OutputDTO, OutputDeleteDTO
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -26,7 +26,7 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-  
+
     async def broadcast(self, channel, data, type=""):
         if not type:
             if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
@@ -40,7 +40,7 @@ class ConnectionManager:
             "type": type,
             "channel": channel,
             "data": data.dict()
-        }        
+        }
 
 
         disconnected_websockets = []

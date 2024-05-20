@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, PlaylistInputDTO, updateInputDTO
-from api.outputs_dtos import OutputDeleteDTO
+from api.output_models import OutputDeleteDTO
 from pipelines.base import GSTBase
 from pipelines.inputs.test_input import TestInput
 from pipelines.inputs.uri_input import UriInput

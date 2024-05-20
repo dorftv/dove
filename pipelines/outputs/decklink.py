@@ -4,11 +4,11 @@ from typing import Optional
 from pipeline_handler import HandlerSingleton
 
 from pipelines.outputs.output import Output
-from api.outputs_dtos import decklinkOutputDTO
+from api.outputs.decklink import DecklinkOutputDTO
 
 
-class decklinkOutput(Output):
-    data: decklinkOutputDTO
+class DecklinkOutput(Output):
+    data: DecklinkOutputDTO
 
     def build(self):
         pipeline_audio_str = ""

@@ -7,7 +7,8 @@ import uvicorn
 from api import inputs
 from api import mixers
 from api import mixer
-from api import outputs
+
+from api import output_routes
 from api import websockets
 from api import configuration
 from api import graphviz
@@ -37,20 +38,23 @@ class APIThread(Thread):
     name = "API Thread"
     def run(self):
         fastapi = FastAPI(lifespan=self.lifespan)
-        fastapi.include_router(configuration.router)
+        fastapi.include_router(configuration.router, tags=['Config'])
         # fastapi.include_router(hls.router)
         fastapi.include_router(inputs.router)
-        fastapi.include_router(outputs.router)
-        fastapi.include_router(mixers.router)
-        fastapi.include_router(mixer.router)
-        fastapi.include_router(graphviz.router)
+
+        fastapi.include_router(output_routes.router, prefix="/api")
+        #fastapi.include_router(outputs_router, prefix="/api", tags=['outputs'])
+
+        fastapi.include_router(mixers.router, tags=['Mixer'])
+        fastapi.include_router(mixer.router, tags=['Mixer'])
+        fastapi.include_router(graphviz.router, tags=['Debug'])
 
         # websockets handler
         fastapi.include_router(websockets.router)
-        fastapi.include_router(hls_preview.router)
+        fastapi.include_router(hls_preview.router, tags=['Preview'])
 
         #proxies
-        fastapi.include_router(srtrelay.router)
+        fastapi.include_router(srtrelay.router, tags=['Proxy'])
 
         # serve frontend with StaticFiles
         fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")

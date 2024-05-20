@@ -36,6 +36,12 @@ class ConfigReader:
     def get_preview_enabled(self):
         return self.config.preview_enabled
 
+    def get_enabled_outputs(self):
+        if 'ui' in self.config:
+            if 'enabled_outputs' in self.config['ui']:
+                return self.config['ui']['enabled_outputs']
+        return []
+
     def get_proxies(self):
         if 'srtrelay' in self.config:
             return True

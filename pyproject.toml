@@ -17,8 +17,9 @@ toml = "^0.10.2"
 yt-dlp = "^2024.03.10"
 graphviz = "^0.20.2"
 #needed or better from system?
-#pygobject = "^3.48.2"
-#gobject = "^0.1.0"
+pygobject = "^3.48.2"
+gobject = "^0.1.0"
+pydantic = "^2.7.1"
 
 
 [build-system]

@@ -124,12 +124,14 @@ class ElementsFactory:
         if self.output_list is not None:
             for name, output in self.output_list.items():
                 type = output.get('type')
+                newOutput = None
                 if type is not None:
+
                     uid = uuid4()
                     if type == "srtsink":
                         newOutput = (
-                            srtOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))
-                    if type == "decklinksink":
+                            SrtsinkOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))
+                    if type == "decklink":
                         newOutput = (
                             DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))
                     if type == "shout2send":

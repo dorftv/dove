@@ -27,7 +27,6 @@ class programMixer(Mixer):
         # @TODO add overays index >= 2
 
     def cut_program(self, data: mixerCutProgramDTO):
-        print(data.src)
         if self.data.active == None:
             old_sink = None
             index = 0

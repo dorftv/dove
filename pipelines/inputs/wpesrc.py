@@ -1,12 +1,12 @@
-from api.inputs_dtos import WpeInputDTO
+from api.inputs.wpesrc import WpesrcInputDTO
 from .input import Input
 
 from pipelines.description import Description
 from pipelines.inputs.input import Input
 
 
-class WpeInput(Input):
-    data: WpeInputDTO
+class WpesrcInput(Input):
+    data: WpesrcInputDTO
 
     def build(self):
         pipeline_str = f" wpesrc location={self.data.location} draw-background={self.data.draw_background} name=wpesrc wpesrc. ! videoconvert ! videoscale ! videorate !  video/x-raw,width={self.data.width},height={self.data.height},format=BGRA  ! videoconvert ! " + self.get_video_end()

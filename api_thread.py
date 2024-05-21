@@ -4,11 +4,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import uvicorn
-from api import inputs
 from api import mixers
 from api import mixer
 
 from api import output_routes
+from api import input_routes
+
 from api import websockets
 from api import configuration
 from api import graphviz
@@ -39,11 +40,9 @@ class APIThread(Thread):
     def run(self):
         fastapi = FastAPI(lifespan=self.lifespan)
         fastapi.include_router(configuration.router, tags=['Config'])
-        # fastapi.include_router(hls.router)
-        fastapi.include_router(inputs.router)
 
+        fastapi.include_router(input_routes.router, prefix="/api")
         fastapi.include_router(output_routes.router, prefix="/api")
-        #fastapi.include_router(outputs_router, prefix="/api", tags=['outputs'])
 
         fastapi.include_router(mixers.router, tags=['Mixer'])
         fastapi.include_router(mixer.router, tags=['Mixer'])

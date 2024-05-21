@@ -16,12 +16,12 @@ for router_module, module_name in get_routers('api.outputs'):
 
 # List avalable Output Types
 @router.get("/outputs/types", tags=['Outputs', 'Config'])
-async def get_fields():
+async def get_output_models():
     return get_model_fields('api.outputs',{'OutputDTO'})
 
 # List all Outputs
 @router.get("/outputs", tags=['Outputs'])
-async def all(request: Request):
+async def get_all_outputs(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     outputs: list[Output] = handler._pipelines["outputs"] if handler._pipelines is not None else []
     descriptions: list[Description] = []
@@ -32,7 +32,7 @@ async def all(request: Request):
 
 # Delete an Output
 @router.delete("/outputs", tags=['Outputs'], response_model=SuccessDTO)
-async def delete(request: Request, data: OutputDeleteDTO):
+async def delete_output(request: Request, data: OutputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
     handler.delete_pipeline("outputs", data.uid)
     await manager.broadcast("DELETE", data)

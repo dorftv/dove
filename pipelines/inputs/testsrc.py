@@ -1,11 +1,11 @@
-from api.inputs_dtos import TestInputDTO
+from api.inputs.testsrc import TestsrcInputDTO
 from .input import Input
 from gi.repository import Gst
 from pipelines.description import Description
 
 
-class TestInput(Input):
-    data: TestInputDTO
+class TestsrcInput(Input):
+    data: TestsrcInputDTO
 
     def build(self):
         video_pipeline_str = f" videotestsrc do-timestamp=true is_live=true pattern={self.data.pattern}  name=videotestsrc_{self.data.uid}  ! { self.get_caps('video') } ! "  + self.get_video_end()

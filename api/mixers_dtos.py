@@ -4,8 +4,9 @@ from typing import Union, Literal
 
 from pydantic import BaseModel, Field, field_validator, validator, model_validator, root_validator, PrivateAttr
 from pydantic_core.core_schema import FieldValidationInfo
-from helpers import generateId
+from helpers import generateId, get_default_height, get_default_width, get_default_volume
 from config_handler import ConfigReader
+
 
 config = ConfigReader()
 
@@ -33,14 +34,6 @@ class mixerInputsDTO(BaseModel):
     src: UUID
     #src: Optional[List[mixerInputDTO]] = []
 
-def get_default_height() -> int:
-    return config.get_default_resolution()['height']
-
-def get_default_width() -> int:
-    return config.get_default_resolution()['width']
-
-def get_default_volume() -> int:
-    return config.get_default_volume()
 
 class mixerBaseDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
@@ -130,7 +123,6 @@ class sceneMixerDTO(mixerBaseDTO):
 
     def getMixerInputDTObySource(self, src: UUID):
         for source in self.sources:
-            print(source.src)
             if str(source.src) == str(src):
                 return source
 

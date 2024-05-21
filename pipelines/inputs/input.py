@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls import PreviewHlsOutput
 from typing import Union
-from api.inputs_dtos import InputDTO, SuccessDTO, InputDeleteDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO, updateInputDTO
+from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO
 import asyncio
 from gi.repository import Gst, GLib
 

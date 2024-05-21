@@ -5,7 +5,7 @@ import asyncio
 import threading
 import os
 import time
-from api.inputs_dtos import PlaylistInputDTO, PlaylistItemDTO
+from api.inputs.playlist import PlaylistInputDTO, PlaylistItemDTO
 from pipelines.inputs.input import Input
 from gi.repository import Gst, GLib
 
@@ -37,19 +37,19 @@ class PlaylistInput(Input):
         audiobin.sync_state_with_parent()
         self.add_pipeline(pipeline)
         print(pipeline)
-                
+
 
 
     def on_pad_added(self, src, pad):
         pad_type = pad.query_caps(None).to_string()
         if "audio" in pad_type:
-            if not pad.is_linked():                
+            if not pad.is_linked():
                 audiobin = self.get_pipeline().get_by_name("audiobin")
                 audiomixer = audiobin.get_by_name("audiomixer")
                 self.get_mixer_pad(audiomixer)
                 audiomixer_sink_pad_template = audiomixer.get_pad_template("sink_%u")
                 audiomixer_sink_pad = audiomixer.request_pad(audiomixer_sink_pad_template, None, None)
-                
+
                 bin = Gst.parse_bin_from_description(f"queue ! audioconvert ! audiorate ! audioresample  ! queue  ", True)
                 bin.set_name("audiopad_bin")
                 self.get_pipeline().add(bin)
@@ -57,7 +57,7 @@ class PlaylistInput(Input):
                 audio_sink_pad = bin.get_static_pad("sink")
                 audio_src_pad = bin.get_static_pad("src")
                 pad.link(audio_sink_pad)
-                
+
                 ghost_pad = Gst.GhostPad.new(audiomixer_sink_pad.get_name(), audiomixer_sink_pad)
                 ghost_pad.set_active(True)
                 audiobin.add_pad(ghost_pad)
@@ -71,7 +71,7 @@ class PlaylistInput(Input):
             video_queue_sink_pad = videobin.get_static_pad("sink")
             pad.link(video_queue_sink_pad)
             pad.add_probe(Gst.PadProbeType.EVENT_DOWNSTREAM, self.on_event)
-      
+
 
     async def html_stop_task(self, duration):
         eos_event = Gst.Event.new_eos()
@@ -102,7 +102,7 @@ class PlaylistInput(Input):
         self.data.current_clip = uri
         if self.data.playlist[self.data.index].type == "video":
             if uri.startswith("http"):
-                response = requests.head(uri)                
+                response = requests.head(uri)
                 if response.status_code == 200:
                     return uri
                 else:
@@ -116,7 +116,7 @@ class PlaylistInput(Input):
              return uri
         else:
             self.next_uri()
-    
+
 
     def change_uri(self):
         uri = self.next_uri()
@@ -129,10 +129,10 @@ class PlaylistInput(Input):
         self.get_pipeline().set_state(Gst.State.PLAYING)
         if self.data.playlist[self.data.index].type == "html":
             loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)            
+            asyncio.set_event_loop(loop)
             loop.run_until_complete(self.html_stop_task(10))
 
-        return False 
+        return False
 
     def on_event(self, pad, info):
         event = info.get_event()
@@ -158,7 +158,7 @@ class PlaylistInput(Input):
         bin = self.get_pipeline().get_by_name("audiopad_bin")
         audiobin = self.get_pipeline().get_by_name("audiobin")
         audiomixer = audiobin.get_by_name("audiomixer")
-        mixer_pad = self.get_mixer_pad(audiomixer)        
+        mixer_pad = self.get_mixer_pad(audiomixer)
         if mixer_pad:
             audiomixer_pad = audiomixer.get_static_pad(mixer_pad)
             audiomixer.release_request_pad(audiomixer_pad)
@@ -171,7 +171,7 @@ class PlaylistInput(Input):
             uridecodebin = pipeline.get_by_name("uridecodebin")
             success, position = pipeline.query_position(Gst.Format.TIME)
             success, duration = uridecodebin.query_duration(Gst.Format.TIME)
-            duration = duration            
+            duration = duration
             if success and position >= duration:
                 break
             time.sleep(0.01)

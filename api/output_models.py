@@ -5,23 +5,9 @@ from pydantic import BaseModel, Field
 
 from config_handler import ConfigReader
 
-from helpers import generateId
-
-
-config = ConfigReader()
+from helpers import generateId, get_default_height, get_default_width, get_default_volume
 
 uniqueId = generateId("Output ")
-
-def get_default_height() -> int:
-    return config.get_default_resolution()['height']
-
-def get_default_width() -> int:
-    return config.get_default_resolution()['width']
-
-def get_default_volume() -> int:
-    return config.get_default_volume()
-# @TODO use default from config file
-
 
 class OutputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]

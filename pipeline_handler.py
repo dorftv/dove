@@ -6,7 +6,7 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GObject, GLib
 
-from api.status_dto import PositionDTO
+from api.input_models import PositionDTO
 from api.websockets import manager
 
 
@@ -142,4 +142,4 @@ class HandlerSingleton:
         if cls.handler is None:
             cls.handler = PipelineHandler()
 
-        return cls.handler  
+        return cls.handler

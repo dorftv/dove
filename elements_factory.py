@@ -3,12 +3,19 @@ import time
 from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
+from api.input_models import InputDTO
 
-from api.inputs_dtos import InputDTO, TestInputDTO, UriInputDTO, WpeInputDTO, ytDlpInputDTO
-from pipelines.inputs.test_input import TestInput
-from pipelines.inputs.uri_input import UriInput
-from pipelines.inputs.wpe_input import WpeInput
-from pipelines.inputs.ytdlp_input import ytDlpInput
+from api.inputs.testsrc import  TestsrcInputDTO
+from pipelines.inputs.testsrc import TestsrcInput
+
+from api.inputs.playbin3 import  Playbin3InputDTO
+from pipelines.inputs.playbin3 import Playbin3Input
+
+from api.inputs.wpesrc import  WpesrcInputDTO
+from pipelines.inputs.wpesrc import WpesrcInput
+
+from api.inputs.ytdlp import YtdlpInputDTO
+from pipelines.inputs.ytdlp import YtdlpInput
 
 from api.output_models import OutputDTO, PreviewHlsOutputDTO
 from pipelines.outputs.preview_hls import PreviewHlsOutput
@@ -43,16 +50,16 @@ class ElementsFactory:
         uid = uuid4()
         if type == "testsrc":
             newInput = (
-                TestInput(data=TestInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4), preview=input.get('preview', True), locked=input.get('locked', False))))
+                TestsrcInput(data=TestsrcInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4), preview=input.get('preview', True), locked=input.get('locked', False))))
         elif type == "urisrc":
             newInput = (
-                UriInput(data=UriInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
+                Playbin3Input(data=Playbin3InputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
         elif type == "wpesrc":
             newInput = (
-                WpeInput(data=WpeInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), preview=input.get('preview', True), locked=input.get('locked', False))))
+                WpesrcInput(data=WpesrcInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), preview=input.get('preview', True), locked=input.get('locked', False))))
         elif type == "ytdlpsrc":
             newInput = (
-                ytDlpInput(data=ytDlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
+                YtdlpInput(data=YtdlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
         self.handler.add_pipeline(newInput)
         return newInput
 

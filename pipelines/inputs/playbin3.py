@@ -1,23 +1,22 @@
-from api.inputs_dtos import ytDlpInputDTO
+from api.inputs.playbin3 import Playbin3InputDTO
 from .input import Input
 from gi.repository import Gst, GLib
 from logger import logger
 
 from pipelines.description import Description
 from pipelines.inputs.input import Input
-import json
+import asyncio
 
-import yt_dlp
 
-class ytDlpInput(Input):
-    data: ytDlpInputDTO
+class Playbin3Input(Input):
+    data: Playbin3InputDTO
 
     def build(self):
         videosink_bin = Gst.parse_bin_from_description(f"{self.get_video_end()}", True)
         audiosink_bin = Gst.parse_bin_from_description(self.get_audio_end(), True)
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
         playbin.set_name("playbin")
-        playbin.set_property("uri", f"{self.extract_video_url(self.data.uri)}")
+        playbin.set_property("uri", f"{ self.data.uri }")
 
         # @TODO add config option for buffer
         playbin.set_property("buffer-size", 1048576  )
@@ -54,26 +53,6 @@ class ytDlpInput(Input):
                     self.data.width = width
                     self.data.height = height
 
-    def extract_video_url(self, youtube_url):
-        ydl_opts = {
-            'format': 'best',  # @TODO make selectable
-            'quiet': True,
-            'no_warnings': True,
-            'force_generic_extractor': True,
-        }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(youtube_url, download=False)
-                video_url = info_dict.get("url", None)
-                return video_url
-        except yt_dlp.utils.DownloadError:
-            logger.log(f"Unsupported URL: {youtube_url}", level='DEBUG')
-            return None
-
-
     def describe(self):
 
         return self.data
-
-
-

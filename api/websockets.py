@@ -6,7 +6,7 @@ import asyncio
 from uuid import UUID, uuid4
 
 from api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
-from api.inputs_dtos import InputDTO, InputDeleteDTO
+from api.input_models import InputDTO, InputDeleteDTO
 from api.output_models import OutputDTO, OutputDeleteDTO
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect

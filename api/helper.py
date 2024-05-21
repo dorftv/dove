@@ -4,6 +4,7 @@ import importlib
 from fastapi import APIRouter, Request
 from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List
 from api.output_models import OutputDTO
+from api.input_models import InputDTO
 
 from pydantic import BaseModel
 import json
@@ -31,19 +32,22 @@ def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> list
             if model_type and model_type in enabled_models:
                 model_fields[model_type] = {
                     "label": model_type,
-                    "fields": get_fields(model)
+                    "fields": get_fields(model, models_path)
                 }
     sorted_model_fields = {k: model_fields[k] for k in enabled_models if k in model_fields}
     return sorted_model_fields
 
 
-def get_fields(model_class: type(BaseModel), alias: bool = False) -> list:
+def get_fields(model_class: type(BaseModel), models_path: str) -> list:
     fields = {}
     if not issubclass(model_class, BaseModel):
         raise TypeError("Class must be a subclass of pydantic.BaseModel")
     properties = model_class.schema().get('properties', {})
     required_fields = model_class.schema().get('required', {})
-    parent_fields = OutputDTO.schema().get('properties')
+    if models_path == "api.outputs":
+        parent_fields = OutputDTO.schema().get('properties')
+    elif models_path == "api.inputs":
+        parent_fields = InputDTO.schema().get('properties')
 
     for name, field in properties.items():
         if name not in parent_fields:
@@ -62,7 +66,6 @@ def get_fields(model_class: type(BaseModel), alias: bool = False) -> list:
                 "default": default,
                 "type": field.get("type", anyOf),
                 "required": name in required_fields,
-
             }
     return fields
 
@@ -81,7 +84,7 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
             try:
                 module = importlib.import_module(full_module_name)
                 for name, obj in module.__dict__.items():
-                    if isinstance(obj, type) and (issubclass(obj, OutputDTO)): # or issubclass(obj, InputDTO) or issubclass(obj, MixerDTO)):
+                    if isinstance(obj, type) and (issubclass(obj, OutputDTO) or issubclass(obj, InputDTO)):# or issubclass(obj, MixerDTO)):
                         raw_fields = obj.schema().get('properties', None)
                         if raw_fields:
                             model_type = raw_fields.get('type', {}).get('default')

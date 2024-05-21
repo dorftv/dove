@@ -10,7 +10,7 @@ from orjson import orjson
 from pydantic import BaseModel
 
 from api.websockets import manager
-from api.inputs_dtos import InputDTO
+from api.input_models import InputDTO
 from logger import logger
 
 from config_handler import ConfigReader

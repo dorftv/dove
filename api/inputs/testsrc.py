@@ -10,10 +10,31 @@ router = APIRouter()
 
 
 class TestsrcInputDTO(InputDTO):
-    type: str = "testsrc"
-    pattern: Optional[int] = 1
-    wave: Optional[int] = 1
-    freq: Optional[float] = 440.0
+    type: str =  Field(
+        label="Test Source",
+        default="testsrc",
+        description="Adds videotestsrc and audiotestsrc.",
+    )
+    pattern: Optional[int] =  Field(
+        label="Pattern",
+        default=1,
+        description="Pattern to draw",
+        help="Allowed values: 1-25",
+        placeholder="1",
+    )
+    wave: Optional[int] = Field(
+        label="Pattern",
+        default=1,
+        description="Waveform for Audio",
+        help="Allowed values 1-12",
+        placeholder="1",
+    )
+    freq: Optional[float] = Field(
+        label="Frequency",
+        default=440.0,
+        description="Frequency for Audio.",
+        placeholder="440.0",
+    )
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
 

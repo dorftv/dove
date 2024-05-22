@@ -11,8 +11,11 @@ router = APIRouter()
 
 
 class SrtsinkOutputDTO(OutputDTO):
-    type: str = "srtsink"
-
+    type: str = Field(
+        label="SRT Sink",
+        default="srtsink",
+        description="stream output to SRT Server.",
+    )
     uri: str = Field(
         label="Uri",
         description="Enter SRT Server URL and Port",

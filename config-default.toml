@@ -41,11 +41,10 @@ preview_enabled = true
 
 [ui]
 add_input = true
-add_mixer = true
+add_scene = true
 add_output = true
 input_preview_auto= true
-enabled_inputs = ["playbin3", "wpesrc", "ytdlp", "testsrc"]
-enabled_outputs = ["srtsink", "decklink", "shout2send"]
+
 
 
 [scenes]

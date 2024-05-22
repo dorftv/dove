@@ -9,12 +9,22 @@ router = APIRouter()
 
 
 class Playbin3InputDTO(InputDTO):
-    type: str = "playbin3"
-    uri: str
-    loop: Optional[bool] = False
-
-
-
+    type: str =  Field(
+        label="Playbin3",
+        default="playbin3",
+        description="Playbin3 plays local and remote files and streams.",
+    )
+    uri: str = Field(
+        label="Uri",
+        description="Enter Uri to play",
+        help="eg: file:/// | http://  | rtmp:// | srt://",
+        placeholder="file:///home/user/video.mp4",
+    )
+    loop: Optional[bool] = Field(
+        label="Loop",
+        defaut=False,
+        help="Loop the the file on EOS"
+    )
 
 
 from pipelines.inputs.playbin3 import Playbin3Input

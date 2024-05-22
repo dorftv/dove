@@ -10,9 +10,22 @@ router = APIRouter()
 
 
 class WpesrcInputDTO(InputDTO):
-    type: str = "wpesrc"
-    location: Optional[str] = "https://dorftv.at"
-    draw_background: Optional[bool] = False
+    type: str =  Field(
+        label="HTML Source",
+        default="wpesrc",
+        description="Wpesrc allows rendering HTML.",
+    )
+    location: Optional[str] =  Field(
+        label="Location",
+        placeholder="https://dorftv.at",
+        description="Enter the location of the HTML source.",
+        help="file:// or http://"
+    )
+    draw_background: Optional[bool] = Field(
+        label="Draw Background",
+        defaut=True,
+        help="use transparent background when not set."
+    )
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
 

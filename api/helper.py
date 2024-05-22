@@ -18,7 +18,7 @@ config = ConfigReader()
 
 def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> list:
     model_fields = {}
-    enabled_models = {}
+    enabled_models = []
     if models_path == "api.outputs":
         enabled_models = config.get_enabled_outputs()
     elif models_path == "api.inputs":
@@ -29,13 +29,14 @@ def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> list
         raw_fields = model.schema().get('properties', None)
         if raw_fields:
             model_type = raw_fields.get('type', {}).get('default')
-            if model_type and model_type in enabled_models:
+            if model_type:
                 model_fields[model_type] = {
                     "label": model_type,
                     "fields": get_fields(model, models_path)
                 }
-    sorted_model_fields = {k: model_fields[k] for k in enabled_models if k in model_fields}
-    return sorted_model_fields
+    if enabled_models:
+        model_fields = {k: model_fields[k] for k in enabled_models if k in model_fields}
+    return model_fields #sorted_model_fields
 
 
 def get_fields(model_class: type(BaseModel), models_path: str) -> list:
@@ -50,18 +51,20 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> list:
         parent_fields = InputDTO.schema().get('properties')
 
     for name, field in properties.items():
-        if name not in parent_fields:
+        if name not in parent_fields or name == "type":
             anyOf = None
             if field.get('anyOf', None) is not None:
                 anyOf = field.get('anyOf')[0]['type']
             label = field.get('label', name)
             description = field.get('description', None)
+            help = field.get('help', None)
             placeholder = field.get('placeholder', None)
             default = field.get('default', None)
             fields[name] = {
                 "name": name,
                 "label": label,
                 "description": description,
+                "help": help,
                 "placeholder": placeholder,
                 "default": default,
                 "type": field.get("type", anyOf),
@@ -70,7 +73,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> list:
     return fields
 
 
-def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_models: Set[str] = set()) -> Generator[Tuple[Type[BaseModel], str], None, None]:
+def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_models: str = None) -> Generator[Tuple[Type[BaseModel], str], None, None]:
     exclude_models.add("BaseModel")
     package_dir = models_path.replace('.', '/')
     for root, _, _ in os.walk(package_dir):
@@ -84,11 +87,15 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
             try:
                 module = importlib.import_module(full_module_name)
                 for name, obj in module.__dict__.items():
+                    skip = False
                     if isinstance(obj, type) and (issubclass(obj, OutputDTO) or issubclass(obj, InputDTO)):# or issubclass(obj, MixerDTO)):
                         raw_fields = obj.schema().get('properties', None)
                         if raw_fields:
                             model_type = raw_fields.get('type', {}).get('default')
-                            if model_type and model_type in enabled_models:
+                            if not enabled_models:
+                                skip = True
+                            if model_type and (model_type in enabled_models or skip):
+                                print("not")
                                 yield obj, name
             except ModuleNotFoundError as e:
                 print(f"Module not found: {full_module_name}")

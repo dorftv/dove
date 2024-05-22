@@ -9,9 +9,21 @@ router = APIRouter()
 
 
 class YtdlpInputDTO(InputDTO):
-    type: str = "ytdlp"
-    uri: str
-    loop: Optional[bool] = False
+    type: str = Field(
+        label="YtDlp",
+        default="ytdlp",
+        description="Allows playback from youtube and many other video sites.",
+    )
+    uri: str = Field(
+        label="Uri",
+        help="Any Url supported by youtube-dl fork ytdkp.",
+        placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    )
+    loop: Optional[bool] = Field(
+        label="Loop",
+        defaut=False,
+        help="Loop the the file on EOS"
+    )
 
 from pipelines.inputs.ytdlp import YtdlpInput
 

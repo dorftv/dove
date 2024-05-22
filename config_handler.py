@@ -42,6 +42,12 @@ class ConfigReader:
                 return self.config['ui']['enabled_outputs']
         return []
 
+    def get_enabled_inputs(self):
+        if 'ui' in self.config:
+            if 'enabled_inputs' in self.config['ui']:
+                return self.config['ui']['enabled_inputs']
+        return []
+
     def get_proxies(self):
         if 'srtrelay' in self.config:
             return True

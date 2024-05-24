@@ -15,23 +15,24 @@ def proxy_get():
     def fetch_url(name):
         details = config.get_proxy_details("srtrelay", name)
         if not details:
-            print(f"Details not found for {name}")
-            return name, None
+            return []
         try:
-            response = requests.get(details['url'], timeout=5)
+            if not isinstance(details, dict):
+                return []
+
+            response = requests.get(details['uri'], timeout=5)
             response.raise_for_status()
             data = response.json()
 
             if isinstance(data, list):
                 for item in data:
                     if 'url' in item:
-                        item['url'] += f"/{urllib.parse.quote(details['auth'])}"
+                        item['uri'] = f"{item['url']}/{urllib.parse.quote(details['auth'])}"
+                        del item['url']
                     if 'name' in item:
                         item['name'] = f"{name}/{item['name']}"
-
             return data
         except requests.RequestException as e:
-            print(f"Failed to fetch data for {name}: {str(e)}")
             return []
 
     with ThreadPoolExecutor() as executor:

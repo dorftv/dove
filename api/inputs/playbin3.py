@@ -22,7 +22,7 @@ class Playbin3InputDTO(InputDTO):
     )
     loop: Optional[bool] = Field(
         label="Loop",
-        defaut=False,
+        default=False,
         help="Loop the the file on EOS"
     )
 

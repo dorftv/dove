@@ -56,8 +56,16 @@ class ConfigReader:
 
     def get_proxy_types(self):
         if 'proxy' in self.config:
-            return list(self.config['proxy'].keys())
-
+            items = []
+            for item in self.config['proxy']:
+                proxy_item = {
+                    f'{item}': {
+                        'type': self.config['proxy'][item]['type'],
+                        'field': self.config['proxy'][item]['field']
+                    }
+                }
+                items.append(proxy_item)
+            return items
         return []
 
     def get_proxy(self, proxy_type):

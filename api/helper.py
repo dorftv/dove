@@ -36,7 +36,7 @@ def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> list
                 }
     if enabled_models:
         model_fields = {k: model_fields[k] for k in enabled_models if k in model_fields}
-    return model_fields #sorted_model_fields
+    return model_fields
 
 
 def get_fields(model_class: type(BaseModel), models_path: str) -> list:
@@ -95,10 +95,8 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
                             if not enabled_models:
                                 skip = True
                             if model_type and (model_type in enabled_models or skip):
-                                print("not")
                                 yield obj, name
             except ModuleNotFoundError as e:
-                print(f"Module not found: {full_module_name}")
                 raise e
 
 # Dynamically load routes from path

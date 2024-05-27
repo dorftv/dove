@@ -1,6 +1,9 @@
 [main]
 default_resolution = "qHD"
 
+[ui]
+enabled_inputs = ["playbin3", "wpesrc", "ytdlp", "testsrc"]
+enabled_outputs = ["srtsink", "decklink", "shout2send"]
 
 [scenes]
 
@@ -62,20 +65,20 @@ locked=false
 width=480
 height=270
 xpos=0
-input="input_1"
+input="scene1.input_1"
 
 [scenes.videowall.righttop]
 width=480
 height=270
 xpos=480
-input="input_2"
+input="scene1.input_2"
 
 [scenes.videowall.leftbottom]
 width=480
 height=270
 xpos=0
 ypos=270
-input="newinput"
+input="scene2.newinput"
 
 [scenes.videowall.rightbottom]
 width=480

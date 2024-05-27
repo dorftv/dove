@@ -1,8 +1,8 @@
 [main]
 
 # Video
-resolution = "HD720"
-framerate = "30/1"
+default_resolution = "HD720"
+default_framerate = "30/1"
 
 # Audio
 volume = 0.7

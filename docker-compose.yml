@@ -1,6 +1,7 @@
 version: "3.5"
 services:
   dove:
+    image: ghcr.io/dorftv/dove:latest
     build:
       context: .
     volumes:

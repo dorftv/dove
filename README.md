@@ -2,7 +2,7 @@
 
 DOVE is an API driven Video/Audio Editor for managing live mixing with an intuitive web based Interface.
 
-It uses the [gstreamer multimedia framework](https://gstreamer.freedesktop.org) as backend and [gst-interpipe](https://github.com/ridgerun/gst-interpipe) for connecting pipelines.
+It uses the [gstreamer](https://gstreamer.freedesktop.org) multimedia framework as backend and [gst-interpipe](https://github.com/ridgerun/gst-interpipe) for connecting pipelines.
 
 Development for the [Nuxt3](https://nuxt.com/) based frontend happens [here](https://github.com/dorftv/dove-frontend)
 
@@ -38,19 +38,19 @@ Each sink pad supports alpha,width,height,xpos,ypos,zorder properties for video,
 * decklink
 * hls ( for preview)
 * webrtc ( for preview, planned)
+* shoutcast
 * rtmp (planned)
-* shoutcast (planned)
 * ....
 
 
 ### Dependencies
 Development happens on Debian bookworm, so currently the following versions are recommended.
 
-* python (version 3.11)
+* python >= version 3.11
 * gst-interpipe ( develop branch )
-* gstreamer1.0 (version 1.23)
+* gstreamer1.0 > 1.22)
 
-there is no package for gst-interpipes in debian bookworm. follow the [compilation guide]() or look at (or use) the [Dockerfile](/Dockerfile)
+there is no package for gst-interpipe in debian bookworm. follow the [compilation guide](https://developer.ridgerun.com/wiki/index.php/GstInterpipe_-_Building_and_Installation_Guide) or look at (or use) the [Dockerfile](/Dockerfile)
 
 
 ### Getting Started
@@ -59,9 +59,25 @@ there is no package for gst-interpipes in debian bookworm. follow the [compilati
 @TODO
 
 #### Docker
-The easiest way for getting started is using the provided docker-compose.yml.
-gstreamer and so DOVE, can use your GPU for decoding ( and encoding ).
-Currently VAAPI is supported you can use the docker-compose.vaapi.yml to utilize it.
+The easiest way for getting started is using the provided docker image or build the image yourself using the Dockerfile.
+
+
+
+##### Docker
+
+```
+curl  https://raw.githubusercontent.com/dorftv/dove/main/config-example.toml -o /tmp/config.toml && \
+docker run -p 5000:5000 \
+ -e LIBGL_ALWAYS_SOFTWARE=true \
+ -v /tmp/config.toml:/app/config.toml -it \
+  ghcr.io/dorftv/dove:latest
+
+```
+
+
+##### Docker-compose
+gstreamer and so DOVE, can use your GPU for decoding. [docker-compose.vaapi.yml](/docker-compose.vaapi.yml) provides an example for using vaapi.
+
 
 ```
 git clone https://github.com/dorftv/dove.git  && cd dove
@@ -73,6 +89,11 @@ docker compose up -d
 ```
 
 point your Browser to [http://localhost:5000](http://localhost:5000)
+
+### Notes
+
+more documentation will follow.
+
 
 
 

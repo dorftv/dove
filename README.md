@@ -1,6 +1,6 @@
 ## DOVE - Online Video Editor
 
-DOVE is an API driven Video/Audio Editor for managing live mixing with an intuitive web based Interface.
+DOVE is an API driven Video/Audio Editor for live mixing with an intuitive web based Interface.
 
 It uses the [gstreamer](https://gstreamer.freedesktop.org) multimedia framework as backend and [gst-interpipe](https://github.com/ridgerun/gst-interpipe) for connecting pipelines.
 
@@ -25,7 +25,7 @@ Currently HLS is available for preview with a latency of 1-5 seconds. Future ver
 * yt-dlp (playbin3)
 * audio/videotestsrc
 * webrtc (planned)
-* ....
+* ... more to come
 
 #### Scenes
 with scenes inputs can be mixed.
@@ -40,7 +40,7 @@ Each sink pad supports alpha,width,height,xpos,ypos,zorder properties for video,
 * webrtc ( for preview, planned)
 * shoutcast
 * rtmp (planned)
-* ....
+* ... more to come
 
 
 ### Dependencies
@@ -62,7 +62,6 @@ there is no package for gst-interpipe in debian bookworm. follow the [compilatio
 The easiest way for getting started is using the provided docker image or build the image yourself using the Dockerfile.
 
 
-
 ##### Docker
 
 ```
@@ -82,8 +81,9 @@ gstreamer and so DOVE, can use your GPU for decoding. [docker-compose.vaapi.yml]
 ```
 git clone https://github.com/dorftv/dove.git  && cd dove
 
-# optional example config
-# cp config-example.yml config.yml
+# Currently a empty config files are not supported.
+# to start you can copy the example config.
+cp -f config-example.toml config.toml
 
 docker compose up -d
 ```

@@ -13,12 +13,19 @@ services:
     environment:
       - DISPLAY=$DISPLAY
       - LOG_LEVEL=debug
-
     restart: always
     ports:
       - 5000:5000
     networks:
       - dove
+    # the following options are required for wpesrc
+    security_opt:
+      - "apparmor=unconfined"
+      - "seccomp=unconfined"
+    cap_add:
+     - SYS_ADMIN
+     - CAP_NET_ADMIN
+
 networks:
   dove:
 

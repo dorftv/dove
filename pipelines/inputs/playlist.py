@@ -92,8 +92,8 @@ class PlaylistInput(Input):
         self.data.index += 1
         if self.data.index >= len(self.data.playlist):
             if self.data.next is not None:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                loop = asyncio.get_running_event_loop()
+                # asyncio.set_event_loop(loop)
                 loop.run_until_complete(self._jumpToNextPlaylist())
                 self.data.index = 0
             elif self.data.looping:

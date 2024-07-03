@@ -127,7 +127,7 @@ class PlaylistInput(Input):
         uridecodebin.set_property("uri", uri)
         self.get_pipeline().set_state(Gst.State.PLAYING)
         if self.data.playlist[self.data.index].type == "html":
-            loop = asyncio.get_running_loop()
+            loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.html_stop_task(10))
 

@@ -5,6 +5,7 @@ import asyncio
 import threading
 import os
 import time
+from asyncio import get_event_loop
 from api.inputs.playlist import PlaylistInputDTO, PlaylistItemDTO
 from pipelines.inputs.input import Input
 from gi.repository import Gst, GLib
@@ -18,7 +19,7 @@ class PlaylistInput(Input):
         uridecodebin = Gst.ElementFactory.make("uridecodebin3", "uridecodebin")
         self.data.index = -1
         uri = self.next_uri()
-        uridecodebin.set_property('uri', self.data.playlist[0].uri)
+        uridecodebin.set_property('uri', uri)
         uridecodebin.set_property('buffer-duration', 6 *Gst.SECOND)
         uridecodebin.set_property('download', True)
         uridecodebin.set_property('use-buffering', True)
@@ -79,7 +80,7 @@ class PlaylistInput(Input):
         uridecodebin = self.get_pipeline().get_by_name("uridecodebin")
         uridecodebin.send_event(eos_event)
 
-    async def _jumpToNextPlaylist(self):
+    def _jumpToNextPlaylist(self):
         data = self._load_playlist(self.data.next)
         if data is not None:
             next_playlist = [PlaylistItemDTO(**item) for item in data["playlist"]]
@@ -92,9 +93,7 @@ class PlaylistInput(Input):
         self.data.index += 1
         if self.data.index >= len(self.data.playlist):
             if self.data.next is not None:
-                loop = asyncio.get_running_event_loop()
-                # asyncio.set_event_loop(loop)
-                loop.run_until_complete(self._jumpToNextPlaylist())
+                self._jumpToNextPlaylist()
                 self.data.index = 0
             elif self.data.looping:
                 self.data.index = 0
@@ -128,7 +127,7 @@ class PlaylistInput(Input):
         uridecodebin.set_property("uri", uri)
         self.get_pipeline().set_state(Gst.State.PLAYING)
         if self.data.playlist[self.data.index].type == "html":
-            loop = asyncio.get_running_event_loop()
+            loop = asyncio.get_running_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.html_stop_task(10))
 

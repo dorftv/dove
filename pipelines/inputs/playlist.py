@@ -19,6 +19,7 @@ class PlaylistInput(Input):
         uridecodebin = Gst.ElementFactory.make("uridecodebin3", "uridecodebin")
         self.data.index = -1
         uri = self.next_uri()
+
         uridecodebin.set_property('uri', uri)
         uridecodebin.set_property('buffer-duration', 6 *Gst.SECOND)
         uridecodebin.set_property('download', True)
@@ -36,14 +37,27 @@ class PlaylistInput(Input):
         audiobin.set_name("audiobin")
         pipeline.add(audiobin)
         audiobin.sync_state_with_parent()
+
         self.add_pipeline(pipeline)
-        print(pipeline)
 
+        if self.data.playlist[self.data.index].type == "html":
+            self.run_html_stop_task(self.data.playlist[self.data.index].duration)
 
+    def run_html_stop_task(self, duration):
+        def task_wrapper():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.html_stop_task(duration))
+            loop.close()
+
+        thread = threading.Thread(target=task_wrapper)
+        thread.daemon = True
+        thread.start()
 
     def on_pad_added(self, src, pad):
         pad_type = pad.query_caps(None).to_string()
         if "audio" in pad_type:
+
             if not pad.is_linked():
                 audiobin = self.get_pipeline().get_by_name("audiobin")
                 audiomixer = audiobin.get_by_name("audiomixer")
@@ -66,19 +80,28 @@ class PlaylistInput(Input):
 
                 bin.set_state(Gst.State.PLAYING)
 
-
         elif "video" in pad_type and not pad.is_linked():
             videobin = self.get_pipeline().get_by_name("videobin")
             video_queue_sink_pad = videobin.get_static_pad("sink")
             pad.link(video_queue_sink_pad)
             pad.add_probe(Gst.PadProbeType.EVENT_DOWNSTREAM, self.on_event)
 
-
     async def html_stop_task(self, duration):
-        eos_event = Gst.Event.new_eos()
+        #self.data.duration = duration
         await asyncio.sleep(duration)
+        GLib.idle_add(self.send_eos_event)
+
+    def send_eos_event(self):
+        eos_event = Gst.Event.new_eos()
         uridecodebin = self.get_pipeline().get_by_name("uridecodebin")
         uridecodebin.send_event(eos_event)
+        return False
+
+    def add_duration(self):
+        pipeline = self.get_pipeline().get_by_name("uridecodebin")
+        duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
+        if duration and duration != -1:
+            self.data.duration = duration
 
     def _jumpToNextPlaylist(self):
         data = self._load_playlist(self.data.next)
@@ -87,6 +110,7 @@ class PlaylistInput(Input):
             self.data.playlist = next_playlist
             self.data.next = data.get("next")
             self.data.looping = data.get("looping", False)
+            self.data.total_duration = data.get("total_duration", 0)
         self.data.index = 0
 
     def next_uri(self):
@@ -112,7 +136,8 @@ class PlaylistInput(Input):
                 else:
                     self.next_uri()
         elif self.data.playlist[self.data.index].type == "html":
-             return uri
+             return "web+" + uri
+
         else:
             self.next_uri()
 
@@ -122,14 +147,12 @@ class PlaylistInput(Input):
         uridecodebin = self.get_pipeline().get_by_name("uridecodebin")
         self.get_pipeline().set_state(Gst.State.READY)
         self.remove_bin()
-        if self.data.playlist[self.data.index].type == "html":
-            uri = "web+" + uri
         uridecodebin.set_property("uri", uri)
         self.get_pipeline().set_state(Gst.State.PLAYING)
         if self.data.playlist[self.data.index].type == "html":
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.html_stop_task(10))
+            loop.run_until_complete(self.html_stop_task(self.data.playlist[self.data.index].duration))
 
         return False
 

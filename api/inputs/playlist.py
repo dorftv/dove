@@ -28,14 +28,48 @@ class PlaylistItemDTO(BaseModel):
 
 
 class PlaylistInputDTO(InputDTO):
-    type: str = "playlist"
-    playlist_uri: Optional[str] = None
-    next: Optional[str] = None
-    index: Optional[int] = 0
-    current_clip: Optional[PlaylistItemDTO] = Field(default_factory=list)
-    looping: bool = False
-    total_duration: Optional[int] = None
-    playlist:  Optional[List[PlaylistItemDTO]] = Field(default_factory=list)
+    type: str = Field(
+        label="Playlist",
+        default="playlist",
+        description="Provide an URL to fetch a JSON Playlist.",
+    )
+    next: Optional[str] = Field(
+        label="Playlist URL",
+        default=None,
+        description="Loads playlist from URL when playlist is empty or finished.",
+    )
+    index: int = Field(
+        label="Index",
+        hidden=True,
+        default=0,
+        description="Current.",
+    )
+    current_clip: Optional[PlaylistItemDTO] =  Field(
+        label="current Clip",
+        hidden=True,
+        default=0,
+        description="Current Clip.",
+    )
+    looping: bool = Field(
+        label="Looping",
+        default=False,
+        description="Loop the playlist when finished.",
+    )
+    total_duration: Optional[int] =Field(
+        label="Total Duration Clip",
+        hidden=True,
+        default=None,
+    )
+    total_position: Optional[int] =Field(
+        label="Total Duration Clip",
+        hidden=True,
+        default=None,
+    )
+    playlist:  Optional[List[PlaylistItemDTO]] = Field(
+        label="Playlist Items",
+        hidden=True,
+        default_factory=list
+    )
 
 
 

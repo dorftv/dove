@@ -3,6 +3,8 @@ from config_handler import ConfigReader
 
 config = ConfigReader()
 
+def get_default_framerate() -> str:
+    return config.get_default_framerate()
 
 def get_default_height() -> int:
     return config.get_default_resolution()['height']

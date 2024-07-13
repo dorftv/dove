@@ -9,6 +9,7 @@ import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GstController', '1.0')
 from gi.repository import GObject, Gst, GstController
+from time import sleep
 
 
 class programMixer(Mixer):
@@ -17,7 +18,7 @@ class programMixer(Mixer):
     def build(self):
 
         self.add_pipeline(f"videotestsrc is-live=true pattern=2 ! { self.get_caps('video') } ! "
-            f" compositor latency=70000000  name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videorate ! videoconvert ! videoscale ! { self.get_caps('video') } !   "
+            f" compositor  name=videomixer_{self.data.uid} background=black force-live=true ignore-inactive-pads=true sink_0::alpha=1 ! videorate ! videoconvert ! videoscale ! { self.get_caps('video') } !   "
             + self.get_video_end() +
             f" audiotestsrc wave=4 ! { self.get_caps('audio') } ! liveadder  latency=70 name=audiomixer_{self.data.uid} force-live=true  ignore-inactive-pads=true !   { self.get_caps('audio') } ! "
             + self.get_audio_end())
@@ -40,7 +41,6 @@ class programMixer(Mixer):
         self.data.active = index
         for audio_or_video in ["audio", "video"]:
             sink = self.add_mixer_pad(audio_or_video, index)
-
             if data.transition == "cut" or data.transition is None:
                 self.link_pad(audio_or_video, index)
                 if old_sink is not None:

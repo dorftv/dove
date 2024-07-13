@@ -8,6 +8,7 @@ from typing import Callable, Optional, Any, Type
 
 from orjson import orjson
 from pydantic import BaseModel
+from api.output_models import OutputDTO
 
 from api.websockets import manager
 from api.input_models import InputDTO
@@ -19,7 +20,7 @@ config = ConfigReader()
 
 class GSTBase(BaseModel):
     inner_pipelines: Optional[list[Gst.Pipeline]] = []
-    _clock = None  # <--- Use a private class variable
+    _clock = None
 
     @abstractmethod
     def build(self):
@@ -47,6 +48,9 @@ class GSTBase(BaseModel):
                 caps += f",width={self.data.width}"
             if self.data.height is not None:
                 caps += f",height={self.data.height}"
+            if issubclass(self.data.__class__, OutputDTO):
+                if self.data.framerate is not None:
+                    caps += f",framerate={self.data.framerate}"
         return caps
 
 

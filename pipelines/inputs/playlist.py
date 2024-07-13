@@ -87,7 +87,7 @@ class PlaylistInput(Input):
             pad.add_probe(Gst.PadProbeType.EVENT_DOWNSTREAM, self.on_event)
 
     async def html_stop_task(self, duration):
-        #self.data.duration = duration
+        self.data.duration = duration
         await asyncio.sleep(duration)
         GLib.idle_add(self.send_eos_event)
 
@@ -150,9 +150,7 @@ class PlaylistInput(Input):
         uridecodebin.set_property("uri", uri)
         self.get_pipeline().set_state(Gst.State.PLAYING)
         if self.data.playlist[self.data.index].type == "html":
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.html_stop_task(self.data.playlist[self.data.index].duration))
+            self.run_html_stop_task(self.data.playlist[self.data.index].duration)
 
         return False
 

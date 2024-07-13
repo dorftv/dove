@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from config_handler import ConfigReader
 
-from helpers import generateId, get_default_height, get_default_width, get_default_volume
+from helpers import generateId, get_default_height, get_default_width, get_default_volume, get_default_framerate
 
 uniqueId = generateId("Output ")
 
@@ -17,6 +17,7 @@ class OutputDTO(BaseModel):
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
+    framerate: Optional[int] = Field(default_factory=get_default_framerate)
     locked: Optional[bool] = False
     details: Optional[str] = None
 

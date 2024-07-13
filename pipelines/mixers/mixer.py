@@ -204,14 +204,9 @@ class Mixer(GSTBase, ABC):
             return None
 
     def set_capsfilter(self, audio_or_video, sink):
-        #@TODO find a way to handle re(sizing)
-        mixer = self.getMixer(audio_or_video)
-        mixer_src_pad = mixer.get_static_pad("src")
         bin = self.get_mixer_source_bin(audio_or_video, sink)
         capsfilter = bin.get_by_name(f"{audio_or_video}_capsfilter")
-        capsfilter_src_pad = capsfilter.get_static_pad("src")
-        caps = capsfilter_src_pad.get_current_caps()
-
+        caps = Gst.Caps.from_string(self.get_caps(audio_or_video))
         if caps:
             capsfilter.set_property("caps", caps)
             logger.log(f"Set pad caps to {caps.to_string()} for {sink}", level='DEBUG')

@@ -51,7 +51,7 @@ class ElementsFactory:
         if type == "testsrc":
             newInput = (
                 TestsrcInput(data=TestsrcInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4), preview=input.get('preview', True), locked=input.get('locked', False))))
-        elif type == "urisrc":
+        elif type == "playbin3":
             newInput = (
                 Playbin3Input(data=Playbin3InputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
         elif type == "wpesrc":

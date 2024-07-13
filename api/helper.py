@@ -53,8 +53,13 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> list:
     for name, field in properties.items():
         if name not in parent_fields or name == "type":
             anyOf = None
-            if field.get('anyOf', None) is not None:
+            if ('anyOf' in field and
+                isinstance(field['anyOf'], list) and
+                len(field['anyOf']) > 0 and
+                isinstance(field['anyOf'][0], dict) and
+                'type' in field['anyOf'][0]):
                 anyOf = field.get('anyOf')[0]['type']
+
             label = field.get('label', name)
             description = field.get('description', None)
             help = field.get('help', None)
@@ -68,6 +73,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> list:
                 "placeholder": placeholder,
                 "default": default,
                 "type": field.get("type", anyOf),
+                "hidden": field.get("hidden", False),
                 "required": name in required_fields,
             }
     return fields

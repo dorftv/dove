@@ -29,6 +29,27 @@ class SrtsinkOutputDTO(OutputDTO):
         placeholder="streamid"
     )
 
+    x264_opts: Optional[str] = Field(
+        default="key-int-max=30 tune=zerolatency speed-preset=slower",
+        label="X264 Options",
+        description="Options for x264enc (eg. \"tune=zerolatency pass=quant quantizer=19\")",
+        placeholder="tune=zerolatency pass=cbr bitrate=8192"
+    )
+
+    h264_profile: Optional[str] = Field(
+        default="high",
+        label="X264 Profile",
+        description="h264 profile to use (high-4:4:4, high-4:2:2, high-10, high, main, baseline, constrained-baseline, high-4:4:4-intra, high-4:2:2-intra, high-10-intra))",
+        placeholder="high"
+    )
+
+    audio_codec: Optional[str] = Field(
+        default="aac",
+        label="Audio Codec",
+        description="audio codec to use (aac, mp2, mp3)",
+        placeholder="aac"
+    )
+
 
 from pipelines.outputs.srtsink import SrtsinkOutput
 

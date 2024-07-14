@@ -19,19 +19,20 @@ def proxy_get():
         try:
             if not isinstance(details, dict):
                 return []
-
-            response = requests.get(details['uri'], timeout=5)
+            print(details)
+            response = requests.get(details['url'], timeout=5)
             response.raise_for_status()
             data = response.json()
-
+            res = []
             if isinstance(data, list):
                 for item in data:
                     if 'url' in item:
-                        item['uri'] = f"{item['url']}/{urllib.parse.quote(details['auth'])}"
-                        del item['url']
+                        item['url'] = f"{item['url']}/{urllib.parse.quote(details['auth'])}"
                     if 'name' in item:
                         item['name'] = f"{name}/{item['name']}"
-            return data
+                    print(item)
+                    res.append(item)
+            return res
         except requests.RequestException as e:
             return []
 

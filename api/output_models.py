@@ -17,7 +17,7 @@ class OutputDTO(BaseModel):
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
-    framerate: Optional[int] = Field(default_factory=get_default_framerate)
+    framerate: Optional[str] = Field(default_factory=get_default_framerate)
     locked: Optional[bool] = False
     details: Optional[str] = None
 

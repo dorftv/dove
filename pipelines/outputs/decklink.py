@@ -19,7 +19,7 @@ class DecklinkOutput(Output):
 
         interlace_str = "videoconvert ! interlace field-pattern=2:2 ! queue ! " if self.data.interlaced else ""
 
-        self.add_pipeline(self.get_video_start() + f"   {interlace_str} videoconvert ! videoscale ! videorate ! queue !  "
+        self.add_pipeline(self.get_video_start() + f" {interlace_str}  videorate !  videoconvert ! videoscale ! video/x-raw,format=UYVY ! queue !  "
             f" decklinkvideosink device-number={self.data.device} async=true  mode={self.data.mode} sync=true "
             f" { pipeline_audio_str }")
 

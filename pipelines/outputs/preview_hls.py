@@ -23,8 +23,8 @@ class PreviewHlsOutput(Output):
         input = handler.getpipeline(self.data.src)
         pipeline_audio_str = ""
 
-        if input.has_audio_or_video("audio"):
-                pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! voaacenc  ! aacparse !  queue ! mux."
+        if input.has_audio_or_video("audio") or input.data.type == "playlist":
+            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! voaacenc  ! aacparse !  queue ! mux."
 
 
         self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! "

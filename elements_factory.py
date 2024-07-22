@@ -20,6 +20,9 @@ from pipelines.inputs.ytdlp import YtdlpInput
 from api.output_models import OutputDTO, PreviewHlsOutputDTO
 from pipelines.outputs.preview_hls import PreviewHlsOutput
 
+from pipelines.outputs.rtmpsink import RtmpsinkOutput
+from api.outputs.rtmpsink import RtmpsinkOutputDTO
+
 from pipelines.outputs.srtsink import SrtsinkOutput
 from api.outputs.srtsink import SrtsinkOutputDTO
 
@@ -138,6 +141,9 @@ class ElementsFactory:
                 if type is not None:
 
                     uid = uuid4()
+                    if type == "rtmpsink":
+                        newOutput = (
+                            RtmpsinkOutput(data= RtmpsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), locked=output.get('locked', False))))
                     if type == "srtsink":
                         newOutput = (
                             SrtsinkOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))

@@ -57,11 +57,14 @@ class ElementsFactory:
         elif type == "wpesrc":
             newInput = (
                 WpesrcInput(data=WpesrcInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), preview=input.get('preview', True), locked=input.get('locked', False))))
-        elif type == "ytdlpsrc":
+        elif type == "ytdlp":
             newInput = (
                 YtdlpInput(data=YtdlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
-        self.handler.add_pipeline(newInput)
-        return newInput
+        if newInput is not None:
+            self.handler.add_pipeline(newInput)
+            return newInput
+        else:
+            return None
 
     def create_mixer(self, name, scene_details):
         mixerUuid = uuid4()

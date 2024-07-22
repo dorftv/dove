@@ -20,9 +20,9 @@ Currently HLS is available for preview with a latency of 1-5 seconds. Future ver
 
 #### Inputs
 * playbin3
-* playlists
-* wpesrc
-* yt-dlp (playbin3)
+* playlists ( mix html and video)
+* wpesrc ( view html. option to not draw background for overlays )
+* yt-dlp (Play all supported Urls with playbin3)
 * audio/videotestsrc
 * webrtc (planned)
 * ... more to come
@@ -39,12 +39,12 @@ Each sink pad supports alpha,width,height,xpos,ypos,zorder properties for video,
 * hls ( for preview)
 * webrtc ( for preview, planned)
 * shoutcast
-* rtmp (planned)
+* rtmp
 * ... more to come
 
 
 ### Dependencies
-Development happens on Debian bookworm, so currently the following versions are recommended.
+Development happens on Debian, so currently the following versions are recommended.
 
 * python >= version 3.11
 * gst-interpipe ( develop branch )
@@ -60,7 +60,7 @@ there is no package for gst-interpipe in debian bookworm. follow the [compilatio
 
 #### Docker
 The easiest way for getting started is using the provided docker image or build the image yourself using the Dockerfile.
-
+The default Dockerfile uses Debian testing which includes gstreamer 1.24. There is a Dockerfile.bookworm that also works with gstreamer 1.22.
 
 ##### Docker
 

@@ -22,7 +22,7 @@ wave = 4
 alpha=0.5
 [scenes.scene1.input_2.input]
 name="musikvideo"
-type = "ytdlpsrc"
+type = "ytdlp"
 loop=true
 uri="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 volume=0.5

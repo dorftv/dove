@@ -1,4 +1,4 @@
-FROM debian:testing-slim as builder
+FROM debian:testing-slim AS builder
 
 ARG INTERPIPE_VERSION=develop
 ENV LC_ALL=C.UTF-8
@@ -18,7 +18,7 @@ RUN apt update && \
 
 
 
-FROM debian:testing-slim as runtime
+FROM debian:testing-slim AS runtime
 
 RUN apt-get update && \
     apt-get install -yq \

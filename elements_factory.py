@@ -17,6 +17,9 @@ from pipelines.inputs.wpesrc import WpesrcInput
 from api.inputs.ytdlp import YtdlpInputDTO
 from pipelines.inputs.ytdlp import YtdlpInput
 
+from api.inputs.playlist import PlaylistInputDTO
+from pipelines.inputs.playlist import PlaylistInput
+
 from api.output_models import OutputDTO, PreviewHlsOutputDTO
 from pipelines.outputs.preview_hls import PreviewHlsOutput
 
@@ -63,6 +66,9 @@ class ElementsFactory:
         elif type == "ytdlp":
             newInput = (
                 YtdlpInput(data=YtdlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
+        elif type == "playlist":
+            newInput = (
+                PlaylistInput(data=PlaylistInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), next=input.get('next', ''), preview=input.get('preview', True), locked=input.get('locked', False))))
         if newInput is not None:
             self.handler.add_pipeline(newInput)
             return newInput
@@ -92,8 +98,6 @@ class ElementsFactory:
         if self.scene_list is not None:
             for scene_name in self.scene_list:
                 scene_details = config.get_scene_details(scene_name)
-                #print(scene_details)
-
                 scene_slots = config.get_scene_inputs(scene_name)
 
                 n = scene_details.get('n', 0)

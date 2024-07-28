@@ -24,12 +24,12 @@ class PreviewHlsOutput(Output):
         pipeline_audio_str = ""
 
         if input.has_audio_or_video("audio") or input.data.type == "playlist":
-            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! voaacenc  ! aacparse !  queue ! mux."
+            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! voaacenc  ! aacparse !  queue ! hlsmux.audio"
 
 
         self.add_pipeline(self.get_video_start() + f" videoconvert ! videoscale ! videorate ! "
          + self.get_encoder_string() +
-        f" mpegtsmux name=mux ! hlssink async-handling=true target-duration=1  playlist-length=3 max-files=3  "
+        f"  hlssink2 name=hlsmux async-handling=true target-duration=1  playlist-length=3 max-files=3  "
         f" playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} "
         f" { pipeline_audio_str }")
 
@@ -39,9 +39,9 @@ class PreviewHlsOutput(Output):
 
         vaapitest = Gst.ElementFactory.make("vah264enc", "vaapitest")
         if vaapitest is not None:
-            return f"{video_caps} ! vapostproc ! vah264enc  ! video/x-h264,profile=high ! h264parse ! "
+            return f"{video_caps} ! vapostproc ! vah264enc key-int-max=30 ! video/x-h264,profile=high ! h264parse ! "
         else:
-            return f"{video_caps} ! x264enc  speed-preset=ultrafast ! video/x-h264,profile=baseline ! "
+            return f"{video_caps} ! x264enc  key-int-max=30  speed-preset=ultrafast ! video/x-h264,profile=baseline ! h264parse ! "
 
 
     def describe(self):

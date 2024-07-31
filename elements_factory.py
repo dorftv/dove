@@ -36,8 +36,6 @@ from pipelines.outputs.shout2send import Shout2sendOutput
 from api.outputs.shout2send import Shout2sendOutputDTO
 
 
-
-
 from config_handler import ConfigReader
 config = ConfigReader()
 
@@ -150,7 +148,7 @@ class ElementsFactory:
                             RtmpsinkOutput(data= RtmpsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), locked=output.get('locked', False))))
                     if type == "srtsink":
                         newOutput = (
-                            SrtsinkOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), locked=output.get('locked', False))))
+                            SrtsinkOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), x264_opts=output.get('x264_opts', None), h264_profile=output.get('h264_profile', 'high'), width=output.get('width'), height=output.get('height'), locked=output.get('locked', False))))
                     if type == "decklink":
                         newOutput = (
                             DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))

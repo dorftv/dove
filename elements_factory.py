@@ -38,7 +38,8 @@ from api.outputs.shout2send import Shout2sendOutputDTO
 
 from config_handler import ConfigReader
 config = ConfigReader()
-
+default_width = config.get_default_width()
+default_height = config.get_default_height()
 
 class ElementsFactory:
     def __init__(self, handler):
@@ -46,6 +47,7 @@ class ElementsFactory:
     scene_list = config.get_scenes()
     input_list = config.get_inputs()
     output_list = config.get_outputs()
+
 
     # TODO  config.get_preview_enabled()
     preview_enabled = True
@@ -66,7 +68,7 @@ class ElementsFactory:
                 YtdlpInput(data=YtdlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
         elif type == "playlist":
             newInput = (
-                PlaylistInput(data=PlaylistInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), next=input.get('next', ''), preview=input.get('preview', True), locked=input.get('locked', False))))
+                PlaylistInput(data=PlaylistInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), next=input.get('next', ''), preview=input.get('preview', True), width=input.get('width', default_width), height=input.get('height', default_height), locked=input.get('locked', False))))
         if newInput is not None:
             self.handler.add_pipeline(newInput)
             return newInput

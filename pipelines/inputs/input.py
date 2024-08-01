@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from pipelines.base import GSTBase
 from pipelines.outputs.preview_hls import PreviewHlsOutput
 from typing import Union
-from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO
+from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
 import asyncio
 from gi.repository import Gst, GLib
 
@@ -18,7 +18,7 @@ from pipeline_handler import HandlerSingleton
 class Input(GSTBase, ABC):
     data: InputDTO
     def get_video_end(self) -> str:
-        return f"  videorate ! videoconvert ! videoscale !  {self.get_caps('video') } ! queue  max-size-time=300000000 !  interpipesink name=video_{self.data.uid} async=true sync=true "
+        return f"  videorate ! videoconvert ! videoscale !  {self.get_caps('video') } ! queue  max-size-time=300000000 ! interpipesink name=video_{self.data.uid} async=true sync=true "
 
     def get_audio_end(self):
         return f" volume name=volume volume={self.data.volume} ! audioconvert ! audiorate ! audioresample ! { self.get_caps('audio') }  !  queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true "

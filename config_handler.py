@@ -123,6 +123,12 @@ class ConfigReader:
         resolutions = self.get_resolutions()
         return resolutions[default_resolution]
 
+    def get_default_height(self) -> int:
+        return self.get_default_resolution()['height']
+
+    def get_default_width(self) -> int:
+        return self.get_default_resolution()['width']
+
     def get_preview_resolution(self):
         preview_resolution = self.config['main']['preview_resolution']
         resolutions = self.get_resolutions()

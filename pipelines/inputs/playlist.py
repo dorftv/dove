@@ -28,7 +28,7 @@ class PlaylistInput(Input):
         uridecodebin.connect("pad-added", self.on_pad_added)
         pipeline.add(uridecodebin)
 
-        videobin = Gst.parse_bin_from_description(f"videoconvert  ! video/x-raw,format=BGRA ! queue ! {self.get_video_end()}", True)
+        videobin = Gst.parse_bin_from_description(f"{self.get_video_end()}", True)
         videobin.set_name("videobin")
         pipeline.add(videobin)
         videobin.sync_state_with_parent()

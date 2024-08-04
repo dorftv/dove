@@ -64,12 +64,24 @@ The default Dockerfile uses Debian testing which includes gstreamer 1.24. There 
 
 ##### Docker
 
+caps and security opts are needed for wpesrc.
+
 ```
 curl  https://raw.githubusercontent.com/dorftv/dove/main/config-example.toml -o /tmp/config.toml && \
+  -e LIBGL_ALWAYS_SOFTWARE=true  -v
 docker run -p 5000:5000 \
  -e LIBGL_ALWAYS_SOFTWARE=true \
+ --cap-add SYS_ADMIN --cap-add CAP_NET_ADMIN \
+ --security-opt apparmor=unconfined --security-opt seccomp=unconfined \
  -v /tmp/config.toml:/app/config.toml -it \
   ghcr.io/dorftv/dove:latest
+
+```
+
+you can add the following to utilize your gpu via vaapi
+
+```
+-v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY --device=/dev/dri
 
 ```
 

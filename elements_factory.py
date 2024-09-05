@@ -1,6 +1,6 @@
 from uuid import uuid4
 import time
-from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO
+from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
 from api.input_models import InputDTO
@@ -47,7 +47,7 @@ class ElementsFactory:
     scene_list = config.get_scenes()
     input_list = config.get_inputs()
     output_list = config.get_outputs()
-
+    cutProgram = None
 
     # TODO  config.get_preview_enabled()
     preview_enabled = True
@@ -76,7 +76,7 @@ class ElementsFactory:
             return None
 
     def create_mixer(self, name, scene_details):
-        mixerUuid = uuid4()
+        mixerUuid = scene_details.get('uid', uuid4())
         mixerDTO = sceneMixerDTO(uid=mixerUuid, name=name, type="scene", n=scene_details.get('n', 0), locked=scene_details.get('locked', False), src_locked=scene_details.get('src_locked', False))
         mixer = sceneMixer(data=mixerDTO)
         self.handler.add_pipeline(mixer)
@@ -89,8 +89,8 @@ class ElementsFactory:
         if True:
             programUuid = uuid4()
             programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
-            programwMixer = programMixer(data=programDTO)
-            self.handler.add_pipeline(programwMixer)
+            newProgramMixer = (programMixer(data=programDTO))
+            self.handler.add_pipeline(newProgramMixer)
             programPreviewOutput = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=programUuid))
             self.handler.add_pipeline(programPreviewOutput)
 
@@ -113,6 +113,8 @@ class ElementsFactory:
                         if details.get("name", None) is None:
                             details["name"] = name
 
+                        if scene_details.get('program', False):
+                            self.cutProgram = mixerCutProgramDTO(src=scene.data.uid)
                         properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute', 'preview', 'name']
                         for prop in properties:
                             value = details.get(prop)
@@ -164,3 +166,5 @@ class ElementsFactory:
             for name, input_details in self.input_list.items():
                 inputUuid =  uuid4()
                 pipeline = self.create_input(input_details['type'], name, input_details)
+        if isinstance(self.cutProgram, mixerCutProgramDTO):
+            newProgramMixer.cut_program(self.cutProgram)

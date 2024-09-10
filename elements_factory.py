@@ -53,7 +53,7 @@ class ElementsFactory:
     preview_enabled = True
 
     def create_input(self, type, name, input):
-        uid = uuid4()
+        uid = input.get('uid', uuid4())
         if type == "testsrc":
             newInput = (
                 TestsrcInput(data=TestsrcInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4), preview=input.get('preview', True), locked=input.get('locked', False))))
@@ -146,7 +146,7 @@ class ElementsFactory:
                 newOutput = None
                 if type is not None:
 
-                    uid = uuid4()
+                    uid = output.get('uid', uuid4())
                     if type == "rtmpsink":
                         newOutput = (
                             RtmpsinkOutput(data= RtmpsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), locked=output.get('locked', False))))

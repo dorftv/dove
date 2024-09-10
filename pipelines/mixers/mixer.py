@@ -25,12 +25,13 @@ class Mixer(GSTBase, ABC):
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
     def remove_slot(self, mixerSource: mixerInputDTO = None):
-        #source = self.data.getMixerInputDTO(mixerSlot.index)
         self.data.remove_slot(mixerSource)
         asyncio.create_task(manager.broadcast("UPDATE", self.data))
 
     def add_source(self, input: mixerCutDTO):
         mixerInputDTO = self.data.getMixerInputDTO(input.index)
+        if mixerInputDTO.sink is not None:
+            self.remove_source(mixerInputDTO)
         self.data.update_mixer_input(input.index, src=input.src)
         for audio_or_video in ["audio", "video"]:
             sink = self.add_mixer_pad(audio_or_video, input.index)
@@ -75,7 +76,7 @@ class Mixer(GSTBase, ABC):
         src.sync_state_with_parent()
         src_pad = src.get_static_pad("src")
         sink_pad.set_active(True)
-        logger.log(f"Linkin sink pad {sink_pad.get_name()} in Mixer {self.data.uid}", level='DEBUG')
+        logger.log(f"Linking sink pad {sink_pad.get_name()} in Mixer {self.data.uid}", level='DEBUG')
         src_pad.link(sink_pad)
 
     def unlink_pad(self, audio_or_video, sink):
@@ -116,6 +117,7 @@ class Mixer(GSTBase, ABC):
                     break
             pipeline.remove(src)
         if sink_pad:
+            logger.log(f"Remove sink pad {sink_pad.get_name()} in Mixer {self.data.uid}", level='DEBUG')
             mixer = self.getMixer(audio_or_video)
             mixer.release_request_pad(sink_pad)
         sink_pad = None

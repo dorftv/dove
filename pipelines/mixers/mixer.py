@@ -30,8 +30,9 @@ class Mixer(GSTBase, ABC):
 
     def add_source(self, input: mixerCutDTO):
         mixerInputDTO = self.data.getMixerInputDTO(input.index)
-        if mixerInputDTO.sink is not None:
-            self.remove_source(mixerInputDTO)
+        if mixerInputDTO is not None:
+            if mixerInputDTO.sink is not None:
+                self.remove_source(mixerInputDTO)
         self.data.update_mixer_input(input.index, src=input.src)
         for audio_or_video in ["audio", "video"]:
             sink = self.add_mixer_pad(audio_or_video, input.index)

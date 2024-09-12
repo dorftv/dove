@@ -86,7 +86,7 @@ class mixerBaseDTO(BaseModel):
                 if source.height is None:
                     source.height = self.height
                 if source.zorder is None:
-                    source.zorder = source.index + 1
+                    source.zorder = source.index + 2
                 if source.name is None:
                     source.name = f"Slot {source.index}"
                 break

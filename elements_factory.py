@@ -47,6 +47,7 @@ class ElementsFactory:
     scene_list = config.get_scenes()
     input_list = config.get_inputs()
     output_list = config.get_outputs()
+    program_overlays_list = config.get_program_overlays()
     cutProgram = None
 
     # TODO  config.get_preview_enabled()
@@ -123,12 +124,11 @@ class ElementsFactory:
 
                         input = details.get('input', None)
                         if input:
-
                             if isinstance(input, str):
                                 pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                             elif input.get('type', None) is not None:
                                 pipeline = self.create_input(input.get('type'), name, input)
-                                inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
+                                #inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
                             if pipeline is not None:
                                 uid = pipeline.data.uid
                                 # @TODO without this audio is distorted. find a better way.
@@ -161,6 +161,29 @@ class ElementsFactory:
                             Shout2sendOutput(data=Shout2sendOutputDTO(src=programUuid, ip=output.get('ip', None), port=output.get('port', None), mount=output.get('mount', None), codec=output.get('codec', None),username=output.get('username', None),  password=output.get('password', None),  locked=output.get('locked', False))))
                     if newOutput is not None:
                         self.handler.add_pipeline(newOutput)
+
+        program_index = 1
+        if self.program_overlays_list is not None:
+            program_index +=1
+
+            for name, overlays in self.program_overlays_list.items():
+                print(name)
+                #overlays['preview'] = False
+                print(overlays['preview'])
+                input = overlays.get('input', None)
+                if input:
+                    if isinstance(input, str):
+                        pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
+                elif overlays.get('type', None) is not None:
+                    pipeline = self.create_input(overlays.get('type'), name, overlays)
+
+                if pipeline is not None:
+                    uid = pipeline.data.uid
+                    newProgramMixer.data.update_mixer_input(program_index, src=uid)
+                    newProgramMixer.add_slot()
+                    cutInput = mixerCutDTO(src=uid, target=newProgramMixer.data.uid, index=program_index)
+                    newProgramMixer.add_source(cutInput)
+                    newProgramMixer.update_pad_from_sources("video", program_index)
 
         if self.input_list is not None:
             for name, input_details in self.input_list.items():

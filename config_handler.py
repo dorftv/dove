@@ -115,6 +115,13 @@ class ConfigReader:
         else:
             return None
 
+    def get_program_overlays(self):
+        if 'program' in self.config:
+            return self.config['program']
+        else:
+            return None
+
+
     def get_resolutions(self):
         return self.config['resolutions']
 

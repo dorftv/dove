@@ -28,12 +28,12 @@ class PlaylistInput(Input):
         uridecodebin.connect("pad-added", self.on_pad_added)
         pipeline.add(uridecodebin)
 
-        videobin = Gst.parse_bin_from_description(f"{self.get_video_end()}", True)
+        videobin = Gst.parse_bin_from_description(f"queue ! {self.get_video_end()}", True)
         videobin.set_name("videobin")
         pipeline.add(videobin)
         videobin.sync_state_with_parent()
 
-        audiobin = Gst.parse_bin_from_description(f"audiotestsrc wave=4 ! audioconvert ! audiorate ! audioresample ! audiomixer name=audiomixer  ! audioresample !  {self.get_audio_end()}", True)
+        audiobin = Gst.parse_bin_from_description(f"audiotestsrc wave=4 ! audioconvert ! audiorate ! audioresample ! { self.get_caps('audio') }  ! queue ! audiomixer name=audiomixer  ! queue !  {self.get_audio_end()}", True)
         audiobin.set_name("audiobin")
         pipeline.add(audiobin)
         audiobin.sync_state_with_parent()

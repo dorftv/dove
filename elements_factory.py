@@ -12,6 +12,7 @@ from api.inputs.playbin3 import  Playbin3InputDTO
 from pipelines.inputs.playbin3 import Playbin3Input
 
 from api.inputs.wpesrc import  WpesrcInputDTO
+from api.inputs.nodecg import  NodecgInputDTO
 from pipelines.inputs.wpesrc import WpesrcInput
 
 from api.inputs.ytdlp import YtdlpInputDTO
@@ -70,6 +71,9 @@ class ElementsFactory:
         elif type == "playlist":
             newInput = (
                 PlaylistInput(data=PlaylistInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), next=input.get('next', ''), preview=input.get('preview', True), width=input.get('width', default_width), height=input.get('height', default_height), locked=input.get('locked', False))))
+        elif type == "nodecg":
+            newInput = (
+                WpesrcInput(data=NodecgInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), nodecg_baseurl=input.get('nodecg_baseurl', ''), panels=input.get('panels', ''), preview=False, locked=input.get('locked', False))))
         if newInput is not None:
             self.handler.add_pipeline(newInput)
             return newInput

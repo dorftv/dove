@@ -3,7 +3,7 @@ from api.websockets import manager
 from pipeline_handler import PipelineHandler
 from pipelines.description import Description
 from pipelines.base import GSTBase
-from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO
+from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
 from api.output_models import OutputDeleteDTO
 from api.mixers_dtos import mixerRemoveDTO
 
@@ -54,4 +54,15 @@ async def delete(request: Request, data: InputDeleteDTO):
                         break
                     mixer.remove_source(mixerRemoveDTO(src=data.uid, index=mixerInput.index))
     return SuccessDTO(uid=data.uid)
+
+@router.put("/inputs", response_model=SuccessDTO)
+async def update_input(request: Request,data: updateInputDTO):
+    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    existing_input = handler.get_pipeline("inputs", data.uid)
+
+    if existing_input:
+        updated_input = await existing_input.update(data)
+        return SuccessDTO(uid=data.uid)
+    else:
+        raise HTTPException(status_code=404, detail="Input not found")
 

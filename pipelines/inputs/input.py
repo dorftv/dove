@@ -47,6 +47,8 @@ class Input(GSTBase, ABC):
         pipeline = self.get_pipeline()
         if not isinstance(data, updateInputDTO):
             data = updateInputDTO.parse_obj(data)
+        if data.loop is not None:
+            self.data.loop = data.loop
         if data.volume is not None:
             self.data.volume = data.volume
             volume = pipeline.get_by_name('volume')
@@ -54,7 +56,10 @@ class Input(GSTBase, ABC):
         if data.state is not None:
             state_map = {
                 'PLAYING': Gst.State.PLAYING,
-                'PAUSED': Gst.State.PAUSED
+                'PAUSED': Gst.State.PAUSED,
+                'READY': Gst.State.READY,
+                'NULL': Gst.State.NULL,
+
             }
             pipeline.set_state(state_map[data.state])
         if data.position is not None:

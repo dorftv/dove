@@ -29,6 +29,7 @@ class updateInputDTO(BaseModel):
     position: Optional[int] = None
     state: Optional[str] = None
     volume: Optional[float] = None
+    loop: Optional[bool] = None
 
 
 class PositionDTO(BaseModel):

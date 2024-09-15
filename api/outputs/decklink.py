@@ -27,9 +27,9 @@ class DecklinkOutputDTO(OutputDTO):
         help="The output Mode to use. eg. 43 for PAL Widescreen",
         placeholder="43",
     )
-    interlaced: bool = Field(
+    interlaced: Optional[bool] = Field(
         label="Interlaces",
-        defaut=False,
+        default=False,
         help="Interlace the output.",
     )
 

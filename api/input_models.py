@@ -22,6 +22,7 @@ class InputDTO(BaseModel):
     duration: Optional[int] = None
     position: Optional[int] = None
     details: Optional[str] = None
+    show_controls: bool = True
 
 class updateInputDTO(BaseModel):
     uid: UUID

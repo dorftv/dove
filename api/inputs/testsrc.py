@@ -35,6 +35,8 @@ class TestsrcInputDTO(InputDTO):
         description="Frequency for Audio.",
         placeholder="440.0",
     )
+    show_controls: bool = True
+
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
 

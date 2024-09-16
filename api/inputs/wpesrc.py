@@ -28,6 +28,8 @@ class WpesrcInputDTO(InputDTO):
     )
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
+    show_controls: bool = False
+
 
 from pipelines.inputs.wpesrc import WpesrcInput
 

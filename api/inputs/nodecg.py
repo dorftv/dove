@@ -30,6 +30,7 @@ class NodecgInputDTO(WpesrcInputDTO):
         description="path to NodeCG Dashboard Panel",
         help=""
     )
+    index: Optional[int] = None
 
 from pipelines.inputs.wpesrc import WpesrcInput
 

@@ -70,6 +70,8 @@ class PlaylistInputDTO(InputDTO):
         hidden=True,
         default_factory=list
     )
+    show_controls: bool = False
+
 
 
 

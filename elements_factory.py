@@ -132,7 +132,7 @@ class ElementsFactory:
                                 pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                             elif input.get('type', None) is not None:
                                 pipeline = self.create_input(input.get('type'), name, input)
-                                #inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
+                                inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
                             if pipeline is not None:
                                 uid = pipeline.data.uid
                                 # @TODO without this audio is distorted. find a better way.

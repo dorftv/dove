@@ -168,12 +168,8 @@ class ElementsFactory:
 
         program_index = 1
         if self.program_overlays_list is not None:
-            program_index +=1
-
             for name, overlays in self.program_overlays_list.items():
-                print(name)
-                #overlays['preview'] = False
-                print(overlays['preview'])
+                program_index +=1
                 input = overlays.get('input', None)
                 if input:
                     if isinstance(input, str):

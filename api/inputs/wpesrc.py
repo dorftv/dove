@@ -23,7 +23,7 @@ class WpesrcInputDTO(InputDTO):
     )
     draw_background: Optional[bool] = Field(
         label="Draw Background",
-        default=True,
+        default=False,
         help="use transparent background when not set."
     )
     height: Optional[int] = Field(default_factory=get_default_height)

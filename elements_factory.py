@@ -55,25 +55,26 @@ class ElementsFactory:
     preview_enabled = True
 
     def create_input(self, type, name, input):
-        uid = input.get('uid', uuid4())
+        input['uid'] = input.get('uid', str(uuid4()))
+        input['name'] = input.get('name', name)
         if type == "testsrc":
             newInput = (
-                TestsrcInput(data=TestsrcInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), pattern=input.get('pattern', 1), wave=input.get('wave', 4), preview=input.get('preview', True), locked=input.get('locked', False))))
+                TestsrcInput(data=TestsrcInputDTO(**input)))
         elif type == "playbin3":
             newInput = (
-                Playbin3Input(data=Playbin3InputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
+                Playbin3Input(data=Playbin3InputDTO(**input)))
         elif type == "wpesrc":
             newInput = (
-                WpesrcInput(data=WpesrcInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), preview=input.get('preview', True), locked=input.get('locked', False))))
+                WpesrcInput(data=WpesrcInputDTO(**input)))
         elif type == "ytdlp":
             newInput = (
-                YtdlpInput(data=YtdlpInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), uri=input.get('uri', ''), loop=input.get('loop', False),  preview=input.get('preview', True), locked=input.get('locked', False))))
+                YtdlpInput(data=YtdlpInputDTO(**input)))
         elif type == "playlist":
             newInput = (
-                PlaylistInput(data=PlaylistInputDTO(name=input.get('name',name), uid=uid, volume=input.get('volume', 0.8), next=input.get('next', ''), preview=input.get('preview', True), width=input.get('width', default_width), height=input.get('height', default_height), locked=input.get('locked', False))))
+                PlaylistInput(data=PlaylistInputDTO(**input)))
         elif type == "nodecg":
             newInput = (
-                WpesrcInput(data=NodecgInputDTO(name=input.get('name',name), uid=uid, location=input.get('location'), draw_background=input.get('draw_background', True), nodecg_baseurl=input.get('nodecg_baseurl', ''), panels=input.get('panels', ''), preview=False, locked=input.get('locked', False), index=input.get('index', None))))
+                WpesrcInput(data=NodecgInputDTO(**input)))
         if newInput is not None:
             self.handler.add_pipeline(newInput)
             return newInput
@@ -149,20 +150,21 @@ class ElementsFactory:
                 type = output.get('type')
                 newOutput = None
                 if type is not None:
-
-                    uid = output.get('uid', uuid4())
+                    output['uid'] = output.get('uid', str(uuid4()))
+                    output['name'] = output.get('name', name)
+                    uid = output.get('uid')
                     if type == "rtmpsink":
                         newOutput = (
-                            RtmpsinkOutput(data= RtmpsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), locked=output.get('locked', False))))
+                            RtmpsinkOutput(data= RtmpsinkOutputDTO(src=programUuid, **output)))
                     if type == "srtsink":
                         newOutput = (
-                            SrtsinkOutput(data= SrtsinkOutputDTO(uid=uid, src=programUuid, uri=output.get('uri', None), streamid=output.get('streamid', None), x264_opts=output.get('x264_opts', None), h264_profile=output.get('h264_profile', 'high'), width=output.get('width'), height=output.get('height'), locked=output.get('locked', False))))
+                            SrtsinkOutput(data= SrtsinkOutputDTO(src=programUuid, **output)))
                     if type == "decklink":
                         newOutput = (
-                            DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, device=output.get('device', None), mode=output.get('mode', None), interlaced=output.get('interlaced', False), locked=output.get('locked', False))))
+                            DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, **output)))
                     if type == "shout2send":
                         newOutput = (
-                            Shout2sendOutput(data=Shout2sendOutputDTO(src=programUuid, ip=output.get('ip', None), port=output.get('port', None), mount=output.get('mount', None), codec=output.get('codec', None),username=output.get('username', None),  password=output.get('password', None),  locked=output.get('locked', False))))
+                            Shout2sendOutput(data=Shout2sendOutputDTO(src=programUuid, **output)))
                     if newOutput is not None:
                         self.handler.add_pipeline(newOutput)
 

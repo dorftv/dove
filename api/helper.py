@@ -6,10 +6,16 @@ from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List
 from api.output_models import OutputDTO
 from api.input_models import InputDTO
 
+from pipelines.base import GSTBase
+from pipelines.inputs.input import Input
+from pipelines.outputs.output import Output
+
 from pydantic import BaseModel
 import json
 from pydantic.fields import FieldInfo
-#from api.websockets import manager
+
+
+
 
 from config_handler import ConfigReader
 
@@ -78,7 +84,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> list:
             }
     return fields
 
-
+# @TODO merge get_models and get_dtos
 def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_models: str = None) -> Generator[Tuple[Type[BaseModel], str], None, None]:
     exclude_models.add("BaseModel")
     package_dir = models_path.replace('.', '/')
@@ -94,7 +100,7 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
                 module = importlib.import_module(full_module_name)
                 for name, obj in module.__dict__.items():
                     skip = False
-                    if isinstance(obj, type) and (issubclass(obj, OutputDTO) or issubclass(obj, InputDTO)):# or issubclass(obj, MixerDTO)):
+                    if isinstance(obj, type) and (issubclass(obj, OutputDTO) or issubclass(obj, InputDTO)):
                         raw_fields = obj.schema().get('properties', None)
                         if raw_fields:
                             model_type = raw_fields.get('type', {}).get('default')
@@ -104,6 +110,17 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
                                 yield obj, name
             except ModuleNotFoundError as e:
                 raise e
+
+def get_dtos(io_type: str) -> Generator[Tuple[Type[BaseModel], str], None, None]:
+    base_path = f'api.{io_type}s'
+    base_class = InputDTO if io_type == 'input' else OutputDTO
+
+    for _, name, _ in pkgutil.iter_modules([base_path.replace('.', '/')]):
+        module = importlib.import_module(f'{base_path}.{name}')
+        for attr_name, attr_value in module.__dict__.items():
+            if isinstance(attr_value, type) and issubclass(attr_value, base_class) and attr_value != base_class:
+                yield attr_value, attr_name.lower().replace(f'{io_type}dto', '')
+
 
 # Dynamically load routes from path
 def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None]:
@@ -121,8 +138,6 @@ def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None
             module = importlib.import_module(full_module_name)
             if hasattr(module, 'router'):
                 yield module.router, module_name
-
-
 
 # @TODO: use generic api request handler function
 async def handle_request(request: Request, data: BaseModel, OutputClass: Type[BaseModel]):

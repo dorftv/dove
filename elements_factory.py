@@ -1,46 +1,26 @@
 from uuid import uuid4
-import time
+from logger import logger
+
 from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
-from api.input_models import InputDTO
-
-from api.inputs.testsrc import  TestsrcInputDTO
-from pipelines.inputs.testsrc import TestsrcInput
-
-from api.inputs.playbin3 import  Playbin3InputDTO
-from pipelines.inputs.playbin3 import Playbin3Input
-
-from api.inputs.wpesrc import  WpesrcInputDTO
-from api.inputs.nodecg import  NodecgInputDTO
-from pipelines.inputs.wpesrc import WpesrcInput
-
-from api.inputs.ytdlp import YtdlpInputDTO
-from pipelines.inputs.ytdlp import YtdlpInput
-
-from api.inputs.playlist import PlaylistInputDTO
-from pipelines.inputs.playlist import PlaylistInput
 
 from api.output_models import OutputDTO, PreviewHlsOutputDTO
 from pipelines.outputs.preview_hls import PreviewHlsOutput
 
-from pipelines.outputs.rtmpsink import RtmpsinkOutput
-from api.outputs.rtmpsink import RtmpsinkOutputDTO
-
-from pipelines.outputs.srtsink import SrtsinkOutput
-from api.outputs.srtsink import SrtsinkOutputDTO
-
-from api.outputs.decklink import DecklinkOutputDTO
-from pipelines.outputs.decklink import DecklinkOutput
-
-from pipelines.outputs.shout2send import Shout2sendOutput
-from api.outputs.shout2send import Shout2sendOutputDTO
-
+from api.helper import get_dtos
+from pipelines.helper import get_pipeline_classes
 
 from config_handler import ConfigReader
+
+
 config = ConfigReader()
-default_width = config.get_default_width()
-default_height = config.get_default_height()
+
+input_dtos = {model_type: model for model, model_type in get_dtos('input')}
+output_dtos = {model_type: model for model, model_type in get_dtos('output')}
+input_pipeline_classes = {model_type: model for model, model_type in get_pipeline_classes('input')}
+output_pipeline_classes = {model_type: model for model, model_type in get_pipeline_classes('output')}
+
 
 class ElementsFactory:
     def __init__(self, handler):
@@ -54,32 +34,25 @@ class ElementsFactory:
     # TODO  config.get_preview_enabled()
     preview_enabled = True
 
-    def create_input(self, type, name, input):
-        input['uid'] = input.get('uid', str(uuid4()))
-        input['name'] = input.get('name', name)
-        if type == "testsrc":
-            newInput = (
-                TestsrcInput(data=TestsrcInputDTO(**input)))
-        elif type == "playbin3":
-            newInput = (
-                Playbin3Input(data=Playbin3InputDTO(**input)))
-        elif type == "wpesrc":
-            newInput = (
-                WpesrcInput(data=WpesrcInputDTO(**input)))
-        elif type == "ytdlp":
-            newInput = (
-                YtdlpInput(data=YtdlpInputDTO(**input)))
-        elif type == "playlist":
-            newInput = (
-                PlaylistInput(data=PlaylistInputDTO(**input)))
-        elif type == "nodecg":
-            newInput = (
-                WpesrcInput(data=NodecgInputDTO(**input)))
-        if newInput is not None:
-            self.handler.add_pipeline(newInput)
-            return newInput
+
+    def create_pipeline(self, io_type, name, data):
+        data['name'] = data.get('name', name)
+        dto_class = input_dtos.get(data['type']) if io_type == 'input' else output_dtos.get(data['type'])
+        pipeline_class = input_pipeline_classes.get(data['type']) if io_type == 'input' else output_pipeline_classes.get(data['type'])
+
+        if pipeline_class:
+            if dto_class:
+                dto_instance = dto_class(**data)
+                new_pipeline = pipeline_class(data=dto_instance)
+                self.handler.add_pipeline(new_pipeline)
+                return new_pipeline
+            else:
+                logger.log(f"Could not find DTO class for {data['type']}", level='ERROR')
+                return None
         else:
+            logger.log(f"Could not find Pipeline class for {data['type']}", level='ERROR')
             return None
+
 
     def create_mixer(self, name, scene_details):
         mixerUuid = scene_details.get('uid', uuid4())
@@ -132,42 +105,16 @@ class ElementsFactory:
                             if isinstance(input, str):
                                 pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                             elif input.get('type', None) is not None:
-                                pipeline = self.create_input(input.get('type'), name, input)
+                                pipeline = self.create_pipeline('input', name, input)
                                 inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
                             if pipeline is not None:
                                 uid = pipeline.data.uid
-                                # @TODO without this audio is distorted. find a better way.
-                                #time.sleep(0.3)
+
                                 scene.data.update_mixer_input(index, src=uid)
                                 cutInput = mixerCutDTO(src=uid, target=scene.data.uid, index=index)
                                 scene.add_source(cutInput)
                                 scene.update_pad_from_sources("video", index)
                         index += 1
-
-
-        if self.output_list is not None:
-            for name, output in self.output_list.items():
-                type = output.get('type')
-                newOutput = None
-                if type is not None:
-                    output['uid'] = output.get('uid', str(uuid4()))
-                    output['name'] = output.get('name', name)
-                    uid = output.get('uid')
-                    if type == "rtmpsink":
-                        newOutput = (
-                            RtmpsinkOutput(data= RtmpsinkOutputDTO(src=programUuid, **output)))
-                    if type == "srtsink":
-                        newOutput = (
-                            SrtsinkOutput(data= SrtsinkOutputDTO(src=programUuid, **output)))
-                    if type == "decklink":
-                        newOutput = (
-                            DecklinkOutput(data=DecklinkOutputDTO(src=programUuid, **output)))
-                    if type == "shout2send":
-                        newOutput = (
-                            Shout2sendOutput(data=Shout2sendOutputDTO(src=programUuid, **output)))
-                    if newOutput is not None:
-                        self.handler.add_pipeline(newOutput)
-
         program_index = 1
         if self.program_overlays_list is not None:
             for name, overlays in self.program_overlays_list.items():
@@ -177,7 +124,7 @@ class ElementsFactory:
                     if isinstance(input, str):
                         pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                 elif overlays.get('type', None) is not None:
-                    pipeline = self.create_input(overlays.get('type'), name, overlays)
+                    pipeline = self.create_pipeline('input', name, overlays)
 
                 if pipeline is not None:
                     uid = pipeline.data.uid
@@ -187,9 +134,20 @@ class ElementsFactory:
                     newProgramMixer.add_source(cutInput)
                     newProgramMixer.update_pad_from_sources("video", program_index)
 
+
+        if self.output_list is not None:
+            for name, output in self.output_list.items():
+                type = output.get('type')
+                if type is not None:
+                    output['name'] = output.get('name', name)
+                    output['src'] = programUuid
+                    self.create_pipeline('output', name, output)
+
+
+
         if self.input_list is not None:
             for name, input_details in self.input_list.items():
                 inputUuid =  uuid4()
-                pipeline = self.create_input(input_details['type'], name, input_details)
+                pipeline = self.create_pipeline('input', name, input_details)
         if isinstance(self.cutProgram, mixerCutProgramDTO):
             newProgramMixer.cut_program(self.cutProgram)

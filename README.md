@@ -22,6 +22,7 @@ Currently HLS is available for preview with a latency of 1-5 seconds. Future ver
 * playbin3
 * playlists ( mix html and video)
 * wpesrc ( view html. option to not draw background for overlays )
+* NodeCG ( embed graphics via wpesrc / embed dashboards with iframes )
 * yt-dlp (Play all supported Urls with playbin3)
 * audio/videotestsrc
 * webrtc (planned)
@@ -34,12 +35,13 @@ They are used for mixing inputs. A scene can have multiple sink pads ( input slo
 Each sink pad supports alpha,width,height,xpos,ypos,zorder properties for video, and volume property for audio.
 
 #### Outputs
-* srt
+* srt ( srtsink, srtserversink )
 * decklink
 * hls ( for preview)
-* webrtc ( for preview, planned)
+* webrtc ( for preview, planned )
 * shoutcast
 * rtmp
+* webrtc ( planned )
 * ... more to come
 
 

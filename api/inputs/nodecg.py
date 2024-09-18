@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.input_models import InputDeleteDTO, SuccessDTO
 from api.inputs.wpesrc import WpesrcInputDTO
-#### <pt
+
 from typing import Optional
 from helpers import get_default_height, get_default_width
 
@@ -30,6 +30,7 @@ class NodeCGInputDTO(WpesrcInputDTO):
         help=""
     )
     index: Optional[int] = None
+    show_controls: bool = False
 
 from pipelines.inputs.nodecg import NodeCGInput
 

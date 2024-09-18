@@ -4,16 +4,18 @@ from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional, List
 from pydantic import BaseModel, Field, validator
 
+from helpers import get_default_height, get_default_width
 from api.websockets import manager
 router = APIRouter()
+
 
 
 class PlaylistItemDTO(BaseModel):
     uri: str
     type: str
     duration: Optional[int] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)
 
     @validator("type")
     @classmethod

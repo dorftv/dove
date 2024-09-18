@@ -23,6 +23,8 @@ class InputDTO(BaseModel):
     position: Optional[int] = None
     details: Optional[str] = None
     show_controls: bool = True
+    height: Optional[int] = Field(default_factory=get_default_height)
+    width: Optional[int] = Field(default_factory=get_default_width)
 
 class updateInputDTO(BaseModel):
     uid: UUID

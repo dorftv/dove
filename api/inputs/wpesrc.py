@@ -26,8 +26,6 @@ class WpesrcInputDTO(InputDTO):
         default=False,
         help="use transparent background when not set."
     )
-    height: Optional[int] = Field(default_factory=get_default_height)
-    width: Optional[int] = Field(default_factory=get_default_width)
     show_controls: bool = False
 
 

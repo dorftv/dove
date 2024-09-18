@@ -7,7 +7,7 @@ from typing import Optional
 from api.websockets import manager
 router = APIRouter()
 
-
+# @TODO move receiving url here, and use playbin input class
 class YtdlpInputDTO(InputDTO):
     type: str = Field(
         label="YtDlp",

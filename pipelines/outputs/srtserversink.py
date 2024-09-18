@@ -26,7 +26,7 @@ class SrtserversinkOutput(Output):
         self.add_pipeline(self.get_video_start() + f"  videorate ! videoconvert !  videoscale !   { self.get_caps('video', 'I420') }  ! "
         f" x264enc {self.data.x264_opts}  ! video/x-h264,profile={ self.data.h264_profile } ! queue !  "
         f" mpegtsmux name=mux {self.data.mux_opts} ! "
-        f" srtserversink name=sink  uri={self.data.uri} "
+        f" srtserversink name=sink  uri={self.data.uri} mode=2 latency={self.data.latency}"
         f" { pipeline_audio_str }")
 
 

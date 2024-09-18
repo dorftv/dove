@@ -21,7 +21,12 @@ class SrtserversinkOutputDTO(OutputDTO):
         description="Enter SRT Server URL and Port",
         placeholder="srt://server:port"
     )
-
+    latency: int = Field(
+        label="latency",
+        default=400,
+        description="",
+        placeholder="default: 400"
+    )
     streamid: Optional[str] = Field(
         default=None,
         label="Stream ID",

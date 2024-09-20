@@ -117,12 +117,17 @@ class GSTBase(BaseModel):
 
     def _on_error(self, bus, message):
         err, debug = message.parse_error()
-        # @TODO add err message to data
         self.data.state = "ERROR"
         error_message = GLib.Error(err).message
-        print(error_message)
-        self.data.details = str(error_message)
+
+        debug_array = debug.split('\n')
+        debug_array = [line for line in debug_array if line.strip()]
+        debug_array.insert(0, f"Error: {error_message}")
+
+        self.data.details = debug_array
         asyncio.run(manager.broadcast("UPDATE", self.data))
+
+
 
     def add_duration(self):
         pipeline = self.get_pipeline()

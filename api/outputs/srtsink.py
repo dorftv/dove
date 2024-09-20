@@ -30,7 +30,7 @@ class SrtsinkOutputDTO(OutputDTO):
     )
 
     x264_opts: str = Field(
-        default="key-int-max=30 tune=zerolatency speed-preset=slower",
+        default="bitrate=4000 pass=cbr speed-preset=veryfast",
         label="X264 Options",
         description="Options for x264enc (eg. \"tune=zerolatency pass=quant quantizer=19\")",
         placeholder="tune=zerolatency pass=cbr bitrate=8192"

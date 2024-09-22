@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
-from typing import Optional
+from typing import Optional,  Literal, Union
+from api.encoder import mp3EncoderDTO
 
 from api.websockets import manager
 
@@ -41,7 +42,12 @@ class Shout2sendOutputDTO(OutputDTO):
         help="Password to connect to the server.",
         placeholder="password"
     )
-
+    audio_encoder: Union[mp3EncoderDTO] = Field(
+        default_factory=lambda: mp3EncoderDTO(
+            name="mp3",
+            options="target=bitrate bitrate=192"
+        )
+    )
 
 from pipelines.outputs.shout2send import Shout2sendOutput
 

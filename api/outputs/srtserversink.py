@@ -2,6 +2,8 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional
+from typing import Literal, Union
+from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO
 
 from api.websockets import manager
 
@@ -34,50 +36,29 @@ class SrtserversinkOutputDTO(OutputDTO):
         placeholder="streamid"
     )
 
-    x264_opts: str = Field(
-        default="key-int-max=30 tune=zerolatency speed-preset=slower",
-        label="X264 Options",
-        description="Options for x264enc (eg. \"tune=zerolatency pass=quant quantizer=19\")",
-        placeholder="tune=zerolatency pass=cbr bitrate=8192"
+    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO] = Field(
+        default_factory=lambda: x264EncoderDTO(
+            options="bitrate=4000 pass=cbr speed-preset=veryfast",
+            profile="main",
+        )
     )
-
-    h264_profile: Optional[str] = Field(
-        default="main",
-        label="X264 Profile",
-        description="h264 profile to use (high-4:4:4, high-4:2:2, high-10, high, main, baseline, constrained-baseline, high-4:4:4-intra, high-4:2:2-intra, high-10-intra))",
-        placeholder="high"
+    audio_encoder: Union[aacEncoderDTO] = Field(
+        default_factory=lambda: aacEncoderDTO(
+            name="aac",
+            options=""
+        )
     )
-
-    h264_level: Optional[str] = Field(
-        default="3.1",
-        label="X264 Level",
-        description="h264 Level ( eg.: 3.1, 4)",
-        placeholder="3.1"
-    )
-
-    audio_codec: Optional[str] = Field(
-        default="aac",
-        label="Audio Codec",
-        description="audio codec to use (aac, mp2, mp3)",
-        placeholder="aac"
-    )
-    audio_opts: Optional[str] = Field(
-        default="",
-        label="Audio encoder Options",
-        description="options for the audio encoder selected. refer to gstreamer properties.",
-        placeholder="bitrate=192000"
-    )
-    mux_opts: Optional[str] = Field(
-        default="",
-        label="Mpegts Mux Options",
-        description="Mux options for mpegtsmux",
-        placeholder="bitrate=6000000"
+    mux: mpegtsMuxDTO = Field(
+        default_factory=lambda: mpegtsMuxDTO(
+            name = "mpegts",
+            options="alignment=7"
+        )
     )
 
 
 from pipelines.outputs.srtserversink import SrtserversinkOutput
 
-@router.put("/srtsink", response_model=SuccessDTO)
+@router.put("/srtserversink", response_model=SuccessDTO)
 async def create_srtsink_output(request: Request, data: SrtserversinkOutputDTO):
     handler = request.app.state._state["pipeline_handler"]
     output = handler.get_pipeline("outputs", data.uid)

@@ -15,10 +15,13 @@ class Shout2sendOutput(Output):
         handler = HandlerSingleton()
         input = handler.getpipeline(self.data.src)
         if input.has_audio_or_video("audio"):
-            #@TODO: Add option for oggenc
-            self.add_pipeline(self.get_audio_start() + f"  audioconvert ! audioresample ! audio/x-raw,rate=44100,channels=1 ! "
-                f"lamemp3enc target=bitrate bitrate=192  ! "
-                f"shout2send mount={self.data.mount} port={self.data.port} username={self.data.username} password={self.data.password} ip={self.data.ip} "
+            audio_encoder = self.get_audio_encoder_pipeline(self.data.audio_encoder.name)
+
+            self.add_pipeline(
+                self.get_audio_start() +
+                f"audioconvert ! audioresample !{ audio_encoder} ! "
+                f""
+                f"shout2send mount={self.data.mount} port={self.data.port} username={self.data.username} password={self.data.password} ip={self.data.ip}  "
                 f"sync=true")
 
     def describe(self):

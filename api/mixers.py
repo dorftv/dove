@@ -13,8 +13,9 @@ from pipelines.mixers.scene_mixer import sceneMixer
 
 
 # @TODO find a better place
-from pipelines.outputs.preview_hls import PreviewHlsOutput
-from api.output_models import PreviewHlsOutputDTO, OutputDTO, OutputDeleteDTO
+from api.outputs.hlssink2 import hlssink2OutputDTO
+from pipelines.outputs.hlssink2 import hlssink2Output
+from api.output_models import OutputDTO, OutputDeleteDTO
 
 from uuid import UUID, uuid4
 
@@ -38,7 +39,7 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
         existing_mixer.data = data
     else:
         handler.add_pipeline(mixer)
-        output = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=data.uid))
+        output = PreviewHlsOutput(data=hlssink2OutputDTO(src=data.uid))
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)

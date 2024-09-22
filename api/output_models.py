@@ -22,11 +22,6 @@ class OutputDTO(BaseModel):
     details: Optional[str] = None
 
 
-class PreviewHlsOutputDTO(OutputDTO):
-    type: str = "preview_hls"
-    height: Optional[int] = 180
-    width: Optional[int] = 320
-
 #class FakeOutputDTO(OutputDTO):
 #    type: str = "fakesink"
 

@@ -120,7 +120,7 @@ class PipelineHandler(object):
 
     def get_preview_pipeline(self, src: UUID):
         for pipeline in self._pipelines.get('outputs'):
-            if pipeline.data.src == src and pipeline.data.type == "preview_hls":
+            if pipeline.data.src == src and pipeline.data.type == "hlssink2":
                 pipeline = self.get_pipeline('outputs', pipeline.data.uid)
                 return pipeline
 

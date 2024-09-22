@@ -87,6 +87,9 @@ class GSTBase(BaseModel):
             pipeline.set_state(state)
 
     def has_audio_or_video(self, audio_or_video: str):
+        if self.data.type == "playlist":
+            return True
+
         pipeline = self.get_pipeline()
         iterator = pipeline.iterate_elements()
         while True:

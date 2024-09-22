@@ -33,6 +33,11 @@ class ConfigReader:
     def get_config(self):
         return self.config
 
+    def get_preview_config(self, type):
+        if type in self.config['preview']:
+            return self.config['preview'][type]
+        return None
+
     def get_preview_enabled(self):
         return self.config.preview_enabled
 

@@ -4,9 +4,8 @@ from logger import logger
 from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
-
-from api.output_models import OutputDTO, PreviewHlsOutputDTO
-from pipelines.outputs.preview_hls import PreviewHlsOutput
+from api.outputs.hlssink2 import hlssink2OutputDTO
+from pipelines.outputs.hlssink2 import hlssink2Output
 
 from api.helper import get_dtos
 from pipelines.helper import get_pipeline_classes
@@ -59,7 +58,11 @@ class ElementsFactory:
         mixerDTO = sceneMixerDTO(uid=mixerUuid, name=name, type="scene", n=scene_details.get('n', 0), locked=scene_details.get('locked', False), src_locked=scene_details.get('src_locked', False))
         mixer = sceneMixer(data=mixerDTO)
         self.handler.add_pipeline(mixer)
-        previewOutput = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=mixerUuid))
+        preview_config = config.get_preview_config('scenes')
+        previewOutput = hlssink2Output(data=hlssink2OutputDTO(
+            src=mixerUuid,
+            ** preview_config
+        ))
         self.handler.add_pipeline(previewOutput)
         return mixer
 
@@ -70,7 +73,11 @@ class ElementsFactory:
             programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
             newProgramMixer = (programMixer(data=programDTO))
             self.handler.add_pipeline(newProgramMixer)
-            programPreviewOutput = PreviewHlsOutput(data=PreviewHlsOutputDTO(src=programUuid))
+            preview_config = config.get_preview_config('program')
+            programPreviewOutput = hlssink2Output(data=hlssink2OutputDTO(
+                src=programUuid,
+                ** preview_config
+            ))
             self.handler.add_pipeline(programPreviewOutput)
 
 

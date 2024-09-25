@@ -23,11 +23,11 @@ class SrtserversinkOutputDTO(OutputDTO):
         description="Enter SRT Server URL and Port",
         placeholder="srt://server:port"
     )
-    latency: int = Field(
+    latency: Optional[int] = Field(
         label="latency",
         default=400,
-        description="",
-        placeholder="default: 400"
+        description="Latency for SRT. Default: 400",
+        placeholder="400"
     )
     streamid: Optional[str] = Field(
         default=None,
@@ -40,21 +40,20 @@ class SrtserversinkOutputDTO(OutputDTO):
         default_factory=lambda: x264EncoderDTO(
             options="bitrate=4000 pass=cbr speed-preset=veryfast",
             profile="main",
-        )
+        ),
     )
     audio_encoder: Union[aacEncoderDTO] = Field(
         default_factory=lambda: aacEncoderDTO(
             name="aac",
             options=""
-        )
+        ),
     )
     mux: mpegtsMuxDTO = Field(
         default_factory=lambda: mpegtsMuxDTO(
-            name = "mpegts",
+            name = "mpegtsmux",
             options="alignment=7"
-        )
+        ),
     )
-
 
 from pipelines.outputs.srtserversink import SrtserversinkOutput
 

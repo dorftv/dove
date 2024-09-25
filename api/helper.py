@@ -94,7 +94,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
             anyOf = next((item['type'] for item in field.get('anyOf', []) if isinstance(item, dict) and 'type' in item), None)
             field_info = {
                 "name": name,
-                "label": field.get('title', name),
+                "label": field.get('label', name),
                 "description": field.get('description'),
                 "help": field.get('help'),
                 "placeholder": field.get('placeholder'),

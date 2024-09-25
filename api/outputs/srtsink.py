@@ -19,6 +19,7 @@ class SrtsinkOutputDTO(OutputDTO):
     )
     uri: str = Field(
         label="Uri",
+        title="Uri",
         description="Enter SRT Server URL and Port",
         placeholder="srt://server:port"
     )
@@ -31,22 +32,20 @@ class SrtsinkOutputDTO(OutputDTO):
     )
 
     video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO] = Field(
-        default_factory=lambda: x264EncoderDTO(
-            options="bitrate=4000 pass=cbr speed-preset=veryfast",
-            profile="main",
-        )
+        default_factory=lambda: x264EncoderDTO(),
     )
     audio_encoder: Union[aacEncoderDTO] = Field(
         default_factory=lambda: aacEncoderDTO(
             name="aac",
             options=""
-        )
+        ),
+
     )
     mux: mpegtsMuxDTO = Field(
         default_factory=lambda: mpegtsMuxDTO(
-            name = "mpegts",
+            name = "mpegtsmux",
             options="alignment=7"
-        )
+        ),
     )
 
 from pipelines.outputs.srtsink import SrtsinkOutput

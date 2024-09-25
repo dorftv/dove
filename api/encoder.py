@@ -4,7 +4,12 @@ from pydantic import BaseModel, Field
 
 class EncoderDTO(BaseModel):
     name: str
-    options: Optional[str] = ""
+    options: Optional[str] = Field(
+        label = "Options",
+        description = "Options",
+        default = "",
+        placeholder =  "",
+    )
 
 #########################
 ##MUX####################
@@ -35,7 +40,7 @@ class flvMuxDTO(muxDTO):
 ##VIDEO################
 
 class videoEncoderDTO(EncoderDTO):
-    type: Literal["video"] = "video"
+    type: Literal["video"] = "video",
 
 class x264EncoderDTO(videoEncoderDTO):
     name: Literal["x264"] = "x264"
@@ -43,8 +48,8 @@ class x264EncoderDTO(videoEncoderDTO):
     options: Optional[str] = Field(
         label = "x264enc options",
         description = "Options for x264enc.",
-        default = "key-int-max=30 speed-preset=veryfast",
-        placeholder = "key-int-max=30 speed-preset=veryfast",
+        default = "key-int-max=30 speed-preset=ultrafast",
+        placeholder = "key-int-max=30 speed-preset=ultrafast",
     )
 
     profile: Optional[str] =  Field(
@@ -57,6 +62,12 @@ class x264EncoderDTO(videoEncoderDTO):
 class vah264encEncoderDTO(videoEncoderDTO):
     name: Literal["vah264enc"] = "vah264enc"
     element: Literal["vah264enc"] = "vah264enc"
+    options: Optional[str] = Field(
+        label = "vah264enc options",
+        description = "Options for vah264enc.",
+        default = "",
+        placeholder = "",
+    )
     profile: Optional[str] =  Field(
         label = "Profile",
         description = "H264 Profile. eg. Main, High, Baseline",

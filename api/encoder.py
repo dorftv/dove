@@ -6,43 +6,70 @@ class EncoderDTO(BaseModel):
     name: str
     options: Optional[str] = ""
 
-class muxDTO(BaseModel):
+#########################
+##MUX####################
+
+class muxDTO(EncoderDTO):
     name: str
-    options: Optional[str] = ""
 
 class mpegtsMuxDTO(muxDTO):
-    name: Literal["mpegts"] = "mpegts"
+    name: Literal["mpegtsmux"] = "mpegtsmux"
     element: Literal["mpegtsmux"] = "mpegtsmux"
-    options: Optional[str] = ""
-
+    options: Optional[str] = Field(
+        label = "Mpegtsmux options",
+        description = "Options for mpegtsmux.",
+        default = "",
+        placeholder =  "",
+    )
 class flvMuxDTO(muxDTO):
     name: Literal["flvmux"] = "flvmux"
     element: Literal["flvmux"] = "flvmux"
-    options: Optional[str] = ""
+    options: Optional[str] = Field(
+        label = "Flvmux options",
+        description = "Options for flvmux.",
+        default = "",
+        placeholder =  "",
+    )
+
+#######################
+##VIDEO################
 
 class videoEncoderDTO(EncoderDTO):
     type: Literal["video"] = "video"
-    profile: Optional[str] = None
-    level: Optional[str] = None
-
-class audioEncoderDTO(EncoderDTO):
-    type: Literal["audio"] = "audio"
-
-#    h264_profile: Optional[str] = Field(
-#        default="baseline",
-#        label="X264 Profile",
-#        description="h264 profile to use (high-4:4:4, high-4:2:2, high-10, high, main, baseline, constrained-baseline, high-4:4:4-intra, high-4:2:2-intra, high-10-intra))",
-#        placeholder="baseline"
 
 class x264EncoderDTO(videoEncoderDTO):
     name: Literal["x264"] = "x264"
     element: Literal["x264enc"] = "x264enc"
-    profile: Optional[str] = "main"
+    options: Optional[str] = Field(
+        label = "x264enc options",
+        description = "Options for x264enc.",
+        default = "key-int-max=30 speed-preset=veryfast",
+        placeholder = "key-int-max=30 speed-preset=veryfast",
+    )
+
+    profile: Optional[str] =  Field(
+        label = "Profile",
+        description = "H264 Profile. eg. Main, High, Baseline",
+        default = "main",
+        placeholder =  "main",
+    )
 
 class vah264encEncoderDTO(videoEncoderDTO):
     name: Literal["vah264enc"] = "vah264enc"
     element: Literal["vah264enc"] = "vah264enc"
-    profile: Optional[str] = "main"
+    profile: Optional[str] =  Field(
+        label = "Profile",
+        description = "H264 Profile. eg. Main, High, Baseline",
+        default = "high",
+        placeholder =  "high",
+    )
+
+
+#######################
+##AUDIO################
+
+class audioEncoderDTO(EncoderDTO):
+    type: Literal["audio"] = "audio"
 
 class aacEncoderDTO(audioEncoderDTO):
     name: Literal["aac"] = "aac"

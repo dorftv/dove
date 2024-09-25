@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter
+from api.helper import get_encoder_types
 
 from config_handler import ConfigReader  # make sure to replace with your actual module name
 config = ConfigReader()
@@ -32,3 +33,7 @@ def get_config():
 def get_config():
     return config.get_proxy_types()
 
+
+@router.get("/config/encoder")
+def get_config():
+    return get_encoder_types()

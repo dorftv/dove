@@ -12,12 +12,13 @@ from pipelines.base import GSTBase
 from pipelines.mixers.scene_mixer import sceneMixer
 
 
-# @TODO find a better place
 from api.outputs.hlssink2 import hlssink2OutputDTO
 from pipelines.outputs.hlssink2 import hlssink2Output
 from api.output_models import OutputDTO, OutputDeleteDTO
 
 from uuid import UUID, uuid4
+from config_handler import ConfigReader
+config = ConfigReader()
 
 router = APIRouter(prefix="/api")
 
@@ -39,7 +40,11 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
         existing_mixer.data = data
     else:
         handler.add_pipeline(mixer)
-        output = PreviewHlsOutput(data=hlssink2OutputDTO(src=data.uid))
+        preview_config = config.get_preview_config('scenes')
+        output = hlssink2Output(data=hlssink2OutputDTO(
+            src=data.uid,
+            ** preview_config
+        ))
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)

@@ -25,7 +25,7 @@ class hlssink2Output(Output):
 
         if input.has_audio_or_video("audio"):
             audioenc = self.get_audio_encoder_pipeline(self.data.audio_encoder.name)
-            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! { audioenc } "
+            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! { audioenc } ! mux.audio"
 
         videoenc = self.get_video_encoder_pipeline(self.data.video_encoder.name)
 
@@ -36,8 +36,8 @@ class hlssink2Output(Output):
             f""
             f"playlist-location={preview_path.joinpath('index.m3u8')} location={preview_path.joinpath('segment%05d.ts')} "
             f""
-            f"{ pipeline_audio_str } !  "
-            f"mux.audio")
+            f"{ pipeline_audio_str } ")
+
 
 
 

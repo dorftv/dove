@@ -24,11 +24,14 @@ class Output(GSTBase, ABC):
         if encoder == "x264":
             video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
             enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str}"
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str } ! h264parse ! queue "
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! queue ! { enc_str } ! h264parse "
 
         elif encoder == "vah264enc":
             video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
             pipeline_str = f"{caps} ! vapostproc ! { video_encoder.element } {video_encoder.options } ! h264parse ! queue "
+
+        elif encoder == "openh264enc":
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options } ! h264parse ! queue "
 
         return pipeline_str
 
@@ -41,14 +44,16 @@ class Output(GSTBase, ABC):
 
         if encoder == "aac":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  ! aacparse ! queue "
+            pipeline_str = f"{ caps } ! queue ! { audio_encoder.element }  ! aacparse ! queue "
 
         elif encoder == "mp2":
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  ! { audio_encoder.options } ! audio/mpeg,mpegversion=1,layer=2,channels=2,mode=joint-stereo ! queue "
+            caps =  audio_caps = self.get_caps('audio', 'S16LE')
+            #caps = "audio/x-raw,format=S16LE,layout=interleaved,rate=41000,channels=2"
+            pipeline_str = f"{ caps } ! queue ! { audio_encoder.element }  { audio_encoder.options } ! audio/mpeg,mpegversion=1,layer=2,channels=2,mode=joint-stereo  ! queue "
 
         elif encoder == "mp3":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  { audio_encoder.options } "
+            pipeline_str = f"{ caps } ! queue ! { audio_encoder.element }  { audio_encoder.options } ! queue "
 
         return pipeline_str
 

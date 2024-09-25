@@ -40,7 +40,7 @@ class flvMuxDTO(muxDTO):
 ##VIDEO################
 
 class videoEncoderDTO(EncoderDTO):
-    type: Literal["video"] = "video",
+    type: Literal["video"] = "video"
 
 class x264EncoderDTO(videoEncoderDTO):
     name: Literal["x264"] = "x264"
@@ -48,8 +48,8 @@ class x264EncoderDTO(videoEncoderDTO):
     options: Optional[str] = Field(
         label = "x264enc options",
         description = "Options for x264enc.",
-        default = "key-int-max=30 speed-preset=ultrafast",
-        placeholder = "key-int-max=30 speed-preset=ultrafast",
+        default = "key-int-max=30 speed-preset=veryfast",
+        placeholder = "key-int-max=30 speed-preset=veryfast",
     )
 
     profile: Optional[str] =  Field(
@@ -58,6 +58,10 @@ class x264EncoderDTO(videoEncoderDTO):
         default = "main",
         placeholder =  "main",
     )
+
+class openh264EncoderDTO(videoEncoderDTO):
+    name: Literal["openh264enc"] = "openh264enc"
+    element: Literal["openh264enc"] = "openh264enc"
 
 class vah264encEncoderDTO(videoEncoderDTO):
     name: Literal["vah264enc"] = "vah264enc"

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Literal, Union, Optional
-from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO
+from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO, openh264EncoderDTO
 
 from api.websockets import manager
 
@@ -17,7 +17,7 @@ class hlssink2OutputDTO(OutputDTO):
         default="hlssink2",
         description="stream output to HLS.",
     )
-    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO] = Field(
+    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO, openh264EncoderDTO] = Field(
         default_factory=lambda: x264EncoderDTO(
             options="key-int-max=30  speed-preset=ultrafast",
             profile="main",

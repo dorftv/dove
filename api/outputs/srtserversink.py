@@ -3,7 +3,7 @@ from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional
 from typing import Literal, Union
-from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO
+from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO, openh264EncoderDTO
 
 from api.websockets import manager
 
@@ -36,13 +36,13 @@ class SrtserversinkOutputDTO(OutputDTO):
         placeholder="streamid"
     )
 
-    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO] = Field(
+    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO, openh264EncoderDTO] = Field(
         default_factory=lambda: x264EncoderDTO(
             options="bitrate=4000 pass=cbr speed-preset=veryfast",
             profile="main",
         ),
     )
-    audio_encoder: Union[aacEncoderDTO] = Field(
+    audio_encoder: Union[aacEncoderDTO, mp2EncoderDTO] = Field(
         default_factory=lambda: aacEncoderDTO(
             name="aac",
             options=""

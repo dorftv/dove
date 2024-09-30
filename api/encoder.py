@@ -99,3 +99,7 @@ class mp3EncoderDTO(audioEncoderDTO):
     name: Literal["mp3"] = "mp3"
     element: Literal["lamemp3enc"] = "lamemp3enc"
 
+class opusEncoderDTO(audioEncoderDTO):
+    name: Literal["opus"] = "opus"
+    element: Literal["opusenc"] = "opusenc"
+

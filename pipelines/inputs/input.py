@@ -4,6 +4,10 @@ from uuid import UUID, uuid4
 from pipelines.base import GSTBase
 from pipelines.outputs.hlssink2 import hlssink2Output
 from api.outputs.hlssink2 import hlssink2OutputDTO
+from api.outputs.whipclientsink import whipclientsinkOutputDTO
+from pipelines.outputs.whipclientsink import whipclientsinkOutput
+from api.outputs.srtsink import srtsinkOutputDTO
+from pipelines.outputs.srtsink import srtsinkOutput
 
 from typing import Union
 from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
@@ -15,7 +19,9 @@ import time
 from pipeline_handler import HandlerSingleton
 from config_handler import ConfigReader
 
+import logging
 
+logger = logging.getLogger(__name__)
 config = ConfigReader()
 
 class Input(GSTBase, ABC):
@@ -26,20 +32,42 @@ class Input(GSTBase, ABC):
     def get_audio_end(self):
         return f" volume name=volume volume={self.data.volume} ! audioconvert ! audiorate ! audioresample ! { self.get_caps('audio') }  !  queue max-size-time=300000000 ! interpipesink name=audio_{self.data.uid} async=true sync=true "
 
-    def add_preview(self):
+    def create_preview(self):
+        self.create_preview_pipeline()
+
+    def create_preview_pipeline(self):
+        uid = self.data.uid
         if self.data.preview == True:
             handler = HandlerSingleton()
-            preview = handler.get_preview_pipeline(self.data.uid)
+            preview = handler.get_preview_pipeline(uid)
 
             if  preview is None:
+                print("new preview!")
                 preview_config = config.get_preview_config('inputs')
-                output = hlssink2Output(data=hlssink2OutputDTO(
-                    src=self.data.uid,
-                    ** preview_config
+                if preview_config['type'] == "hlssink2":
+                    previewOutput = hlssink2Output(data=hlssink2OutputDTO(
+                        src=uid,
+                        is_preview=True,
+                        ** preview_config
                     ))
+                elif preview_config['type'] == "srtsink":
+                    previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
+                        src=uid,
+                        is_preview=True,
+                        uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+                        ** preview_config
+                    ))
+                elif preview_config['type'] == "whipclientsink":
+                    previewOutput = whipclientsinkOutput(data=whipclientsinkOutputDTO(
+                        src=uid,
+                        is_preview=True,
+                        ** preview_config
+                    ))
+                handler.add_pipeline(previewOutput)
+                asyncio.run(manager.broadcast("CREATE", previewOutput.data))
 
-                handler.add_pipeline(output)
-                asyncio.run(manager.broadcast("CREATE", output.data))
+
+
 
     def seek_to_position(self, position):
         position_nanoseconds = position * Gst.SECOND

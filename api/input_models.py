@@ -25,6 +25,8 @@ class InputDTO(BaseModel):
     show_controls: bool = True
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)
+    has_video: Optional[bool] = Field(default=False)
+    has_audio: Optional[bool] = Field(default=False)
 
 class updateInputDTO(BaseModel):
     uid: UUID

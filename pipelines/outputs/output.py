@@ -28,10 +28,10 @@ class Output(GSTBase, ABC):
 
         elif encoder == "vah264enc":
             video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
-            pipeline_str = f"{caps} ! vapostproc ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} ! h264parse ! queue "
+            pipeline_str = f"{caps} ! vapostproc ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} "
 
         elif encoder == "openh264enc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options } ! h264parse ! queue "
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
 
         return pipeline_str
 
@@ -54,6 +54,11 @@ class Output(GSTBase, ABC):
         elif encoder == "mp3":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
             pipeline_str = f"{ caps } !  { audio_encoder.element }  { audio_encoder.options } ! queue "
+
+        elif encoder == "opus":
+            caps = f"{ self.get_caps('audio', 'S16LE')}"
+            pipeline_str = f"{ caps } !  { audio_encoder.element }  { audio_encoder.options }  "
+
 
         return pipeline_str
 

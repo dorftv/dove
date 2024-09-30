@@ -7,6 +7,11 @@ from pipelines.mixers.program_mixer import programMixer
 from api.outputs.hlssink2 import hlssink2OutputDTO
 from pipelines.outputs.hlssink2 import hlssink2Output
 
+from api.outputs.srtsink import srtsinkOutputDTO
+from pipelines.outputs.srtsink import srtsinkOutput
+from api.outputs.rtspclientsink import rtspclientsinkOutputDTO
+from pipelines.outputs.rtspclientsink import rtspclientsinkOutput
+
 from api.helper import get_dtos
 from pipelines.helper import get_pipeline_classes
 
@@ -52,18 +57,36 @@ class ElementsFactory:
             logger.log(f"Could not find Pipeline class for {data['type']}", level='ERROR')
             return None
 
+    def create_preview(self, type, uid):
+        preview_config = config.get_preview_config(type)
+        if preview_config['type'] == "hlssink2":
+            previewOutput = hlssink2Output(data=hlssink2OutputDTO(
+                src=uid,
+                is_preview=True,
+                ** preview_config
+            ))
+        elif preview_config['type'] == "srtsink":
+            previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
+                src=uid,
+                is_preview=True,
+                uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+                ** preview_config
+            ))
+        elif preview_config['type'] == "rtspclientsink":
+            previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
+                src=uid,
+                is_preview=True,
+                location=f"rtsp://mediamtx:8554/{uid}",
+                ** preview_config
+            ))
+        self.handler.add_pipeline(previewOutput)
 
     def create_mixer(self, name, scene_details):
         mixerUuid = scene_details.get('uid', uuid4())
         mixerDTO = sceneMixerDTO(uid=mixerUuid, name=name, type="scene", n=scene_details.get('n', 0), locked=scene_details.get('locked', False), src_locked=scene_details.get('src_locked', False))
         mixer = sceneMixer(data=mixerDTO)
         self.handler.add_pipeline(mixer)
-        preview_config = config.get_preview_config('scenes')
-        previewOutput = hlssink2Output(data=hlssink2OutputDTO(
-            src=mixerUuid,
-            ** preview_config
-        ))
-        self.handler.add_pipeline(previewOutput)
+        self.create_preview('scenes', mixerUuid)
         return mixer
 
     async def create_pipelines(self):
@@ -73,13 +96,7 @@ class ElementsFactory:
             programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
             newProgramMixer = (programMixer(data=programDTO))
             self.handler.add_pipeline(newProgramMixer)
-            preview_config = config.get_preview_config('program')
-            programPreviewOutput = hlssink2Output(data=hlssink2OutputDTO(
-                src=programUuid,
-                ** preview_config
-            ))
-            self.handler.add_pipeline(programPreviewOutput)
-
+            self.create_preview('program', programUuid)
 
         if self.scene_list is not None:
             for scene_name in self.scene_list:
@@ -113,6 +130,7 @@ class ElementsFactory:
                                 pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
                             elif input.get('type', None) is not None:
                                 pipeline = self.create_pipeline('input', name, input)
+                                self.create_preview('inputs', pipeline.data.uid)
                                 inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
                             if pipeline is not None:
                                 uid = pipeline.data.uid

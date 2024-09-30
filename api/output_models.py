@@ -13,6 +13,7 @@ class OutputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
     src: UUID
     type: str
+    is_preview: Optional[bool] = False
     name: str = Field(default_factory=lambda: next(uniqueId))
     state: Optional[str] = "PLAYING"
     height: Optional[int] = Field(default_factory=get_default_height)

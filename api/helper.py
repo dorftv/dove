@@ -14,7 +14,8 @@ import json
 from pydantic.fields import FieldInfo
 from . import encoder
 from config_handler import ConfigReader
-
+from api.outputs.srtsink import srtsinkOutputDTO
+from pipelines.outputs.srtsink import srtsinkOutput
 config = ConfigReader()
 
 def get_module_classes(module, base_class, exclude_classes=None):
@@ -174,17 +175,27 @@ def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None
             if hasattr(module, 'router'):
                 yield module.router, module_name
 
-async def handle_request(request: Request, data: BaseModel, OutputClass: Type[BaseModel]):
-    handler = request.app.state._state["pipeline_handler"]
-    data_dict = data.dict()
-    output = OutputClass(data=data)
 
-    if hasattr(data, 'uid') and data.uid is not None:
-        existing_output = handler.get_pipeline("outputs", data.uid)
-        if existing_output is not None:
-            existing_output.data = data
-        else:
-            handler.add_pipeline(output)
+from api.websockets import manager
 
-    await manager.broadcast("CREATE", data)
-    return data_dict
+async def create_preview(handler, type, uid):
+    print("CREATE")
+    preview_config = config.get_preview_config(type)
+    if preview_config['type'] == "hlssink2":
+        previewOutput = hlssink2Output(data=hlssink2OutputDTO(
+            src=uid,
+            is_preview=True,
+            ** preview_config
+        ))
+    elif preview_config['type'] == "srtsink":
+        print("SRT!")
+        previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
+            src=uid,
+            is_preview=True,
+            uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+            ** preview_config
+        ))
+
+    handler.add_pipeline(previewOutput)
+    await manager.broadcast("CREATE", previewOutput.data)
+    return previewOutput

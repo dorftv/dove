@@ -14,6 +14,10 @@ from pipelines.mixers.scene_mixer import sceneMixer
 
 from api.outputs.hlssink2 import hlssink2OutputDTO
 from pipelines.outputs.hlssink2 import hlssink2Output
+from api.outputs.srtsink import srtsinkOutputDTO
+from pipelines.outputs.srtsink import srtsinkOutput
+
+
 from api.output_models import OutputDTO, OutputDeleteDTO
 
 from uuid import UUID, uuid4
@@ -35,17 +39,28 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
     mixer = mixer_class(data=data)
 
     existing_mixer = handler.get_pipeline("mixers", data.uid)
-
     if existing_mixer:
         existing_mixer.data = data
     else:
         handler.add_pipeline(mixer)
+        uid = mixer.data.uid
         preview_config = config.get_preview_config('scenes')
-        output = hlssink2Output(data=hlssink2OutputDTO(
-            src=data.uid,
-            ** preview_config
-        ))
-        handler.add_pipeline(output)
+        if preview_config['type'] == "hlssink2":
+            previewOutput = hlssink2Output(data=hlssink2OutputDTO(
+                src=uid,
+                is_preview=True,
+                ** preview_config
+            ))
+        elif preview_config['type'] == "srtsink":
+            previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
+                src=uid,
+                is_preview=True,
+                uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+                ** preview_config
+            ))
+        handler.add_pipeline(previewOutput)
+        await manager.broadcast("CREATE", previewOutput.data)
+
 
     await manager.broadcast("CREATE", data)
 

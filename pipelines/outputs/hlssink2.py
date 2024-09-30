@@ -28,7 +28,7 @@ class hlssink2Output(Output):
             pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! { audioenc } ! mux.audio"
 
         videoenc = self.get_video_encoder_pipeline(self.data.video_encoder.name)
-
+        # @TODO Remove left overs from old preview output.
         self.add_pipeline(
             f"{self.get_video_start()}  videoconvert ! videoscale ! videorate ! { videoenc } ! "
             f""

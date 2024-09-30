@@ -86,6 +86,7 @@ class GSTBase(BaseModel):
         for pipeline in self.inner_pipelines:
             pipeline.set_state(state)
 
+
     def has_audio_or_video(self, audio_or_video: str):
         if self.data.type == "playlist":
             return True
@@ -131,7 +132,6 @@ class GSTBase(BaseModel):
         asyncio.run(manager.broadcast("UPDATE", self.data))
 
 
-
     def add_duration(self):
         pipeline = self.get_pipeline()
         duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
@@ -161,8 +161,10 @@ class GSTBase(BaseModel):
             old_state, new_state, pending_state = message.parse_state_changed()
             msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
             self.data.state = Gst.Element.state_get_name(new_state)
-            if issubclass(self.data.__class__, InputDTO) and self.data.state == "PAUSED":
-                self.add_preview()
+            if issubclass(self.data.__class__, InputDTO) and self.data.state == "PLAYING":
+                self.data.has_audio = self.has_audio_or_video("audio")
+                self.data.has_video = self.has_audio_or_video("video")
+                self.create_preview()
                 self.add_duration()
                 self.add_resolution()
             asyncio.run(manager.broadcast("UPDATE", self.data))

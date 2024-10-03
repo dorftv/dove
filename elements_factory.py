@@ -66,17 +66,20 @@ class ElementsFactory:
                 ** preview_config
             ))
         elif preview_config['type'] == "srtsink":
+            host, port, ingest_port = config.get_whep_proxy()
+
             previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
                 src=uid,
                 is_preview=True,
-                uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+                uri=f"srt://{host}:{ingest_port}?streamid=publish:{uid}&pkt_size=1316",
                 ** preview_config
             ))
         elif preview_config['type'] == "rtspclientsink":
+            host, port, ingest_port = config.get_whep_proxy()
             previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
                 src=uid,
                 is_preview=True,
-                location=f"rtsp://mediamtx:8554/{uid}",
+                location=f"rtsp://{ host }:{ ingest_port }/{uid}",
                 ** preview_config
             ))
         self.handler.add_pipeline(previewOutput)

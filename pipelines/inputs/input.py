@@ -42,7 +42,6 @@ class Input(GSTBase, ABC):
             preview = handler.get_preview_pipeline(uid)
 
             if  preview is None:
-                print("new preview!")
                 preview_config = config.get_preview_config('inputs')
                 if preview_config['type'] == "hlssink2":
                     previewOutput = hlssink2Output(data=hlssink2OutputDTO(
@@ -51,22 +50,24 @@ class Input(GSTBase, ABC):
                         ** preview_config
                     ))
                 elif preview_config['type'] == "srtsink":
+                    host, port, ingest_port = config.get_whep_proxy()
+
                     previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
                         src=uid,
                         is_preview=True,
-                        uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
+                         uri=f"srt://{host}:{ingest_port}?streamid=publish:{uid}&pkt_size=1316",
                         ** preview_config
                     ))
-                elif preview_config['type'] == "whipclientsink":
-                    previewOutput = whipclientsinkOutput(data=whipclientsinkOutputDTO(
+                elif preview_config['type'] == "rtspclientsink":
+                    host, port, ingest_port = config.get_whep_proxy()
+                    previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
                         src=uid,
                         is_preview=True,
+                        location=f"rtsp://{ host }:{ ingest_port }/{uid}",
                         ** preview_config
                     ))
                 handler.add_pipeline(previewOutput)
                 asyncio.run(manager.broadcast("CREATE", previewOutput.data))
-
-
 
 
     def seek_to_position(self, position):

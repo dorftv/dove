@@ -6,7 +6,7 @@ import asyncio
 
 from config_handler import ConfigReader
 config = ConfigReader()
-host, port = config.get_whep_proxy()
+host, port, ingest_port = config.get_whep_proxy()
 
 
 router = APIRouter()

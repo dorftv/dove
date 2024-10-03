@@ -4,8 +4,6 @@ from uuid import UUID, uuid4
 from pipelines.base import GSTBase
 from pipelines.outputs.hlssink2 import hlssink2Output
 from api.outputs.hlssink2 import hlssink2OutputDTO
-from api.outputs.whipclientsink import whipclientsinkOutputDTO
-from pipelines.outputs.whipclientsink import whipclientsinkOutput
 from api.outputs.srtsink import srtsinkOutputDTO
 from pipelines.outputs.srtsink import srtsinkOutput
 

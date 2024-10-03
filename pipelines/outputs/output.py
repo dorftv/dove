@@ -58,7 +58,7 @@ class Output(GSTBase, ABC):
 
         elif encoder == "opus":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } !  { audio_encoder.element }  { audio_encoder.options }  "
+            pipeline_str = f" audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! audioresample !   { audio_encoder.element }  { audio_encoder.options }  "
 
 
         return pipeline_str

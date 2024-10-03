@@ -32,7 +32,8 @@ class Output(GSTBase, ABC):
 
         elif encoder == "openh264enc":
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
-
+        elif encoder == "mpph264enc":
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
         return pipeline_str
 
     def get_audio_encoder_pipeline(self, encoder) -> str:

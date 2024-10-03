@@ -6,12 +6,11 @@ import asyncio
 
 from config_handler import ConfigReader
 config = ConfigReader()
-host, port, ingest_port = config.get_whep_proxy()
-
+host = config.get_whep_proxy('host')
+port = config.get_whep_proxy('port')
+MEDIAMTX_URL = f"http://{host}:{port}"
 
 router = APIRouter()
-
-MEDIAMTX_URL = f"http://{host}:{port}"
 
 @router.api_route("/whep{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH", "TRACE"])
 async def proxy_http(
@@ -31,6 +30,7 @@ async def proxy_http(
         for key, value in request.headers.items():
             if key.lower() != 'host':
                 headers[key] = value
+
 
         headers["Host"] = f"{host}:{port}"
 

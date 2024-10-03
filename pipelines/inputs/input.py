@@ -40,6 +40,9 @@ class Input(GSTBase, ABC):
             preview = handler.get_preview_pipeline(uid)
 
             if  preview is None:
+                if config.get_whep_proxy:
+                    host =  config.get_whep_proxy('host')
+                    ingest_port = config.get_whep_proxy('ingest_port')
                 preview_config = config.get_preview_config('inputs')
                 if preview_config['type'] == "hlssink2":
                     previewOutput = hlssink2Output(data=hlssink2OutputDTO(
@@ -48,8 +51,6 @@ class Input(GSTBase, ABC):
                         ** preview_config
                     ))
                 elif preview_config['type'] == "srtsink":
-                    host, port, ingest_port = config.get_whep_proxy()
-
                     previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
                         src=uid,
                         is_preview=True,
@@ -57,7 +58,6 @@ class Input(GSTBase, ABC):
                         ** preview_config
                     ))
                 elif preview_config['type'] == "rtspclientsink":
-                    host, port, ingest_port = config.get_whep_proxy()
                     previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
                         src=uid,
                         is_preview=True,

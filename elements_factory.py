@@ -58,6 +58,10 @@ class ElementsFactory:
             return None
 
     def create_preview(self, type, uid):
+        if config.get_whep_proxy:
+            host =  config.get_whep_proxy('host')
+            ingest_port = config.get_whep_proxy('ingest_port')
+
         preview_config = config.get_preview_config(type)
         if preview_config['type'] == "hlssink2":
             previewOutput = hlssink2Output(data=hlssink2OutputDTO(
@@ -66,8 +70,6 @@ class ElementsFactory:
                 ** preview_config
             ))
         elif preview_config['type'] == "srtsink":
-            host, port, ingest_port = config.get_whep_proxy()
-
             previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
                 src=uid,
                 is_preview=True,
@@ -75,7 +77,6 @@ class ElementsFactory:
                 ** preview_config
             ))
         elif preview_config['type'] == "rtspclientsink":
-            host, port, ingest_port = config.get_whep_proxy()
             previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
                 src=uid,
                 is_preview=True,

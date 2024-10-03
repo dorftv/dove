@@ -170,12 +170,15 @@ class ConfigReader:
         hls_path = self.config['main']['hls_path']
         return hls_path
 
-    def get_whep_proxy(self, default_host="mediamtx", default_port=8889, default_ingest_port=8890):
+    def get_whep_proxy(self, item = ''):
         if 'preview' in self.config:
             if 'whep_proxy' in self.config['preview']:
-                host = self.config['preview'].get('whep_proxy_host', default_host)
-                port = self.config['preview'].get('whep_proxy_port', default_port)
-                ingest_port = self.config['preview'].get('whep_proxy_ingest_port', default_ingest_port)
-                return [host, port, ingest_port]
-
+                if item == "host":
+                    return self.config['preview'].get('whep_proxy_host', 'mediamtx')
+                elif item == "port":
+                    return self.config['preview'].get('whep_proxy_port', 8889)
+                elif item == "ingest_port":
+                    return self.config['preview'].get('whep_proxy_ingest_port', 8890)
+                else:
+                    return True
         return False

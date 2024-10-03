@@ -14,7 +14,10 @@ class srtsinkOutput(Output):
         input = handler.getpipeline(self.data.src)
 
         pipeline_audio_str = ""
-        if input.has_audio_or_video("audio"):
+
+        # @TODO make audio/or video aware
+        if True:
+        #if input.has_audio_or_video("audio"):
             audioenc = self.get_audio_encoder_pipeline(self.data.audio_encoder.name)
             pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! { audioenc } "
 

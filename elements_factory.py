@@ -179,4 +179,4 @@ class ElementsFactory:
                 inputUuid =  uuid4()
                 pipeline = self.create_pipeline('input', name, input_details)
         if isinstance(self.cutProgram, mixerCutProgramDTO):
-            newProgramMixer.cut_program(self.cutProgram)
+            await newProgramMixer.cut_program(self.cutProgram)

@@ -27,7 +27,7 @@ class programMixer(Mixer):
         self.add_slot()
         # @TODO add overays index >= 2
 
-    def cut_program(self, data: mixerCutProgramDTO):
+    async def cut_program(self, data: mixerCutProgramDTO):
         if self.data.active == None:
             old_sink = None
             index = 0

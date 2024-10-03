@@ -14,7 +14,7 @@ async def action_cut_program(request: Request, data: mixerCutProgramDTO):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     program: mixerMixerDTO = handler.get_program()
     print(program)
-    response = program.cut_program(data)
+    response = await program.cut_program(data)
     return response
 
 

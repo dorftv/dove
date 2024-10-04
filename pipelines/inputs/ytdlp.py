@@ -6,7 +6,9 @@ from logger import logger
 from pipelines.description import Description
 from pipelines.inputs.input import Input
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 import yt_dlp
 
 class YtdlpInput(Input):
@@ -17,19 +19,21 @@ class YtdlpInput(Input):
         audiosink_bin = Gst.parse_bin_from_description(self.get_audio_end(), True)
         playbin = Gst.ElementFactory.make("playbin3", "playbin")
         playbin.set_name("playbin")
-        playbin.set_property("uri", f"{self.extract_video_url(self.data.uri)}")
+        url = self.extract_video_url(self.data.uri)
+        if url:
+            playbin.set_property("uri", url)
 
-        # @TODO add config option for buffer
-        playbin.set_property("buffer-size", 1048576  )
-        playbin.set_property("async-handling", True)
-        playbin.set_property('buffer-duration', 1 * Gst.SECOND)
+            # @TODO add config option for buffer
+            playbin.set_property("buffer-size", 1048576  )
+            playbin.set_property("async-handling", True)
+            playbin.set_property('buffer-duration', 1 * Gst.SECOND)
 
-        playbin.set_property("video-sink", videosink_bin)
-        playbin.set_property("audio-sink", audiosink_bin)
+            playbin.set_property("video-sink", videosink_bin)
+            playbin.set_property("audio-sink", audiosink_bin)
 
-        playbin.connect('element-setup', self.on_element_setup)
-        playbin.connect('about-to-finish', self._on_about_to_finish)
-        self.add_pipeline(playbin)
+            playbin.connect('element-setup', self.on_element_setup)
+            playbin.connect('about-to-finish', self._on_about_to_finish)
+            self.add_pipeline(playbin)
 
     def _on_about_to_finish(self, playbin):
         if self.data.loop:
@@ -56,20 +60,36 @@ class YtdlpInput(Input):
 
     def extract_video_url(self, youtube_url):
         ydl_opts = {
-            'format': 'best',  # @TODO make selectable
+            'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
+            'format_sort': ['res:1080', 'ext:mp4:m4a'],
             'quiet': True,
             'no_warnings': True,
             'force_generic_extractor': True,
         }
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(youtube_url, download=False)
-                video_url = info_dict.get("url", None)
-                return video_url
+
+                # Get the best format
+                formats = info_dict.get('formats', [info_dict])
+                best_format = next((f for f in reversed(formats) if f.get('acodec') != 'none' and f.get('vcodec') != 'none'), None)
+
+                if best_format:
+                    video_url = best_format['url']
+                    format_id = best_format['format_id']
+                    extension = best_format['ext']
+                    resolution = best_format.get('resolution', 'N/A')
+                    fps = best_format.get('fps', 'N/A')
+                    vcodec = best_format.get('vcodec', 'N/A')
+                    acodec = best_format.get('acodec', 'N/A')
+                    return video_url
+                else:
+                    return None
+
         except yt_dlp.utils.DownloadError:
             logger.log(f"Unsupported URL: {youtube_url}", level='DEBUG')
             return None
-
 
     def describe(self):
 

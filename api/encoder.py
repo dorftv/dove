@@ -78,6 +78,12 @@ class vah264encEncoderDTO(videoEncoderDTO):
         default = "high",
         placeholder =  "high",
     )
+
+class vaapih264encEncoderDTO(vah264encEncoderDTO):
+    name: Literal["vaapih264enc"] = "vaapih264enc"
+    element: Literal["vaapih264enc"] = "vaapih264enc"
+
+
 class mpph264encEncoderDTO(videoEncoderDTO):
     name: Literal["mpph264enc"] = "mpph264enc"
     element: Literal["mpph264enc"] = "mpph264enc"

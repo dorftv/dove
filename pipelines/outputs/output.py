@@ -26,12 +26,13 @@ class Output(GSTBase, ABC):
             enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str}"
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str } ! h264parse  ! queue "
 
-        elif encoder == "vah264enc":
+        elif encoder == "vah264enc" or encoder == "vaapih264enc":
             video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
-            pipeline_str = f"{caps} ! vapostproc ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} "
+            pipeline_str = f"{ caps } ! vapostproc ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} "
 
         elif encoder == "openh264enc":
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
+
         elif encoder == "mpph264enc":
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
         return pipeline_str
@@ -58,7 +59,7 @@ class Output(GSTBase, ABC):
 
         elif encoder == "opus":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f" audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! audioresample !   { audio_encoder.element }  { audio_encoder.options }  "
+            pipeline_str = f" audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! audioresample !   { audio_encoder.element }  { audio_encoder.options } perfect-timestamp=true frame-size=5 "
 
 
         return pipeline_str

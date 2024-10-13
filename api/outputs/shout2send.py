@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional,  Literal, Union
-from api.encoder import mp3EncoderDTO
+from api.encoder.audio_encoder import mp3EncoderDTO
 
 from api.websockets import manager
 

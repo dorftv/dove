@@ -2,7 +2,9 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional,  Literal, Union
-from api.encoder import x264EncoderDTO, aacEncoderDTO, mp2EncoderDTO, opusEncoderDTO, muxDTO, mpegtsMuxDTO, vah264encEncoderDTO, vaapih264encEncoderDTO, openh264EncoderDTO, mpph264encEncoderDTO
+from api.encoder.video_encoder import h264EncoderUnion, h265EncoderUnion, x264EncoderDTO
+from api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO, opusEncoderDTO
+from api.encoder.mux import mpegtsMuxDTO
 
 from api.websockets import manager
 
@@ -30,15 +32,11 @@ class srtsinkOutputDTO(OutputDTO):
         description="Optional stream identifier",
         placeholder="streamid"
     )
-
-    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO, vaapih264encEncoderDTO, openh264EncoderDTO, mpph264encEncoderDTO] = Field(
-        default_factory=lambda: x264EncoderDTO(),
+    video_encoder: Union[h264EncoderUnion, h265EncoderUnion] = Field(
+        default_factory=lambda: x264EncoderDTO(options="key-int-max=30 speed-preset=veryfast")
     )
     audio_encoder: Union[aacEncoderDTO, mp2EncoderDTO, opusEncoderDTO] = Field(
-        default_factory=lambda: aacEncoderDTO(
-            name="aac",
-            options=""
-        ),
+        default_factory=lambda: aacEncoderDTO()
     )
     mux: mpegtsMuxDTO = Field(
         default_factory=lambda: mpegtsMuxDTO(

@@ -2,9 +2,9 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional, Literal, Union
-from api.encoder import x264EncoderDTO, aacEncoderDTO, mp3EncoderDTO, muxDTO, flvMuxDTO, vah264encEncoderDTO, openh264EncoderDTO, vaapih264encEncoderDTO
-
-
+from api.encoder.video_encoder import h264EncoderUnion, x264EncoderDTO
+from api.encoder.audio_encoder import aacEncoderDTO, mp3EncoderDTO
+from api.encoder.mux import flvMuxDTO
 from api.websockets import manager
 
 
@@ -24,7 +24,7 @@ class rtmpsinkOutputDTO(OutputDTO):
         placeholder="rtmp://server:port/myapp/mystream"
     )
 
-    video_encoder: Union[x264EncoderDTO, vah264encEncoderDTO, openh264EncoderDTO, vaapih264encEncoderDTO] = Field(
+    video_encoder: h264EncoderUnion = Field(
         default_factory=lambda: x264EncoderDTO(
             options="tune=zerolatency pass=cbr bitrate=8192",
             profile="baseline",

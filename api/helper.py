@@ -2,7 +2,7 @@ import os
 import pkgutil
 import importlib
 from fastapi import APIRouter, Request
-from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List, get_args, get_origin
+from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List, get_args, get_origin, Annotated
 from api.output_models import OutputDTO
 from api.input_models import InputDTO
 import inspect
@@ -12,43 +12,72 @@ from pipelines.outputs.output import Output
 from pydantic import BaseModel
 import json
 from pydantic.fields import FieldInfo
-from . import encoder
+from api.encoder import encoder
+from api.encoder import audio_encoder
+from api.encoder import video_encoder
+from api.encoder import mux
+
 from config_handler import ConfigReader
-from api.outputs.srtsink import srtsinkOutputDTO
-from pipelines.outputs.srtsink import srtsinkOutput
+
+import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, GLib
+
+
 config = ConfigReader()
 
-def get_module_classes(module, base_class, exclude_classes=None):
-    if exclude_classes is None:
-        exclude_classes = set()
+def get_module_classes(module, base_class):
     return [
         (name, obj) for name, obj in inspect.getmembers(module)
-        if inspect.isclass(obj) and issubclass(obj, base_class) and obj not in exclude_classes
+        if inspect.isclass(obj) and issubclass(obj, base_class) and obj != base_class
     ]
 
 def get_encoder_types() -> Dict[str, List[Dict[str, Any]]]:
+    Gst.init(None)
     encoders = {"audio": [], "video": [], "mux": []}
-    encoder_classes = get_module_classes(encoder, encoder.EncoderDTO, {encoder.audioEncoderDTO, encoder.videoEncoderDTO, encoder.muxDTO})
 
-    for name, obj in encoder_classes:
-        if issubclass(obj, encoder.audioEncoderDTO):
-            encoder_type = "audio"
-        elif issubclass(obj, encoder.videoEncoderDTO):
-            encoder_type = "video"
-        elif issubclass(obj, encoder.muxDTO):
-            encoder_type = "mux"
-        else:
-            continue
+    # Get all encoder classes from the submodules
+    audio_classes = get_module_classes(audio_encoder, audio_encoder.audioEncoderDTO)
+    video_classes = get_module_classes(video_encoder, video_encoder.videoEncoderDTO)
+    mux_classes = get_module_classes(mux, mux.muxDTO)
 
-        encoder_fields = get_fields(obj, "api.encoder")
-        encoder_info = {
-            "name": encoder_fields.get("name", {}).get("default", name),
-            "element": encoder_fields.get("element", {}).get("default"),
-            "fields": encoder_fields
-        }
-        encoders[encoder_type].append(encoder_info)
+    encoder_classes = audio_classes + video_classes + mux_classes
+
+    def quiet_log_handler(domain, level, message, user_data):
+        return True
+
+    log_handler_id = GLib.log_set_handler("GStreamer", GLib.LogLevelFlags.LEVEL_ERROR, quiet_log_handler, None)
+
+    try:
+        for name, obj in encoder_classes:
+            if issubclass(obj, audio_encoder.audioEncoderDTO):
+                encoder_type = "audio"
+            elif issubclass(obj, video_encoder.videoEncoderDTO):
+                encoder_type = "video"
+            elif issubclass(obj, mux.muxDTO):
+                encoder_type = "mux"
+            else:
+                continue
+
+            encoder_fields = get_fields(obj, "api.encoder")
+            element_name = encoder_fields.get("element", {}).get("default")
+
+            # Check if the element can be created
+            if element_name:
+                element = Gst.ElementFactory.make(element_name, None)
+                if element is not None:
+                    encoder_info = {
+                        "name": encoder_fields.get("name", {}).get("default", name),
+                        "element": element_name,
+                        "fields": encoder_fields
+                    }
+                    encoders[encoder_type].append(encoder_info)
+
+    finally:
+        GLib.log_remove_handler("GStreamer", log_handler_id)
 
     return encoders
+
 
 def get_encoder_names(encoder_type: str) -> List[str]:
     encoder_types = get_encoder_types()
@@ -87,7 +116,18 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
     }.get(models_path, {})
 
     def get_option_name(option):
+        if isinstance(option, str):
+            return option
         return option.schema().get('properties', {}).get('name', {}).get('default', option.__name__)
+
+    def extract_union_types(field_type):
+        if get_origin(field_type) is Annotated:
+            field_type = get_args(field_type)[0]
+        if get_origin(field_type) is Union:
+            return [arg for arg in get_args(field_type) if isinstance(arg, type) and issubclass(arg, BaseModel)]
+        elif isinstance(field_type, type) and issubclass(field_type, BaseModel):
+            return [field_type]
+        return []
 
     fields = {}
     for name, field in properties.items():
@@ -110,24 +150,20 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
                 allowed_options = []
 
                 if get_origin(field_type) is Union:
-                    allowed_options = [arg for arg in get_args(field_type) if issubclass(arg, BaseModel)]
-                elif issubclass(field_type, BaseModel):
-                    allowed_options = [field_type]
+                    for arg in get_args(field_type):
+                        allowed_options.extend(extract_union_types(arg))
+                else:
+                    allowed_options.extend(extract_union_types(field_type))
 
-                options = [get_option_name(option) for option in allowed_options]
+                options = list(dict.fromkeys([get_option_name(option) for option in allowed_options]))
 
                 default_value = None
                 default_factory = model_class.__fields__[name].default_factory
                 if default_factory:
-                    default_instance = default_factory()
-                    if isinstance(default_instance, BaseModel):
-                        default_value = get_option_name(default_instance.__class__)
+                    # Get the default value as a string representation
+                    default_value = default_factory.__name__.replace('lambda:', '').strip().split('(')[0]
                 elif field.get('default') is not None:
                     default_value = get_option_name(field['default'].__class__)
-
-                if default_value and default_value in options:
-                    options.remove(default_value)
-                    options.insert(0, default_value)
 
                 field_info["options"] = options
                 field_info["default"] = default_value

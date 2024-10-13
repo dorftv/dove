@@ -1,43 +1,7 @@
-from typing import Annotated, Optional, Literal
-from uuid import UUID, uuid4
+from typing import Annotated, Optional, Literal, Union
 from pydantic import BaseModel, Field
+from .encoder import EncoderDTO
 
-class EncoderDTO(BaseModel):
-    name: str
-    options: Optional[str] = Field(
-        label = "Options",
-        description = "Options",
-        default = "",
-        placeholder =  "",
-    )
-
-#########################
-##MUX####################
-
-class muxDTO(EncoderDTO):
-    name: str
-
-class mpegtsMuxDTO(muxDTO):
-    name: Literal["mpegtsmux"] = "mpegtsmux"
-    element: Literal["mpegtsmux"] = "mpegtsmux"
-    options: Optional[str] = Field(
-        label = "Mpegtsmux options",
-        description = "Options for mpegtsmux.",
-        default = "",
-        placeholder =  "",
-    )
-class flvMuxDTO(muxDTO):
-    name: Literal["flvmux"] = "flvmux"
-    element: Literal["flvmux"] = "flvmux"
-    options: Optional[str] = Field(
-        label = "Flvmux options",
-        description = "Options for flvmux.",
-        default = "",
-        placeholder =  "",
-    )
-
-#######################
-##VIDEO################
 
 class videoEncoderDTO(EncoderDTO):
     type: Literal["video"] = "video"
@@ -59,6 +23,10 @@ class x264EncoderDTO(videoEncoderDTO):
         placeholder =  "main",
     )
 
+class x265EncoderDTO(videoEncoderDTO):
+    name: Literal["x265"] = "x265"
+    element: Literal["x265enc"] = "x265enc"
+
 class openh264EncoderDTO(videoEncoderDTO):
     name: Literal["openh264enc"] = "openh264enc"
     element: Literal["openh264enc"] = "openh264enc"
@@ -79,6 +47,10 @@ class vah264encEncoderDTO(videoEncoderDTO):
         placeholder =  "high",
     )
 
+class vah264lpencEncoderDTO(videoEncoderDTO):
+    name: Literal["vah264lpenc"] = "vah26lpenc"
+    element: Literal["vah264lpenc"] = "vah264lpenc"
+
 class vaapih264encEncoderDTO(vah264encEncoderDTO):
     name: Literal["vaapih264enc"] = "vaapih264enc"
     element: Literal["vaapih264enc"] = "vaapih264enc"
@@ -89,26 +61,14 @@ class mpph264encEncoderDTO(videoEncoderDTO):
     element: Literal["mpph264enc"] = "mpph264enc"
 
 
-#######################
-##AUDIO################
+############################################################################
 
-class audioEncoderDTO(EncoderDTO):
-    type: Literal["audio"] = "audio"
+h264EncoderUnion = Annotated[
+    Union[x264EncoderDTO, openh264EncoderDTO, vaapih264encEncoderDTO, vah264encEncoderDTO, vah264lpencEncoderDTO, mpph264encEncoderDTO],
+    Field(discriminator='name')
+]
 
-class aacEncoderDTO(audioEncoderDTO):
-    name: Literal["aac"] = "aac"
-    element: Literal["voaacenc"] = "voaacenc"
-
-class mp2EncoderDTO(audioEncoderDTO):
-    name: Literal["mp2"] = "mp2"
-    element: Literal["avenc_mp2"] = "avenc_mp2"
-    level: Optional[int] = 1
-
-class mp3EncoderDTO(audioEncoderDTO):
-    name: Literal["mp3"] = "mp3"
-    element: Literal["lamemp3enc"] = "lamemp3enc"
-
-class opusEncoderDTO(audioEncoderDTO):
-    name: Literal["opus"] = "opus"
-    element: Literal["opusenc"] = "opusenc"
-
+h265EncoderUnion = Annotated[
+    Union[x265EncoderDTO],
+    Field(discriminator='name')
+]

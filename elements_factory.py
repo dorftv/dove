@@ -163,6 +163,13 @@ class ElementsFactory:
                     newProgramMixer.add_source(cutInput)
                     newProgramMixer.update_pad_from_sources("video", program_index)
 
+        if self.input_list is not None:
+            for name, input_details in self.input_list.items():
+                inputUuid =  uuid4()
+                pipeline = self.create_pipeline('input', name, input_details)
+        if isinstance(self.cutProgram, mixerCutProgramDTO):
+            await newProgramMixer.cut_program(self.cutProgram)
+
 
         if self.output_list is not None:
             for name, output in self.output_list.items():
@@ -171,12 +178,3 @@ class ElementsFactory:
                     output['name'] = output.get('name', name)
                     output['src'] = programUuid
                     self.create_pipeline('output', name, output)
-
-
-
-        if self.input_list is not None:
-            for name, input_details in self.input_list.items():
-                inputUuid =  uuid4()
-                pipeline = self.create_pipeline('input', name, input_details)
-        if isinstance(self.cutProgram, mixerCutProgramDTO):
-            await newProgramMixer.cut_program(self.cutProgram)

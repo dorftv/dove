@@ -31,7 +31,7 @@ class PlaylistItemDTO(BaseModel):
 
 class PlaylistInputDTO(InputDTO):
     type: str = Field(
-        label="Playlist",
+        label="Playlists",
         default="playlist",
         description="Provide an URL to fetch a JSON Playlist.",
     )

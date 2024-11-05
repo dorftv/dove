@@ -10,7 +10,7 @@ router = APIRouter()
 
 class Playbin3InputDTO(InputDTO):
     type: str =  Field(
-        label="Playbin3",
+        label="Streams/Videos",
         default="playbin3",
         description="Playbin3 plays local and remote files and streams.",
     )

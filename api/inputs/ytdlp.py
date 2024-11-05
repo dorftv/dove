@@ -10,13 +10,13 @@ router = APIRouter()
 # @TODO move receiving url here, and use playbin input class
 class YtdlpInputDTO(InputDTO):
     type: str = Field(
-        label="YtDlp",
+        label="Youtube&Co",
         default="ytdlp",
-        description="Allows playback from youtube and many other video sites.",
+        description="Allows playback from youtube and many other video sites supported by yt-dlp.",
     )
     uri: str = Field(
         label="Uri",
-        help="Any Url supported by youtube-dl fork ytdkp.",
+        help="Any Url supported by youtube-dl fork yt-dlp.",
         placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     )
     loop: Optional[bool] = Field(

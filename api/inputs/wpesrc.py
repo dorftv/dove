@@ -11,7 +11,7 @@ router = APIRouter()
 
 class WpesrcInputDTO(InputDTO):
     type: str =  Field(
-        label="HTML Source",
+        label="HTML/Websites",
         default="wpesrc",
         description="Wpesrc allows rendering HTML.",
     )

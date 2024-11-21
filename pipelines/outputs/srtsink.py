@@ -28,7 +28,7 @@ class srtsinkOutput(Output):
             f""
             f"{self.data.mux.element } {self.data.mux.options } name=mux ! "
             f""
-            f"srtsink name=sink uri={self.data.uri} "
+            f"srtsink name=sink uri={self.data.uri} latency={self.data.latency} "
             f""
             f"{pipeline_audio_str} ! "
             f""

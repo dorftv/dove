@@ -20,21 +20,20 @@ class Output(GSTBase, ABC):
 
         video_encoder = self.data.video_encoder
         caps = f"{ self.get_caps('video')}"
+        video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
 
         if encoder == "x264":
-            video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
             enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str}"
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str } ! h264parse  ! queue "
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str }   "
 
-        elif encoder == "vah264enc" or encoder == "vaapih264enc":
-            video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
-            pipeline_str = f"{ caps } ! vapostproc ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} "
+        elif encoder == "vah264enc" or encoder == "vaapih264enc"  or encoder == "vah264lpenc":
+            pipeline_str = f"{ caps } ! vapostproc ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str}  ! h264parse "
 
         elif encoder == "openh264enc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} ! h264parse  "
 
         elif encoder == "mpph264enc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }"
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str} ! h264parse ! queue "
         return pipeline_str
 
     def get_audio_encoder_pipeline(self, encoder) -> str:
@@ -46,12 +45,12 @@ class Output(GSTBase, ABC):
 
         if encoder == "aac":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  ! aacparse ! queue "
+            pipeline_str = f"{ caps } ! { audio_encoder.element }  ! aacparse "
 
         elif encoder == "mp2":
             caps =  audio_caps = self.get_caps('audio', 'S16LE')
             #caps = "audio/x-raw,format=S16LE,layout=interleaved,rate=41000,channels=2"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  { audio_encoder.options } ! audio/mpeg,mpegversion=1,layer=2,channels=2,mode=joint-stereo  ! queue "
+            pipeline_str = f"{ caps } ! { audio_encoder.element }  { audio_encoder.options } ! audio/mpeg,mpegversion=1,layer=2,channels=2,mode=joint-stereo ! queue "
 
         elif encoder == "mp3":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
@@ -59,7 +58,7 @@ class Output(GSTBase, ABC):
 
         elif encoder == "opus":
             caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f" audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! audioresample !   { audio_encoder.element }  { audio_encoder.options } perfect-timestamp=true frame-size=5 "
+            pipeline_str = f"audioresample ! audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! queue ! { audio_encoder.element }  { audio_encoder.options } ! queue "
 
 
         return pipeline_str

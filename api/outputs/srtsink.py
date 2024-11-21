@@ -32,8 +32,16 @@ class srtsinkOutputDTO(OutputDTO):
         description="Optional stream identifier",
         placeholder="streamid"
     )
+
+    latency: Optional[int] = Field(
+        default=300,
+        label="Latency",
+        description="Latency",
+        placeholder="300"
+    )
+
     video_encoder: Union[h264EncoderUnion, h265EncoderUnion] = Field(
-        default_factory=lambda: x264EncoderDTO(options="key-int-max=30 speed-preset=veryfast")
+        default_factory=lambda: x264EncoderDTO(options="key-int-max=25 speed-preset=veryfast tune=zerolatency")
     )
     audio_encoder: Union[aacEncoderDTO, mp2EncoderDTO, opusEncoderDTO] = Field(
         default_factory=lambda: aacEncoderDTO()
@@ -41,7 +49,7 @@ class srtsinkOutputDTO(OutputDTO):
     mux: mpegtsMuxDTO = Field(
         default_factory=lambda: mpegtsMuxDTO(
             name = "mpegtsmux",
-            options="alignment=7"
+            options="alignment=7 latency=50000000"
         ),
     )
 

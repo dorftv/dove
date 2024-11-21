@@ -21,4 +21,10 @@ class mp3EncoderDTO(audioEncoderDTO):
 class opusEncoderDTO(audioEncoderDTO):
     name: Literal["opus"] = "opus"
     element: Literal["opusenc"] = "opusenc"
+    options: Optional[str] = Field(
+        label = "Opus Encoder options",
+        description = "Options for opusenc.",
+        default = "perfect-timestamp=true frame-size=5",
+        placeholder = "perfect-timestamp=true frame-size=5",
+    )
 

@@ -23,11 +23,11 @@ class Output(GSTBase, ABC):
         video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
 
         if encoder == "x264":
-            enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str}"
+            enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str} "
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str }   "
 
         elif encoder == "vah264enc" or encoder == "vaapih264enc"  or encoder == "vah264lpenc":
-            pipeline_str = f"{ caps } ! vapostproc ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str}  ! h264parse "
+            pipeline_str = f"{self.get_caps('video', 'I420')} ! vapostproc ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str}  ! h264parse "
 
         elif encoder == "openh264enc":
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} ! h264parse  "

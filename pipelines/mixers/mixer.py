@@ -163,11 +163,12 @@ class Mixer(GSTBase, ABC):
 
             src = Gst.parse_bin_from_description(f"interpipesrc name={audio_or_video}_{self.data.uid}_{sink_name}"
             f" leaky-type=upstream is-live=true format=time stream-sync=restart-ts listen_to={source} ! "
-            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue leaky=downstream ", True)
+            f"  {convert_str} ! capsfilter name={audio_or_video}_capsfilter  ! queue  ", True)
             src.set_name(src_name)
             src.set_clock(self.get_clock())
             pipeline.add(src)
-            self.set_capsfilter(audio_or_video, sink_name)
+            if audio_or_video == "audio":
+                self.set_capsfilter(audio_or_video, sink_name)
             logger.log(f"Create source bin {src_name} in Mixer {self.data.uid}", level='DEBUG')
         return src
 

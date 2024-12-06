@@ -1,10 +1,15 @@
-FROM debian:testing-slim AS builder
+
+
+FROM debian:trixie-slim AS builder
 
 ARG INTERPIPE_VERSION=develop
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 RUN apt update && \
-    apt install -yq git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools wget libva-dev gstreamer1.0-vaapi && \
+    apt install -yq git build-essential meson ninja-build  \
+      libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev \
+      gtk-doc-tools \
+      wget libva-dev gstreamer1.0-vaapi curl && \
     git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git /install/interpipe && \
     cd /install/interpipe && \
     wget https://github.com/RidgeRun/gst-interpipe/pull/102.diff && \
@@ -18,7 +23,9 @@ RUN apt update && \
 
 
 
-FROM debian:testing-slim AS runtime
+
+FROM debian:trixie AS runtime
+RUN sed -i 's/^Components: main$/Components: main contrib non-free/' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update && \
     apt-get install -yq \
@@ -33,6 +40,7 @@ RUN apt-get update && \
     gstreamer1.0-libav \
     gstreamer1.0-vaapi \
     gstreamer1.0-nice \
+    gstreamer1.0-fdkaac \
     python3-gst-1.0 \
     libgirepository1.0-dev  \
     libcairo2 \
@@ -47,7 +55,6 @@ RUN apt-get update && \
     python3-pip \
     python3-poetry
 
-RUN  apt install -yq git build-essential meson ninja-build  libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev gtk-doc-tools wget libva-dev gstreamer1.0-vaapi
 COPY --from=builder /gst-interpipe/ /usr/
 
 COPY . /app
@@ -55,10 +62,10 @@ WORKDIR /app
 
 #@TODO run as user && pipenv
 RUN     pip install . --ignore-installed --break-system-packages
-#RUN apt install -y  at-spi2-core
 
 RUN apt remove -y libcairo2-dev  libgirepository1.0-dev && apt autoremove -y && apt clean
 
 EXPOSE 5000
 
 CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]
+

@@ -7,7 +7,7 @@ class audioEncoderDTO(EncoderDTO):
 
 class aacEncoderDTO(audioEncoderDTO):
     name: Literal["aac"] = "aac"
-    element: Literal["voaacenc"] = "voaacenc"
+    element: Literal["fdkaacenc"] = "fdkaacenc"
 
 class mp2EncoderDTO(audioEncoderDTO):
     name: Literal["mp2"] = "mp2"

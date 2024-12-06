@@ -45,7 +45,7 @@ class Shout2sendOutputDTO(OutputDTO):
     audio_encoder: Union[mp3EncoderDTO] = Field(
         default_factory=lambda: mp3EncoderDTO(
             name="mp3",
-            options="target=bitrate bitrate=192"
+            options="bitrate=128"
         )
     )
 
@@ -59,7 +59,7 @@ async def create_srtsink_output(request: Request, data: Shout2sendOutputDTO):
     if output:
         output.data = data
     else:
-        output = DecklinkOutput(data=data)
+        output = Shout2sendOutput(data=data)
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)

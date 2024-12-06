@@ -22,7 +22,7 @@ class Shout2sendOutput(Output):
                 f"audioconvert ! audioresample !{ audio_encoder} ! "
                 f""
                 f"shout2send mount={self.data.mount} port={self.data.port} username={self.data.username} password={self.data.password} ip={self.data.ip}  "
-                f"sync=true")
+                f"sync=true async=true ")
 
     def describe(self):
         return self.data

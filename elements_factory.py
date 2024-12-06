@@ -1,6 +1,6 @@
 from uuid import uuid4
 from logger import logger
-
+from time import sleep
 from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
@@ -177,4 +177,5 @@ class ElementsFactory:
                 if type is not None:
                     output['name'] = output.get('name', name)
                     output['src'] = programUuid
+                    sleep(0.2)
                     self.create_pipeline('output', name, output)

@@ -16,7 +16,7 @@ from api import configuration
 from api import graphviz
 from api import hls_preview
 
-from proxy import srtrelay, playlist, nodecg
+from proxy import srtrelay, playlist, mediamtx
 
 from pipeline_handler import PipelineHandler
 
@@ -56,12 +56,13 @@ class APIThread(Thread):
 
         #proxies
         fastapi.include_router(srtrelay.router, tags=['Proxy'])
+        fastapi.include_router(mediamtx.router, tags=['Proxy'])
         fastapi.include_router(playlist.router, tags=['Proxy'])
 
         if config.get_whep_proxy():
           fastapi.include_router(whep.router, tags=['Proxy'])
 
-        fastapi.include_router(nodecg.router, tags=['Proxy'])
+
         # serve frontend with StaticFiles
         fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")
 

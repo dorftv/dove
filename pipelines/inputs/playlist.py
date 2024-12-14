@@ -103,14 +103,24 @@ class PlaylistInput(Input):
         if duration and duration != -1:
             self.data.duration = duration
 
+    def _load_playlist(self, uri):
+        while True:
+            try:
+                r = requests.get(uri)
+                if r.status_code == 200:
+                    return r.json()
+            except requests.exceptions.RequestException as e:
+                self.logger.error(f"Error loading playlist: {e}")
+            time.sleep(0.1)
+
     def _jumpToNextPlaylist(self):
         data = self._load_playlist(self.data.next)
-        if data is not None:
-            next_playlist = [PlaylistItemDTO(**item) for item in data["playlist"]]
-            self.data.playlist = next_playlist
-            self.data.next = data.get("next")
-            self.data.looping = data.get("looping", False)
-            self.data.total_duration = data.get("total_duration", 0)
+
+        next_playlist = [PlaylistItemDTO(**item) for item in data["playlist"]]
+        self.data.playlist = next_playlist
+        self.data.next = data.get("next")
+        self.data.looping = data.get("looping", False)
+        self.data.total_duration = data.get("total_duration", 0)
         self.data.index = 0
 
     def next_uri(self):
@@ -162,17 +172,7 @@ class PlaylistInput(Input):
             GLib.idle_add(self.change_uri)
         return Gst.PadProbeReturn.OK
 
-    def _load_playlist(self, uri):
-        try:
-            r = requests.get(uri)
-            if r.status_code == 200:
-                return r.json()
-            else:
-                self.logger.error("Error loading playlist from http server!")
-                return None
-        except Exception:
-            self.logger.error("Error loading playlist from http server!")
-            return None
+
 
     def remove_bin(self):
         bin = self.get_pipeline().get_by_name("audiopad_bin")

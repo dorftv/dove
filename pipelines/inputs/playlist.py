@@ -18,13 +18,7 @@ class PlaylistInput(Input):
         pipeline = Gst.Pipeline.new("pipeline")
         uridecodebin = Gst.ElementFactory.make("uridecodebin3", "uridecodebin")
         self.data.index = -1
-
-        #@TODO needed for long playlists. make async
-        uri = None
-        while uri is None:
-            uri = self.next_uri()
-            if uri is None:
-                time.sleep(0.1)
+        uri = self.next_uri()
 
         uridecodebin.set_property('uri', uri)
         uridecodebin.set_property('buffer-duration', 6 *Gst.SECOND)

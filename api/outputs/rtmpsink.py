@@ -54,7 +54,7 @@ async def create_rtmpsink_output(request: Request, data: rtmpsinkOutputDTO):
     if output:
         output.data = data
     else:
-        output = RtmpsinkOutput(data=data)
+        output = rtmpsinkOutput(data=data)
         handler.add_pipeline(output)
 
     await manager.broadcast("CREATE", data)

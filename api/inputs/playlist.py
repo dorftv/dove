@@ -13,6 +13,7 @@ router = APIRouter()
 class PlaylistItemDTO(BaseModel):
     uri: str
     type: str
+    name: Optional[str] = None
     duration: Optional[int] = None
     height: Optional[int] = Field(default_factory=get_default_height)
     width: Optional[int] = Field(default_factory=get_default_width)

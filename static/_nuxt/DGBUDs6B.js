@@ -1,0 +1,1 @@
+import{_ as t,c as e,a as s,F as n,o as a}from"./DgNqPJO3.js";const r={};function l(p,o,u,c,d,f){return a(),e(n,null,[o[0]||(o[0]=s("h1",null,"About",-1)),o[1]||(o[1]=s("div",{class:"grid col-span-12"},null,-1))],64)}const m=t(r,[["render",l]]);export{m as default};

@@ -45,6 +45,7 @@ RUN apt-get update && \
     libgirepository1.0-dev  \
     libcairo2 \
     libgirepository-1.0-1 \
+    libgirepository-2.0 \
     gstreamer1.0-plugins-bad \
     gir1.2-gst-plugins-bad-1.0 \
     gir1.2-gstreamer-1.0 \

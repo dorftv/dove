@@ -16,7 +16,7 @@ from api import configuration
 from api import graphviz
 from api import hls_preview
 
-from proxy import srtrelay, playlist, mediamtx
+from proxy import srtrelay, playlist, mediamtx, ovenmedia
 
 from pipeline_handler import PipelineHandler
 
@@ -57,6 +57,7 @@ class APIThread(Thread):
         #proxies
         fastapi.include_router(srtrelay.router, tags=['Proxy'])
         fastapi.include_router(mediamtx.router, tags=['Proxy'])
+        fastapi.include_router(ovenmedia.router, tags=['Proxy'])
         fastapi.include_router(playlist.router, tags=['Proxy'])
 
         if config.get_whep_proxy():

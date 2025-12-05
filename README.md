@@ -89,20 +89,32 @@ you can add the following to utilize your gpu via vaapi
 
 
 ##### Docker-compose
-gstreamer and so DOVE, can use your GPU for decoding. [docker-compose.vaapi.yml](/docker-compose.vaapi.yml) provides an example for using vaapi.
 
+DOVE can use your GPU for hardware-accelerated encoding/decoding via VAAPI or Vulkan.
 
-```
-git clone https://github.com/dorftv/dove.git  && cd dove
+```bash
+git clone https://github.com/dorftv/dove.git && cd dove
 
-# Currently a empty config files are not supported.
-# to start you can copy the example config.
+# Copy the example config (empty config files not supported)
 cp -f config-example.toml config.toml
-
-docker compose up -d
 ```
 
-point your Browser to [http://localhost:5000](http://localhost:5000)
+**AMD host:**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.amd.yml up
+```
+
+**Intel host:**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.intel.yml up
+```
+
+**Software rendering (no GPU):**
+```bash
+docker compose up
+```
+
+Point your browser to [http://localhost:5000](http://localhost:5000)
 
 ### Notes
 

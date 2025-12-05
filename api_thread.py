@@ -1,9 +1,13 @@
+import asyncio
+import threading
 from contextlib import asynccontextmanager
 from threading import Thread
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import uvicorn
+
+from event_loop_bridge import bridge
 
 from api import mixers
 from api import mixer
@@ -39,7 +43,13 @@ class APIThread(Thread):
 
     daemon = True
     name = "API Thread"
+
     def run(self):
+        # Create and register the asyncio event loop with the bridge
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        bridge.set_asyncio_loop(loop, threading.current_thread())
+
         fastapi = FastAPI(lifespan=self.lifespan)
         fastapi.include_router(configuration.router, tags=['Config'])
 
@@ -69,6 +79,6 @@ class APIThread(Thread):
 
 
 
-        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0')
+        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none')
         server = uvicorn.Server(uvicorn_config)
-        server.run()
+        loop.run_until_complete(server.serve())

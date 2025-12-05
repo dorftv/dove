@@ -34,6 +34,13 @@ class Output(GSTBase, ABC):
 
         elif encoder == "mpph264enc":
             pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str} ! h264parse ! queue "
+
+        elif encoder == "vulkanh264enc":
+            pipeline_str = f"{self.get_caps('video', 'NV12')} ! vulkanupload ! { video_encoder.element } {video_encoder.options } ! vulkandownload ! video/x-h264{video_profile_str} ! h264parse "
+
+        elif encoder == "vulkanh265enc":
+            pipeline_str = f"{self.get_caps('video', 'NV12')} ! vulkanupload ! { video_encoder.element } {video_encoder.options } ! vulkandownload ! h265parse "
+
         return pipeline_str
 
     def get_audio_encoder_pipeline(self, encoder) -> str:

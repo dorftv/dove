@@ -3,8 +3,7 @@ from api.mixers_dtos import mixerCutDTO, mixerSlotDTO, mixerInputsDTO, mixerInpu
 from pipelines.base import GSTBase
 from abc import ABC
 from gi.repository import Gst, GLib
-from api.websockets import manager
-import asyncio
+from event_loop_bridge import safe_broadcast
 from uuid import UUID, uuid4
 
 
@@ -22,11 +21,11 @@ class Mixer(GSTBase, ABC):
 
     def add_slot(self, mixerSource: mixerInputDTO = None):
         self.data.add_slot(mixerSource)
-        asyncio.create_task(manager.broadcast("UPDATE", self.data))
+        safe_broadcast("UPDATE", self.data)
 
     def remove_slot(self, mixerSource: mixerInputDTO = None):
         self.data.remove_slot(mixerSource)
-        asyncio.create_task(manager.broadcast("UPDATE", self.data))
+        safe_broadcast("UPDATE", self.data)
 
     def add_source(self, input: mixerCutDTO):
         mixerInputDTO = self.data.getMixerInputDTO(input.index)
@@ -38,7 +37,7 @@ class Mixer(GSTBase, ABC):
             sink = self.add_mixer_pad(audio_or_video, input.index)
             self.link_pad(audio_or_video, input.index)
             self.update_pad_from_sources(audio_or_video, input.index)
-            asyncio.create_task(manager.broadcast("UPDATE", self.data))
+            safe_broadcast("UPDATE", self.data)
 
     def remove_source(self, input):
         if input.index is not None:
@@ -48,7 +47,7 @@ class Mixer(GSTBase, ABC):
                 self.data.update_mixer_input(input.index, src="None")
                 self.update_pad_from_sources(audio_or_video, input.index)
                 self.unlink_pad(audio_or_video, mixerInputDTO.sink)
-            asyncio.create_task(manager.broadcast("UPDATE", self.data))
+            safe_broadcast("UPDATE", self.data)
 
     def add_mixer_pad(self, audio_or_video, index):
         mixerpipe = self.get_pipeline()

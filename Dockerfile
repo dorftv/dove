@@ -1,62 +1,107 @@
+# ---------- Builder stage ----------
+FROM alpine:3.21 AS builder
+
+ARG GSTREAMER_VERSION=1.26.10
+ARG INTERPIPE_VERSION=master
+
+# Core build deps
+RUN apk add --no-cache \
+  build-base meson ninja pkgconfig git ca-certificates \
+  python3 python3-dev py3-pip gobject-introspection-dev \
+  glib-dev libxml2-dev libffi-dev \
+  libjpeg-turbo-dev libpng-dev libvorbis-dev libogg-dev opus-dev \
+  alsa-lib-dev pulseaudio-dev cairo-dev pango-dev freetype-dev flex bison 
+
+# Targeted plugin deps
+RUN apk add --no-cache \
+  x264-dev \
+  libsrt-dev \
+  vulkan-loader-dev vulkan-headers \
+  libva-dev \
+  zlib-dev openssl-dev make
+
+WORKDIR /opt
+
+# Build librtmp (from rtmpdump) and install with a pkg-config file
+RUN git clone https://git.ffmpeg.org/rtmpdump.git /opt/rtmpdump && \
+    cd /opt/rtmpdump && \
+    make SYS=posix && \
+    make install prefix=/usr && \
+    mkdir -p /usr/lib/pkgconfig && \
+    printf "prefix=/usr\nexec_prefix=\${prefix}\nlibdir=\${exec_prefix}/lib\nincludedir=\${prefix}/include\n\nName: librtmp\nDescription: RTMP library\nVersion: 2.4\nLibs: -L\${libdir} -lrtmp\nCflags: -I\${includedir}/librtmp\n" > /usr/lib/pkgconfig/librtmp.pc
+
+# Clone GStreamer monorepo
 
 
-FROM debian:trixie-slim AS builder
 
-ARG INTERPIPE_VERSION=develop
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-RUN apt update && \
-    apt install -yq git build-essential meson ninja-build  \
-      libgstreamer1.0-dev  libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev \
-      gtk-doc-tools \
-      wget libva-dev gstreamer1.0-vaapi curl && \
-    git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git /install/interpipe && \
-    cd /install/interpipe && \
-    wget https://github.com/RidgeRun/gst-interpipe/pull/102.diff && \
-    patch -p1 < 102.diff && \
+# WPE/WebKit + FDO backend for wpesrc
+RUN apk add --no-cache \
+  wpewebkit-dev libwpe-dev libwpebackend-fdo-dev \
+  wayland-dev libxkbcommon-dev \
+  libepoxy-dev mesa-dev
+
+
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+
+RUN apk add --no-cache x265-dev openh264-dev bash-completion-dev libsoup-dev curl-dev
+RUN apk add --no-cache shaderc-dev
+
+# Configure targeted features with namespaced options
+RUN cd gstreamer && \
+  git checkout ${GSTREAMER_VERSION} && \
+  meson setup builddir --prefix=/usr --buildtype=release \
+    -Dgpl=enabled \
+    -Dugly=enabled \
+    -Dbad=enabled \
+    -Dgood=enabled \
+    -Dintrospection=enabled && \
+  ninja -C builddir && \
+  ninja -C builddir install 
+  #rm -rf builddir
+
+
+#RUN apk add gtk-doc
+RUN apk add gtk-doc docbook-xml docbook-xsl
+RUN  git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git  && \
+    cd gst-interpipe && \
     mkdir -p build && \
-    mkdir -p /gst-interpipe && \
-    meson setup build --prefix=/gst-interpipe && \
+    meson setup build --prefix=/usr -Denable-gtk-doc=false && \
     ninja -C build && \
     ninja -C build install && \
     rm -rf /install
 
 
+# ---------- Runtime stage ----------
+FROM alpine:3.21 AS runtime
+
+# Runtime libs only
+RUN apk add --no-cache \
+  python3 py3-pip py3-gobject3 \
+  glib libjpeg-turbo libpng libvorbis opus \
+  alsa-lib pulseaudio cairo pango freetype \
+  x264 libsrt \
+  vulkan-loader mesa \
+  libva \
+  zlib openssl
 
 
-FROM debian:trixie AS runtime
-RUN sed -i 's/^Components: main$/Components: main contrib non-free/' /etc/apt/sources.list.d/debian.sources
+RUN apk add --no-cache \
+    python3 py3-pip py3-poetry-core \
+    gobject-introspection gobject-introspection-dev \
+    cairo cairo-dev \
+    graphviz curl
 
-RUN apt-get update && \
-    apt-get install -yq \
-    gstreamer1.0-wpe \
-    gstreamer1.0-tools \
-    gstreamer1.0-rtsp \
-    gstreamer1.0-plugins-ugly  \
-    gstreamer1.0-plugins-good  \
-    gstreamer1.0-plugins-base-apps  \
-    gstreamer1.0-plugins-bad-apps  \
-    gstreamer1.0-plugins-bad  \
-    gstreamer1.0-libav \
-    gstreamer1.0-vaapi \
-    gstreamer1.0-nice \
-    gstreamer1.0-fdkaac \
-    python3-gst-1.0 \
-    libgirepository1.0-dev  \
-    libcairo2 \
-    libgirepository-1.0-1 \
-    libgirepository-2.0 \
-    gstreamer1.0-plugins-bad \
-    gir1.2-gst-plugins-bad-1.0 \
-    gir1.2-gstreamer-1.0 \
-    gir1.2-gst-plugins-base-1.0  \
-    graphviz \
-    curl \
-    libcairo2-dev \
-    python3-pip \
-    python3-poetry
+RUN apk add --no-cache \
+    bubblewrap dbus xdg-dbus-proxy \
+    wpewebkit libwpe libwpebackend-fdo wayland-libs-client libxkbcommon \
+    fontconfig font-noto ca-certificates \
+    mesa mesa-egl mesa-gl mesa-dri-gallium \
+    mesa-vulkan-swrast mesa-vulkan-ati mesa-vulkan-intel
 
-COPY --from=builder /gst-interpipe/ /usr/
+RUN apk add --no-cache openh264 x265 bash-completion curl libsoup
+
+RUN apk add --no-cache     intel-media-driver      mesa-va-gallium
+COPY --from=builder /usr /usr
 
 COPY . /app
 WORKDIR /app
@@ -64,9 +109,6 @@ WORKDIR /app
 #@TODO run as user && pipenv
 RUN     pip install . --ignore-installed --break-system-packages
 
-RUN apt remove -y libcairo2-dev  libgirepository1.0-dev && apt autoremove -y && apt clean
-
 EXPOSE 5000
 
 CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]
-

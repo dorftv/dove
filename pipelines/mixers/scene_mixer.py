@@ -1,8 +1,7 @@
 from pathlib import Path
 from typing import Optional
 from logger import logger
-import asyncio
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 
 from uuid import UUID, uuid4
 from pipelines.mixers.mixer import Mixer
@@ -52,7 +51,7 @@ class sceneMixer(Mixer):
                             self.unlink_pad(audio_or_video, old_sink)
 
             self.update_pad_from_sources(audio_or_video, index)
-            asyncio.create_task(manager.broadcast("UPDATE", self.data))
+            safe_broadcast("UPDATE", self.data)
 
 
 

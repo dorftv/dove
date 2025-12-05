@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Optional
-import asyncio
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 
 from pipelines.mixers.mixer import Mixer
 from api.mixers_dtos import programMixerDTO, mixerCutProgramDTO, mixerInputDTO, mixerCutDTO
@@ -46,7 +45,7 @@ class programMixer(Mixer):
                 if old_sink is not None:
                     self.unlink_pad(audio_or_video, old_sink)
 
-        asyncio.create_task(manager.broadcast("UPDATE", self.data))
+        safe_broadcast("UPDATE", self.data)
         return data
 
     # @TODO implement fade

@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from typing import List, ClassVar, Any
 from uuid import UUID
@@ -8,6 +7,8 @@ from gi.repository import Gst, GObject, GLib
 
 from api.input_models import PositionDTO
 from api.websockets import manager
+from event_loop_bridge import bridge
+from logger import logger
 
 
 def is_subclass_str(cls, base_name):
@@ -27,20 +28,36 @@ class PipelineHandler(object):
         self._tick()
 
     def _tick(self):
-        GLib.timeout_add_seconds(1, lambda: asyncio.run(self.on_tick()))
+        GLib.timeout_add_seconds(1, self._tick_callback)
 
-    async def on_tick(self):
+    def _tick_callback(self):
+        """GLib callback that schedules the async tick work."""
+        bridge.schedule_async(self._on_tick_async())
+        return False  # Don't repeat - we reschedule in _on_tick_async
+
+    async def _on_tick_async(self):
+        """Async tick handler that runs in asyncio context."""
         inputs = self.get_pipelines('inputs')
         if inputs is not None:
             for input in inputs:
-                if input.data.type == "playlist":
-                    input.get_pipeline().set_state(Gst.State.PLAYING)
                 pipeline = input.get_pipeline()
-                success, pos =pipeline.query_position(Gst.Format.TIME)
+                if pipeline is None:
+                    continue  # Pipeline not built yet
+                if input.data.type == "playlist":
+                    # Schedule GStreamer state change in GLib context
+                    bridge.run_sync_in_glib(
+                        lambda p=pipeline: p.set_state(Gst.State.PLAYING)
+                    )
+                success, pos = pipeline.query_position(Gst.Format.TIME)
                 if success:
                     input.data.position = pos // Gst.SECOND
-                    await manager.broadcast("UPDATE",  PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
-        self._tick()
+                    await manager.broadcast(
+                        "UPDATE",
+                        PositionDTO(uid=input.data.uid, position=input.data.position),
+                        type="input"
+                    )
+        # Schedule next tick in GLib context
+        bridge.run_sync_in_glib(self._tick)
 
 
     def start(self):
@@ -48,36 +65,41 @@ class PipelineHandler(object):
         self.mainloop.run()
 
     def add_pipeline(self, pipeline: "GSTBase", start=True):
+        """Add pipeline - defers build() to GLib thread."""
         if self._pipelines is None:
             self._pipelines = {"inputs": [], "outputs": [], "mixers": []}
-        if is_subclass_str(pipeline.__class__, "Input"):
-            try:
-                pipeline.build()
-                self._pipelines["inputs"].append(pipeline)
-            except AttributeError:
-                pipeline.build()
-                self._pipelines["inputs"] = [pipeline]
 
+        # Determine category
+        if is_subclass_str(pipeline.__class__, "Input"):
+            category = "inputs"
         elif is_subclass_str(pipeline.__class__, "Output"):
-            try:
-                pipeline.build()
-                self._pipelines["outputs"].append(pipeline)
-            except AttributeError:
-                pipeline.build()
-                self._pipelines["outputs"] = [pipeline]
+            category = "outputs"
         elif is_subclass_str(pipeline.__class__, "Mixer"):
-            try:
-                pipeline.build()
-                self._pipelines["mixers"].append(pipeline)
-            except AttributeError:
-                pipeline.build()
-                self._pipelines["mixers"] = [pipeline]
+            category = "mixers"
         else:
             raise KeyError("Invalid pipeline type")
 
-        if start:
-            for inner in pipeline.inner_pipelines:
-                inner.set_state(Gst.State.PLAYING)
+        # Add to list immediately (so API can find it)
+        if category not in self._pipelines:
+            self._pipelines[category] = []
+        self._pipelines[category].append(pipeline)
+
+        # Defer actual build to GLib thread
+        bridge.run_sync_in_glib(
+            lambda p=pipeline, s=start: self._build_pipeline_sync(p, s)
+        )
+
+    def _build_pipeline_sync(self, pipeline: "GSTBase", start: bool):
+        """Build pipeline - runs in GLib thread context."""
+        try:
+            pipeline.build()
+            if start and pipeline.inner_pipelines:
+                for inner in pipeline.inner_pipelines:
+                    inner.set_state(Gst.State.PLAYING)
+        except Exception as e:
+            logger.log(f"Pipeline build failed: {e}", level='ERROR')
+            import traceback
+            traceback.print_exc()
 
 
 

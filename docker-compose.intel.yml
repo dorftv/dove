@@ -1,0 +1,6 @@
+# Intel host GPU passthrough overlay
+# Usage: docker compose -f docker-compose.yml -f docker-compose.intel.yml up
+services:
+  dove:
+    devices:
+      - /dev/dri:/dev/dri

@@ -1,0 +1,9 @@
+# AMD host GPU passthrough overlay
+# Usage: docker compose -f docker-compose.yml -f docker-compose.amd.yml up
+services:
+  dove:
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/kfd:/dev/kfd
+    environment:
+      - AMD_VULKAN_ICD=RADV

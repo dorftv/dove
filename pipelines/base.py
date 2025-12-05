@@ -1,4 +1,3 @@
-import asyncio
 import json
 from abc import ABC, abstractmethod
 import functools
@@ -13,6 +12,7 @@ from api.output_models import OutputDTO
 from api.websockets import manager
 from api.input_models import InputDTO
 from logger import logger
+from event_loop_bridge import bridge
 
 from config_handler import ConfigReader
 config = ConfigReader()
@@ -80,6 +80,8 @@ class GSTBase(BaseModel):
         return GLib.idle_add(func, *args)
 
     def get_pipeline(self):
+        if not self.inner_pipelines:
+            return None
         return self.inner_pipelines[0]
 
     def set_state(self, state: Gst.State):
@@ -129,7 +131,7 @@ class GSTBase(BaseModel):
         debug_array.insert(0, f"Error: {error_message}")
 
         self.data.details = debug_array
-        asyncio.run(manager.broadcast("UPDATE", self.data))
+        bridge.schedule_async(manager.broadcast("UPDATE", self.data))
 
 
     def add_duration(self):
@@ -167,11 +169,11 @@ class GSTBase(BaseModel):
                 self.create_preview()
                 self.add_duration()
                 self.add_resolution()
-            asyncio.run(manager.broadcast("UPDATE", self.data))
+            bridge.schedule_async(manager.broadcast("UPDATE", self.data))
 
     def _on_eos(self, bus, message):
         self.data.state = "EOS"
-        asyncio.run(manager.broadcast("UPDATE", self.data))
+        bridge.schedule_async(manager.broadcast("UPDATE", self.data))
 
     def _on_info(self, bus, message):
         # await ws_broadcast(orjson.dumps({
@@ -179,7 +181,7 @@ class GSTBase(BaseModel):
         #     "type": "info",
         #     "message": str(message)
         # }))
-        asyncio.run(manager.broadcast("INFO", {"message": str(message)}))
+        bridge.schedule_async(manager.broadcast("INFO", {"message": str(message)}))
 
     class Config:
         arbitrary_types_allowed = True

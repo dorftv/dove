@@ -1,18 +1,48 @@
-version: "3.5"
 services:
-  dove:
-    image: ghcr.io/dorftv/dove:latest
-    build:
-      context: .
+  mediamtx:
+    image: bluenviron/mediamtx:latest
     volumes:
-      - .:/app
-    environment:
-      - LOG_LEVEL=debug
-    restart: always
-    ports:
-      - 5000:5000
+      - ./mediamtx.yml:/mediamtx.yml
     networks:
       - dove
+    ports:
+      - 8889:8889
+      - 8554:8554
+      
+    
+  dove:
+    entrypoint: python main.py --config /app/config.toml
+    logging:
+      driver: "journald"
+#    image: ghcr.io/dorftv/dove:latest
+#    image: dov
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /home/hatsch/Videos:/videos
+#      - thek:/storage/thek
+#      - /run/user/1000:/tmp/runtime-dir  # For XDG_RUNTIME_DIR
+    environment:
+#      - MESA_DEBUG=1
+#      - GST_DEBUG=wpesrc:4
+#      - GST_DEBUG=2,urisourcebin:8,*decodeb*:8
+      - LOG_LEVEL=debug
+      - LIBGL_ALWAYS_SOFTWARE=true
+    restart: always
+#    network_mode: "host"
+    ports:
+      - 5000:5000
+      - 7777:7777/udp
+    extra_hosts:
+      - srtrelay-dev:10.10.10.207
+      - srtrelay:10.10.10.206
+      - dorfdev.ddev.site:192.168.178.47
+    networks:
+      - dove
+#      - ddev_default
     # the following options are required for wpesrc
     security_opt:
       - "apparmor=unconfined"
@@ -20,7 +50,36 @@ services:
     cap_add:
      - SYS_ADMIN
      - CAP_NET_ADMIN
+    deploy:
+      resources:
+        limits:
+          memory: 8096M
+#  srtrelay:
+#    image: ghcr.io/voc/srtrelay/srtrelay:latest
+#    restart: always
+##    container_name: srtrelay-dev
+#    #hostname: srtrelay
+#    volumes:
+#      - ./srtrelay.toml:/home/srtrelay/config.toml
+#    ports:
+#      - "1337:1337/udp"
+#      - "0.0.0.0:1234:1234"
+#    networks:
+#      - dove
+
+
+
+#volumes:
+#  thek:
+#    driver_opts:
+#      type: "nfs"
+#      o: "nfsvers=4,addr=10.10.10.200,nolock,soft,ro"
+#      device: ":/storage/dorftv-at/private_files/thek"
+
 
 networks:
   dove:
+  ddev_default: 
+    external:  true
+
 

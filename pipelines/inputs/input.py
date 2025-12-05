@@ -9,10 +9,10 @@ from pipelines.outputs.srtsink import srtsinkOutput
 
 from typing import Union
 from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
-import asyncio
 from gi.repository import Gst, GLib
 
 from api.websockets import manager
+from event_loop_bridge import bridge
 import time
 from pipeline_handler import HandlerSingleton
 from config_handler import ConfigReader
@@ -65,7 +65,7 @@ class Input(GSTBase, ABC):
                         ** preview_config
                     ))
                 handler.add_pipeline(previewOutput)
-                asyncio.run(manager.broadcast("CREATE", previewOutput.data))
+                bridge.schedule_async(manager.broadcast("CREATE", previewOutput.data))
 
 
     def seek_to_position(self, position):

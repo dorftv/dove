@@ -1,4 +1,5 @@
 import json
+import threading
 
 import orjson
 from fastapi import APIRouter, WebSocket
@@ -12,22 +13,38 @@ from api.output_models import OutputDTO, OutputDeleteDTO
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
+from logger import logger
+
 router = APIRouter()
 
 
-
 class ConnectionManager:
+    """Thread-safe WebSocket connection manager."""
+
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self._connections: list[WebSocket] = []
+        self._lock = asyncio.Lock()  # For async context
+        self._sync_lock = threading.Lock()  # For sync context
+
+    @property
+    def active_connections(self) -> list[WebSocket]:
+        """Read-only access to connections list (returns a copy)."""
+        return self._connections.copy()
 
     async def connect(self, websocket: WebSocket):
+        """Accept and register a new WebSocket connection."""
         await websocket.accept()
-        self.active_connections.append(websocket)
+        async with self._lock:
+            self._connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        """Thread-safe disconnect."""
+        with self._sync_lock:
+            if websocket in self._connections:
+                self._connections.remove(websocket)
 
     async def broadcast(self, channel, data, type=""):
+        """Thread-safe broadcast to all connections."""
         if not type:
             if issubclass(data.__class__, InputDTO) or isinstance(data, InputDeleteDTO):
                 type = "input"
@@ -39,20 +56,35 @@ class ConnectionManager:
         final_dict = {
             "type": type,
             "channel": channel,
-            "data": data.dict()
+            "data": data.dict() if hasattr(data, 'dict') else data
         }
 
+        message = orjson.dumps(final_dict).decode("utf-8")
 
-        disconnected_websockets = []
-        for connection in self.active_connections:
+        # Get snapshot of connections under lock
+        async with self._lock:
+            connections = self._connections.copy()
+
+        # Send to all, collect failures
+        disconnected = []
+        for connection in connections:
             try:
-                await connection.send_text(orjson.dumps(final_dict).decode("utf-8"))
+                await connection.send_text(message)
             except RuntimeError as e:
-                if str(e) == "WebSocket connection is closed":
-                    disconnected_websockets.append(connection)
+                if "WebSocket connection is closed" in str(e):
+                    disconnected.append(connection)
+            except Exception as e:
+                # Log but don't crash on send failures
+                logger.log(f"WebSocket send failed: {e}", level='WARNING')
+                disconnected.append(connection)
 
-        for connection in disconnected_websockets:
-            self.disconnect(connection)
+        # Clean up disconnected under lock
+        if disconnected:
+            async with self._lock:
+                for conn in disconnected:
+                    if conn in self._connections:
+                        self._connections.remove(conn)
+
 
 manager = ConnectionManager()
 

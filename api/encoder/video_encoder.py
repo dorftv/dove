@@ -57,14 +57,36 @@ class mpph264encEncoderDTO(h264EncoderDTO):
     element: Literal["mpph264enc"] = "mpph264enc"
 
 
+class vulkanh264encEncoderDTO(h264EncoderDTO):
+    name: Literal["vulkanh264enc"] = "vulkanh264enc"
+    element: Literal["vulkanh264enc"] = "vulkanh264enc"
+    options: Optional[str] = Field(
+        label = "vulkanh264enc options",
+        description = "Options for vulkanh264enc.",
+        default = "",
+        placeholder = "",
+    )
+
+
+class vulkanh265encEncoderDTO(videoEncoderDTO):
+    name: Literal["vulkanh265enc"] = "vulkanh265enc"
+    element: Literal["vulkanh265enc"] = "vulkanh265enc"
+    options: Optional[str] = Field(
+        label = "vulkanh265enc options",
+        description = "Options for vulkanh265enc.",
+        default = "",
+        placeholder = "",
+    )
+
+
 ############################################################################
 
 h264EncoderUnion = Annotated[
-    Union[x264EncoderDTO, openh264EncoderDTO, vaapih264encEncoderDTO, vah264encEncoderDTO, vah264lpencEncoderDTO, mpph264encEncoderDTO],
+    Union[x264EncoderDTO, openh264EncoderDTO, vaapih264encEncoderDTO, vah264encEncoderDTO, vah264lpencEncoderDTO, mpph264encEncoderDTO, vulkanh264encEncoderDTO],
     Field(discriminator='name')
 ]
 
 h265EncoderUnion = Annotated[
-    Union[x265EncoderDTO],
+    Union[x265EncoderDTO, vulkanh265encEncoderDTO],
     Field(discriminator='name')
 ]

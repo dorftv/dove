@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import threading
 from contextlib import asynccontextmanager
 from threading import Thread
@@ -7,6 +8,12 @@ from fastapi.staticfiles import StaticFiles
 
 import uvicorn
 
+
+class SuppressHLSAccessFilter(logging.Filter):
+    def filter(self, record):
+        msg = record.getMessage()
+        return '/preview/hls/' not in msg
+
 from event_loop_bridge import bridge
 
 from api import mixers
@@ -14,13 +21,17 @@ from api import mixer
 
 from api import output_routes
 from api import input_routes
-from api import whep
+from api import encoders as encoder_routes
+from api import webrtc_whep
 from api import websockets
 from api import configuration
 from api import graphviz
 from api import hls_preview
+from api import docs
+from api import auth as auth_module
 
-from proxy import srtrelay, playlist, mediamtx, ovenmedia
+from proxy import srtrelay, playlist, ovenmedia, mediamtx, v4l2, files
+from proxy import nodecg as nodecg_proxy
 
 from pipeline_handler import PipelineHandler
 
@@ -50,11 +61,13 @@ class APIThread(Thread):
         asyncio.set_event_loop(loop)
         bridge.set_asyncio_loop(loop, threading.current_thread())
 
-        fastapi = FastAPI(lifespan=self.lifespan)
+        fastapi = FastAPI(lifespan=self.lifespan, docs_url="/api/debug/docs", redoc_url=None)
+        fastapi.include_router(auth_module.router, tags=['Auth'])
         fastapi.include_router(configuration.router, tags=['Config'])
 
         fastapi.include_router(input_routes.router, prefix="/api")
         fastapi.include_router(output_routes.router, prefix="/api")
+        fastapi.include_router(encoder_routes.router, prefix="/api", tags=['Encoders'])
 
         fastapi.include_router(mixers.router, tags=['Mixer'])
         fastapi.include_router(mixer.router, tags=['Mixer'])
@@ -62,23 +75,49 @@ class APIThread(Thread):
 
         # websockets handler
         fastapi.include_router(websockets.router)
-        fastapi.include_router(hls_preview.router, tags=['Preview'])
+        preview_deps = [auth_module.require_role("user")]
+        fastapi.include_router(hls_preview.router, tags=['Preview'], dependencies=preview_deps)
+        fastapi.include_router(webrtc_whep.router, tags=['WebRTC Preview'], dependencies=preview_deps)
 
-        #proxies
-        fastapi.include_router(srtrelay.router, tags=['Proxy'])
-        fastapi.include_router(mediamtx.router, tags=['Proxy'])
-        fastapi.include_router(ovenmedia.router, tags=['Proxy'])
-        fastapi.include_router(playlist.router, tags=['Proxy'])
+        fastapi.include_router(docs.router, tags=['Docs'])
 
-        if config.get_whep_proxy():
-          fastapi.include_router(whep.router, tags=['Proxy'])
+        # Proxies — only mount when configured
+        proxy_deps = [auth_module.require_role("user")]
+        proxy_types = config.get_proxy_types()
 
+        if 'v4l2' in proxy_types or 'alsa' in proxy_types:
+            fastapi.include_router(v4l2.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'files' in proxy_types or 'images' in proxy_types:
+            fastapi.include_router(files.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'srtrelay' in proxy_types:
+            fastapi.include_router(srtrelay.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'ovenmedia' in proxy_types:
+            fastapi.include_router(ovenmedia.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'mediamtx' in proxy_types:
+            fastapi.include_router(mediamtx.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'playlist' in proxy_types:
+            fastapi.include_router(playlist.router, tags=['Proxy'], dependencies=proxy_deps)
+        if 'nodecg' in proxy_types:
+            fastapi.include_router(nodecg_proxy.router, tags=['NodeCG Proxy'], dependencies=proxy_deps)
+
+
+        @fastapi.middleware("http")
+        async def security_headers(request, call_next):
+            response = await call_next(request)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
+            return response
+
+        # serve branding assets
+        fastapi.mount("/branding", StaticFiles(directory="assets"), name="branding")
 
         # serve frontend with StaticFiles
         fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
 
-        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none')
+        logging.getLogger("uvicorn.access").addFilter(SuppressHLSAccessFilter())
+
+        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10)
         server = uvicorn.Server(uvicorn_config)
         loop.run_until_complete(server.serve())

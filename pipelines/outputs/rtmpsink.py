@@ -1,7 +1,4 @@
-from pathlib import Path
-from typing import Optional
-from pipeline_handler import HandlerSingleton
-
+from event_loop_bridge import safe_broadcast
 from pipelines.outputs.output import Output
 from api.outputs.rtmpsink import rtmpsinkOutputDTO
 
@@ -9,35 +6,39 @@ from api.outputs.rtmpsink import rtmpsinkOutputDTO
 class rtmpsinkOutput(Output):
     data: rtmpsinkOutputDTO
 
-    def build(self):
+    def check_stats(self):
+        if not self._bin:
+            return
+        sink = self._bin.get_by_name(f"sink_{self.data.uid}")
+        if not sink:
+            return
+        try:
+            stats = sink.get_property("stats")
+        except Exception:
+            return
+        if stats is None:
+            return
+        rate = stats.get_value("average-rate")
+        dropped = stats.get_value("dropped")
+        rendered = stats.get_value("rendered")
+        new_stats = {"average_rate": rate, "dropped": dropped, "rendered": rendered}
+        details = f"{rate:.1f} fps | rendered {rendered} | dropped {dropped}"
+        if self.data.stats != new_stats or self.data.details != details:
+            self.data.stats = new_stats
+            self.data.details = details
+            safe_broadcast("UPDATE", self.data)
 
-        # @TODO get source element
-        pipeline_audio_str = ""
-        aenc_str = " voaacenc  ! aacparse ! audio/mpeg, mpegversion=4"
+    def build_pipeline_str(self, dynamic=False) -> str:
+        uid = self.data.uid
 
-        handler = HandlerSingleton()
-        input = handler.getpipeline(self.data.src)
-        pipeline_audio_str = ""
-        pipeline_video_str = ""
+        video_str = (
+            f" {self.get_video_start(dynamic)} "
+            f" {self.data.mux.element} {self.data.mux.options} name=mux_{uid} ! "
+            f" rtmpsink name=sink_{uid} location={self.data.uri} "
+        )
 
+        audio_str = (
+            f" {self.get_audio_start(dynamic)} mux_{uid}. "
+        )
 
-        if input.has_audio_or_video("audio"):
-            audioenc = self.get_audio_encoder_pipeline(self.data.audio_encoder.name)
-            pipeline_audio_str = f" {self.get_audio_start()}  audioconvert ! audioresample ! { audioenc } ! queue "
-
-        # @TODO improve has_audio_or_video
-        #if input.has_audio_or_video("video") or input.data.type == "playlist":
-        videoenc = self.get_video_encoder_pipeline(self.data.video_encoder.name)
-        pipeline_video_str = self.get_video_start() +  f" videoconvert ! videoscale ! videorate ! { videoenc } ! queue "
-
-        self.add_pipeline(f"{pipeline_video_str} ! "
-        f""
-        f"{self.data.mux.element } name={self.data.mux.name} { self.data.mux.options} ! "
-        f""
-        f"rtmpsink name=sink location={self.data.uri} "
-        f""
-        f" { pipeline_audio_str } !  {self.data.mux.name}.")
-
-
-    def describe(self):
-        return self.data
+        return video_str + audio_str

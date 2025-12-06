@@ -1,74 +1,72 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Optional
 from uuid import UUID
 from gi.repository import Gst
 
 from api.output_models import OutputDTO
-
 from pipelines.base import GSTBase
 
 
 class Output(GSTBase, ABC):
     data: OutputDTO
-    def get_video_start(self) -> str:
-        return f" interpipesrc name=video_{self.data.uid} listen-to=video_{self.data.src} is-live=true format=time allow-renegotiation=true stream-sync=restart-ts leaky-type=downstream ! "
-    def get_audio_start(self):
-        return f" interpipesrc name=audio_{self.data.uid} listen-to=audio_{self.data.src} is-live=true format=time allow-renegotiation=true stream-sync=restart-ts leaky-type=downstream ! "
+    _bin: Optional[Gst.Bin] = None  # For dynamic addition
+    _tee_pads: Optional[dict] = None  # Track tee pads for cleanup
 
-    def get_video_encoder_pipeline(self, encoder) -> str:
-        if encoder is None:
-            return None
+    def get_video_start(self, dynamic=False) -> str:
+        if dynamic:
+            return f" queue name=video_queue_{self.data.uid} ! "
+        # Non-dynamic: connect to encoder tee if encoder entity UUID is set
+        if isinstance(self.data.video_encoder, UUID):
+            return f" enc_tee_{self.data.video_encoder}. ! queue ! "
+        tee_name = self._get_source_tee_name("video")
+        return f" {tee_name}. ! queue ! "
 
-        video_encoder = self.data.video_encoder
-        caps = f"{ self.get_caps('video')}"
-        video_profile_str = f",profile={video_encoder.profile}" if video_encoder.profile else ""
+    def get_audio_start(self, dynamic=False):
+        if dynamic:
+            return f" queue name=audio_queue_{self.data.uid} ! "
+        if isinstance(self.data.audio_encoder, UUID):
+            return f" enc_tee_{self.data.audio_encoder}. ! queue ! "
+        tee_name = self._get_source_tee_name("audio")
+        return f" {tee_name}. ! queue ! "
 
-        if encoder == "x264":
-            enc_str = f"{video_encoder.element} {video_encoder.options} ! video/x-h264{video_profile_str} "
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { enc_str }   "
+    def _get_source_tee_name(self, audio_or_video):
+        """Determine tee name based on source type (input vs mixer)."""
+        from pipeline_handler import HandlerSingleton
+        from logger import logger
+        handler = HandlerSingleton()
 
-        elif encoder == "vah264enc" or encoder == "vaapih264enc"  or encoder == "vah264lpenc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! vapostproc ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str}  ! h264parse "
+        # Check if source is a mixer
+        mixer = handler.get_pipeline("mixers", self.data.src)
+        if mixer:
+            tee_name = f"scene_{audio_or_video}_tee_{self.data.src}"
+            logger.log(f"Output {self.data.uid} connecting to mixer tee: {tee_name}", level='DEBUG')
+            return tee_name
 
-        elif encoder == "openh264enc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options } ! video/x-h264{video_profile_str} ! h264parse  "
+        # Otherwise it's an input
+        tee_name = f"{audio_or_video}_tee_{self.data.src}"
+        logger.log(f"Output {self.data.uid} connecting to input tee: {tee_name}", level='DEBUG')
+        return tee_name
 
-        elif encoder == "mpph264enc":
-            pipeline_str = f"{self.get_caps('video', 'I420')} ! { video_encoder.element } {video_encoder.options }  ! video/x-h264{video_profile_str} ! h264parse ! queue "
+    # For single-pipeline architecture
+    @abstractmethod
+    def build_pipeline_str(self, dynamic=False) -> str:
+        """Return pipeline string fragment for this output. Override in subclasses.
 
-        elif encoder == "vulkanh264enc":
-            pipeline_str = f"{self.get_caps('video', 'NV12')} ! vulkanupload ! { video_encoder.element } {video_encoder.options } ! vulkandownload ! video/x-h264{video_profile_str} ! h264parse "
+        Args:
+            dynamic: If True, use named queues for ghost pads instead of tee references.
+        """
+        pass
 
-        elif encoder == "vulkanh265enc":
-            pipeline_str = f"{self.get_caps('video', 'NV12')} ! vulkanupload ! { video_encoder.element } {video_encoder.options } ! vulkandownload ! h265parse "
+    def attach(self, pipeline: Gst.Pipeline):
+        """Clear stale references after initial pipeline build."""
+        self._bin = None
+        self._tee_pads = None
+        self.connect_signals(pipeline)
 
-        return pipeline_str
+    def connect_signals(self, pipeline: Gst.Pipeline):
+        """Override in subclasses that need signal connections after pipeline build."""
+        pass
 
-    def get_audio_encoder_pipeline(self, encoder) -> str:
-        if encoder is None:
-            return None
-
-        audio_encoder = self.data.audio_encoder
-        caps = f"{ self.get_caps('audio')}"
-
-        if encoder == "aac":
-            caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  ! aacparse "
-
-        elif encoder == "mp2":
-            caps =  audio_caps = self.get_caps('audio', 'S16LE')
-            #caps = "audio/x-raw,format=S16LE,layout=interleaved,rate=41000,channels=2"
-            pipeline_str = f"{ caps } ! { audio_encoder.element }  { audio_encoder.options } ! audio/mpeg,mpegversion=1,layer=2,channels=2,mode=joint-stereo ! queue "
-
-        elif encoder == "mp3":
-            caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"{ caps } !  { audio_encoder.element }  { audio_encoder.options } ! queue "
-
-        elif encoder == "opus":
-            caps = f"{ self.get_caps('audio', 'S16LE')}"
-            pipeline_str = f"audioresample ! audio/x-raw,format=S16LE,layout=interleaved,channels=1,rate=24000 ! queue ! { audio_encoder.element }  { audio_encoder.options } ! queue "
-
-
-        return pipeline_str
-
-    def describe(self):
-        return self
+    def check_stats(self):
+        """Override in subclasses that have stats. Called every 1s from tick."""
+        pass

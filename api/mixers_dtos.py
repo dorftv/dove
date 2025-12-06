@@ -2,10 +2,11 @@ from typing import Annotated, Optional, List
 from uuid import UUID, uuid4
 from typing import Union, Literal
 
-from pydantic import BaseModel, Field, field_validator, validator, model_validator, root_validator, PrivateAttr
+from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 from helpers import generateId, get_default_height, get_default_width, get_default_volume
 from config_handler import ConfigReader
+from api.input_models import AudioFilterDTO, VideoFilterDTO
 
 
 config = ConfigReader()
@@ -28,11 +29,13 @@ class mixerInputDTO(BaseModel):
     mute: Optional[bool] = False
     locked: Optional[bool] = False
     src_locked: Optional[bool] = False
+    sizing: Optional[str] = "fit"  # "fit" = preserve aspect ratio + center, "stretch" = fill slot
+    audio_filters: Optional[list[AudioFilterDTO]] = []
+    video_filters: Optional[list[VideoFilterDTO]] = []
 
 
 class mixerInputsDTO(BaseModel):
     src: UUID
-    #src: Optional[List[mixerInputDTO]] = []
 
 
 class mixerBaseDTO(BaseModel):
@@ -47,6 +50,8 @@ class mixerBaseDTO(BaseModel):
     width: Optional[int] = Field(default_factory=get_default_width)
     volume: Optional[float] = Field(default_factory=get_default_volume)
     details: Optional[str] = None
+    audio_filters: Optional[list[AudioFilterDTO]] = []
+    video_filters: Optional[list[VideoFilterDTO]] = []
 
     def add_slot(self, source: mixerInputDTO = None):
         if source == None:
@@ -97,6 +102,8 @@ class mixerBaseDTO(BaseModel):
                 for key, value in kwargs.items():
                     if key == "alpha":
                         value = float(value)
+                    elif key in ("xpos", "ypos", "width", "height", "zorder"):
+                        value = int(value[0]) if isinstance(value, list) else int(value)
                     setattr(source, key, value)
                 break
 

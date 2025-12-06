@@ -1,17 +1,8 @@
 from uuid import uuid4
 from logger import logger
-from time import sleep
-from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutDTO, mixerCutProgramDTO
+from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
-from api.outputs.hlssink2 import hlssink2OutputDTO
-from pipelines.outputs.hlssink2 import hlssink2Output
-
-from api.outputs.srtsink import srtsinkOutputDTO
-from pipelines.outputs.srtsink import srtsinkOutput
-from api.outputs.rtspclientsink import rtspclientsinkOutputDTO
-from pipelines.outputs.rtspclientsink import rtspclientsinkOutput
-
 from api.helper import get_dtos
 from pipelines.helper import get_pipeline_classes
 
@@ -25,157 +16,327 @@ output_dtos = {model_type: model for model, model_type in get_dtos('output')}
 input_pipeline_classes = {model_type: model for model, model_type in get_pipeline_classes('input')}
 output_pipeline_classes = {model_type: model for model, model_type in get_pipeline_classes('output')}
 
+SLOT_PROPERTIES = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute', 'name']
+
 
 class ElementsFactory:
     def __init__(self, handler):
         self.handler = handler
-    scene_list = config.get_scenes()
-    input_list = config.get_inputs()
-    output_list = config.get_outputs()
-    program_overlays_list = config.get_program_overlays()
-    cutProgram = None
-
-    # TODO  config.get_preview_enabled()
-    preview_enabled = True
-
+        self.cutProgram = None
+        self.scene_list = config.get_scenes()
+        self.input_list = config.get_inputs()
+        self.output_list = config.get_outputs()
+        self.encoder_list = config.get_encoders()
+        self.program_overlays_list = config.get_program_overlays()
 
     def create_pipeline(self, io_type, name, data):
         data['name'] = data.get('name', name)
-        dto_class = input_dtos.get(data['type']) if io_type == 'input' else output_dtos.get(data['type'])
-        pipeline_class = input_pipeline_classes.get(data['type']) if io_type == 'input' else output_pipeline_classes.get(data['type'])
+        dtos = input_dtos if io_type == 'input' else output_dtos
+        classes = input_pipeline_classes if io_type == 'input' else output_pipeline_classes
 
-        if pipeline_class:
-            if dto_class:
-                dto_instance = dto_class(**data)
-                new_pipeline = pipeline_class(data=dto_instance)
-                self.handler.add_pipeline(new_pipeline)
-                return new_pipeline
-            else:
-                logger.log(f"Could not find DTO class for {data['type']}", level='ERROR')
-                return None
-        else:
-            logger.log(f"Could not find Pipeline class for {data['type']}", level='ERROR')
+        dto_class = dtos.get(data['type'])
+        pipeline_class = classes.get(data['type'])
+
+        if not pipeline_class:
+            logger.log(f"No pipeline class for {data['type']}", level='ERROR')
+            return None
+        if not dto_class:
+            logger.log(f"No DTO class for {data['type']}", level='ERROR')
             return None
 
-    def create_preview(self, type, uid):
-        if config.get_whep_proxy:
-            host =  config.get_whep_proxy('host')
-            ingest_port = config.get_whep_proxy('ingest_port')
-
-        preview_config = config.get_preview_config(type)
-        if preview_config['type'] == "hlssink2":
-            previewOutput = hlssink2Output(data=hlssink2OutputDTO(
-                src=uid,
-                is_preview=True,
-                ** preview_config
-            ))
-        elif preview_config['type'] == "srtsink":
-            previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
-                src=uid,
-                is_preview=True,
-                uri=f"srt://{host}:{ingest_port}?streamid=publish:{uid}&pkt_size=1316",
-                ** preview_config
-            ))
-        elif preview_config['type'] == "rtspclientsink":
-            previewOutput = rtspclientsinkOutput(data=rtspclientsinkOutputDTO(
-                src=uid,
-                is_preview=True,
-                location=f"rtsp://{ host }:{ ingest_port }/{uid}",
-                ** preview_config
-            ))
-        self.handler.add_pipeline(previewOutput)
+        dto_instance = dto_class(**data)
+        new_pipeline = pipeline_class(data=dto_instance)
+        self.handler.add_pipeline(new_pipeline)
+        return new_pipeline
 
     def create_mixer(self, name, scene_details):
-        mixerUuid = scene_details.get('uid', uuid4())
-        mixerDTO = sceneMixerDTO(uid=mixerUuid, name=name, type="scene", n=scene_details.get('n', 0), locked=scene_details.get('locked', False), src_locked=scene_details.get('src_locked', False))
-        mixer = sceneMixer(data=mixerDTO)
+        mixer_uid = scene_details.get('uid', uuid4())
+        dto = sceneMixerDTO(
+            uid=mixer_uid, name=name, type="scene",
+            n=scene_details.get('n', 0),
+            locked=scene_details.get('locked', False),
+            src_locked=scene_details.get('src_locked', False),
+        )
+        mixer = sceneMixer(data=dto)
         self.handler.add_pipeline(mixer)
-        self.create_preview('scenes', mixerUuid)
         return mixer
 
-    async def create_pipelines(self):
-        inputs = {}
-        if True:
-            programUuid = uuid4()
-            programDTO = programMixerDTO(uid=programUuid, name="program", type="program")
-            newProgramMixer = (programMixer(data=programDTO))
-            self.handler.add_pipeline(newProgramMixer)
-            self.create_preview('program', programUuid)
+    def _resolve_input_ref(self, input_ref, name, scope_key, inputs_map):
+        """Resolve an input reference (string ref or inline dict) to a pipeline."""
+        if isinstance(input_ref, str):
+            uid = inputs_map.get(str(input_ref))
+            if uid:
+                return self.handler.get_pipeline("inputs", uid)
+            logger.log(f"Input ref '{input_ref}' not found", level='ERROR')
+            return None
+        if isinstance(input_ref, dict) and input_ref.get('type'):
+            pipeline = self.create_pipeline('input', name, input_ref)
+            if pipeline:
+                inputs_map[scope_key] = pipeline.data.uid
+            return pipeline
+        return None
 
-        if self.scene_list is not None:
+    def _create_program_mixer(self):
+        program_uid = uuid4()
+        dto = programMixerDTO(uid=program_uid, name="program", type="program")
+        mixer = programMixer(data=dto)
+        self.handler.add_pipeline(mixer)
+        return mixer, program_uid
+
+    def _setup_scene_slots(self, scene, scene_name, scene_slots, inputs_map):
+        for index, (name, details) in enumerate(scene_slots.items()):
+            if details.get("name") is None:
+                details["name"] = name
+
+            for prop in SLOT_PROPERTIES:
+                value = details.get(prop)
+                if value is not None:
+                    scene.data.update_mixer_input(index, **{prop: value})
+
+            input_ref = details.get('input')
+            if input_ref:
+                pipeline = self._resolve_input_ref(
+                    input_ref, name, f"{scene_name}.{name}", inputs_map
+                )
+                if pipeline:
+                    uid = pipeline.data.uid
+                    scene.data.update_mixer_input(index, src=uid)
+                    scene.link_source(index, uid)
+
+    def _create_scenes(self, inputs_map):
+        if not self.scene_list:
+            return
+
+        for scene_name in self.scene_list:
+            scene_details = config.get_scene_details(scene_name)
+            scene_slots = config.get_scene_inputs(scene_name)
+
+            n = scene_details.get('n', 0)
+            if scene_slots and len(scene_slots) > n:
+                scene_details["n"] = len(scene_slots)
+
+            scene = self.create_mixer(scene_details.get('name', scene_name), scene_details)
+
+            if scene_details.get('program', False):
+                self.cutProgram = mixerCutProgramDTO(src=scene.data.uid)
+
+            if scene_slots:
+                self._setup_scene_slots(scene, scene_name, scene_slots, inputs_map)
+
+    def _create_program_overlays(self, program_mixer, inputs_map):
+        if not self.program_overlays_list:
+            return
+
+        program_index = 1
+        for name, overlays in self.program_overlays_list.items():
+            program_index += 1
+            input_ref = overlays.get('input')
+            if input_ref:
+                pipeline = self._resolve_input_ref(
+                    input_ref, name, f"program.{name}", inputs_map
+                )
+            elif overlays.get('type') is not None:
+                pipeline = self.create_pipeline('input', name, overlays)
+            else:
+                pipeline = None
+
+            if pipeline:
+                uid = pipeline.data.uid
+                program_mixer.data.update_mixer_input(program_index, src=uid)
+                program_mixer.link_source(program_index, uid)
+
+    def _create_standalone_inputs(self):
+        if not self.input_list:
+            return
+        for name, input_details in self.input_list.items():
+            self.create_pipeline('input', name, input_details)
+
+    def _create_outputs(self, program_uid):
+        if not self.output_list:
+            return
+        for name, output_conf in self.output_list.items():
+            output_type = output_conf.get('type')
+            if output_type:
+                output_conf['name'] = output_conf.get('name', name)
+                output_conf['src'] = program_uid
+                self.create_pipeline('output', name, output_conf)
+
+    def _build_steps(self):
+        """Build an ordered list of (description, callable) steps for pipeline creation.
+
+        Order: create all entities first, then link slots, then cut program.
+        """
+        steps = []
+        inputs_map = {}
+        link_steps = []
+
+        # 1. Program mixer
+        state = {}
+        def create_program():
+            mixer, uid = self._create_program_mixer()
+            state['program_mixer'] = mixer
+            state['program_uid'] = uid
+        steps.append(("program mixer", create_program))
+
+        # 2. Scenes: create mixers and inputs (no linking yet)
+        if self.scene_list:
             for scene_name in self.scene_list:
                 scene_details = config.get_scene_details(scene_name)
                 scene_slots = config.get_scene_inputs(scene_name)
 
                 n = scene_details.get('n', 0)
-                if scene_slots is not None:
-                    s = len(scene_slots)
-                    if s > n:
-                        scene_details["n"] = s
-                scene = self.create_mixer(scene_details.get('name', scene_name), scene_details)
+                if scene_slots and len(scene_slots) > n:
+                    scene_details["n"] = len(scene_slots)
 
-                index = 0
-                if scene_slots is not None:
-                    for name, details in scene_slots.items():
-                        if details.get("name", None) is None:
-                            details["name"] = name
+                sn = scene_name
+                sd = scene_details
+                def create_scene(sn=sn, sd=sd):
+                    scene = self.create_mixer(sd.get('name', sn), sd)
+                    state[f'scene_{sn}'] = scene
+                    if sd.get('program', False):
+                        self.cutProgram = mixerCutProgramDTO(src=scene.data.uid)
+                steps.append((f"scene {sn}", create_scene))
 
-                        if scene_details.get('program', False):
-                            self.cutProgram = mixerCutProgramDTO(src=scene.data.uid)
-                        properties = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute', 'preview', 'name']
-                        for prop in properties:
-                            value = details.get(prop)
-                            if value is not None:
-                                scene.data.update_mixer_input(index ,  **{prop: value})
+                if scene_slots:
+                    for index, (slot_name, details) in enumerate(scene_slots.items()):
+                        idx = index
+                        sn_ = sn
+                        sl_name = slot_name
+                        sl_details = details
 
-                        input = details.get('input', None)
-                        if input:
-                            if isinstance(input, str):
-                                pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
-                            elif input.get('type', None) is not None:
-                                pipeline = self.create_pipeline('input', name, input)
-                                self.create_preview('inputs', pipeline.data.uid)
-                                inputs[f"{scene_name}.{name}"] =  pipeline.data.uid
-                            if pipeline is not None:
-                                uid = pipeline.data.uid
+                        # Create input (if inline dict)
+                        input_ref = details.get('input')
+                        if isinstance(input_ref, dict) and input_ref.get('type'):
+                            def create_slot_input(sn_=sn_, sl_name=sl_name, sl_details=sl_details, idx=idx):
+                                scene = state[f'scene_{sn_}']
+                                if sl_details.get("name") is None:
+                                    sl_details["name"] = sl_name
+                                for prop in SLOT_PROPERTIES:
+                                    value = sl_details.get(prop)
+                                    if value is not None:
+                                        scene.data.update_mixer_input(idx, **{prop: value})
+                                pipeline = self.create_pipeline('input', sl_name, sl_details['input'])
+                                if pipeline:
+                                    inputs_map[f"{sn_}.{sl_name}"] = pipeline.data.uid
+                            steps.append((f"input {sn}.{slot_name}", create_slot_input))
 
-                                scene.data.update_mixer_input(index, src=uid)
-                                cutInput = mixerCutDTO(src=uid, target=scene.data.uid, index=index)
-                                scene.add_source(cutInput)
-                                scene.update_pad_from_sources("video", index)
-                        index += 1
-        program_index = 1
-        if self.program_overlays_list is not None:
+                        # Defer linking to after all entities exist
+                        def link_slot(idx=idx, sn_=sn_, sl_name=sl_name, sl_details=sl_details):
+                            scene = state[f'scene_{sn_}']
+                            scope_key = f"{sn_}.{sl_name}"
+                            input_ref = sl_details.get('input')
+
+                            # Look up pre-created input (don't re-create via _resolve_input_ref)
+                            uid = None
+                            if isinstance(input_ref, dict):
+                                uid = inputs_map.get(scope_key)
+                            elif isinstance(input_ref, str):
+                                uid = inputs_map.get(input_ref)
+
+                            if uid:
+                                scene.data.update_mixer_input(idx, src=uid)
+                                scene.link_source(idx, uid)
+                        link_steps.append((f"link {sn}.{slot_name}", link_slot))
+
+        # 3. Program overlays: create inputs first, link later
+        if self.program_overlays_list:
+            program_index = 1
             for name, overlays in self.program_overlays_list.items():
-                program_index +=1
-                input = overlays.get('input', None)
-                if input:
-                    if isinstance(input, str):
-                        pipeline =  self.handler.get_pipeline("inputs", inputs[str(input)])
-                elif overlays.get('type', None) is not None:
-                    pipeline = self.create_pipeline('input', name, overlays)
+                program_index += 1
+                ov_name = name
+                ov_data = overlays
+                pi = program_index
 
-                if pipeline is not None:
-                    uid = pipeline.data.uid
-                    newProgramMixer.data.update_mixer_input(program_index, src=uid)
-                    newProgramMixer.add_slot()
-                    cutInput = mixerCutDTO(src=uid, target=newProgramMixer.data.uid, index=program_index)
-                    newProgramMixer.add_source(cutInput)
-                    newProgramMixer.update_pad_from_sources("video", program_index)
+                input_ref = overlays.get('input')
+                if isinstance(input_ref, dict) and input_ref.get('type'):
+                    def create_ov_input(ov_name=ov_name, ov_data=ov_data):
+                        pipeline = self.create_pipeline('input', ov_name, ov_data['input'])
+                        if pipeline:
+                            inputs_map[f"program.{ov_name}"] = pipeline.data.uid
+                    steps.append((f"input overlay {ov_name}", create_ov_input))
+                elif not input_ref and overlays.get('type') is not None:
+                    def create_ov_direct(ov_name=ov_name, ov_data=ov_data):
+                        pipeline = self.create_pipeline('input', ov_name, ov_data)
+                        if pipeline:
+                            inputs_map[f"program.{ov_name}"] = pipeline.data.uid
+                    steps.append((f"input overlay {ov_name}", create_ov_direct))
 
-        if self.input_list is not None:
+                def link_overlay(ov_name=ov_name, pi=pi):
+                    program_mixer = state['program_mixer']
+                    uid = inputs_map.get(f"program.{ov_name}")
+                    if uid:
+                        # Ensure slot exists for overlay index
+                        while len(program_mixer.data.sources) <= pi:
+                            program_mixer.add_slot()
+                        program_mixer.data.update_mixer_input(pi, src=uid)
+                        program_mixer.link_source(pi, uid)
+                link_steps.append((f"link overlay {ov_name}", link_overlay))
+
+        # 4. Encoders (before outputs so outputs can reference them)
+        encoder_map = {}  # config name → UUID
+        if self.encoder_list:
+            for enc_name, enc_conf in self.encoder_list.items():
+                e_name = enc_name
+                e_conf = enc_conf
+                def create_encoder(e_name=e_name, e_conf=e_conf):
+                    from pipelines.encoders.encoder import Encoder
+                    from api.encoder_models import EncoderEntityDTO
+                    entity = Encoder(data=EncoderEntityDTO(
+                        type=e_conf.get('type', 'video'),
+                        element=e_conf.get('element', ''),
+                        codec=e_conf.get('codec', ''),
+                        options=e_conf.get('options', ''),
+                        profile=e_conf.get('profile'),
+                        width=e_conf.get('width'),
+                        height=e_conf.get('height'),
+                        framerate=e_conf.get('framerate'),
+                        src=state['program_uid'],
+                    ))
+                    self.handler.add_pipeline(entity)
+                    encoder_map[e_name] = entity.data.uid
+                steps.append((f"encoder {enc_name}", create_encoder))
+
+        # 5. Standalone inputs
+        if self.input_list:
             for name, input_details in self.input_list.items():
-                inputUuid =  uuid4()
-                pipeline = self.create_pipeline('input', name, input_details)
-        if isinstance(self.cutProgram, mixerCutProgramDTO):
-            await newProgramMixer.cut_program(self.cutProgram)
+                in_name = name
+                in_details = input_details
+                def create_input(in_name=in_name, in_details=in_details):
+                    self.create_pipeline('input', in_name, in_details)
+                steps.append((f"input {name}", create_input))
 
+        # 6. Outputs
+        if self.output_list:
+            for name, output_conf in self.output_list.items():
+                out_name = name
+                out_conf = output_conf
+                def create_output(out_name=out_name, out_conf=out_conf):
+                    output_type = out_conf.get('type')
+                    if output_type:
+                        out_conf['name'] = out_conf.get('name', out_name)
+                        out_conf['src'] = state['program_uid']
+                        # Resolve encoder name references to UUIDs
+                        for enc_key in ('video_encoder', 'audio_encoder'):
+                            ref = out_conf.get(enc_key)
+                            if isinstance(ref, str) and ref in encoder_map:
+                                out_conf[enc_key] = encoder_map[ref]
+                        self.create_pipeline('output', out_name, out_conf)
+                steps.append((f"output {name}", create_output))
 
-        if self.output_list is not None:
-            for name, output in self.output_list.items():
-                type = output.get('type')
-                if type is not None:
-                    output['name'] = output.get('name', name)
-                    output['src'] = programUuid
-                    sleep(0.2)
-                    self.create_pipeline('output', name, output)
+        # 7. Link all slots and overlays
+        steps.extend(link_steps)
+
+        # 8. Cut program (last)
+        def cut_program():
+            if isinstance(self.cutProgram, mixerCutProgramDTO):
+                state['program_mixer'].cut_program_sync(self.cutProgram)
+        steps.append(("cut program", cut_program))
+
+        return steps
+
+    def create_pipelines(self):
+        steps = self._build_steps()
+        for desc, fn in steps:
+            logger.log(f"Factory: creating {desc}", level='DEBUG')
+            fn()
+        logger.log("Factory: all pipelines created", level='DEBUG')

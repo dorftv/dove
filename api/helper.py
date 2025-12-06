@@ -1,7 +1,7 @@
 import os
 import pkgutil
 import importlib
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List, get_args, get_origin, Annotated
 from api.output_models import OutputDTO
 from api.input_models import InputDTO
@@ -10,8 +10,6 @@ from pipelines.base import GSTBase
 from pipelines.inputs.input import Input
 from pipelines.outputs.output import Output
 from pydantic import BaseModel
-import json
-from pydantic.fields import FieldInfo
 from api.encoder import encoder
 from api.encoder import audio_encoder
 from api.encoder import video_encoder
@@ -32,51 +30,128 @@ def get_module_classes(module, base_class):
         if inspect.isclass(obj) and issubclass(obj, base_class) and obj != base_class
     ]
 
+_encoder_cache: Optional[Dict[str, List[Dict[str, Any]]]] = None
+_encoder_availability_cache: Dict[str, bool] = {}
+
+# Hardware encoders need READY probe (plugin exists but hardware may not)
+_HARDWARE_ENCODERS = {
+    "vah264enc", "vah264lpenc", "vah265enc",
+    "vaapih264enc", "vaapih265enc",
+    "vulkanh264enc", "vulkanh265enc",
+    "mpph264enc",
+}
+
+# Auto-detection priority (best first)
+AUTO_PRIORITY = {
+    "h264": ["vulkanh264enc", "vah264enc", "vah264lpenc", "vaapih264enc", "openh264enc", "x264enc"],
+    "h265": ["vulkanh265enc", "vah265enc", "vaapih265enc", "x265enc"],
+    "vp8":  ["vp8enc"],
+    "vp9":  ["vp9enc"],
+    "av1":  ["av1enc"],
+}
+
+
+def _is_encoder_available(element_name: str) -> bool:
+    """Check if a GStreamer encoder element is available.
+    Software encoders: find() is enough. Hardware: find() + READY probe.
+    """
+    if element_name in _encoder_availability_cache:
+        return _encoder_availability_cache[element_name]
+
+    factory = Gst.ElementFactory.find(element_name)
+    if not factory:
+        _encoder_availability_cache[element_name] = False
+        return False
+
+    if element_name not in _HARDWARE_ENCODERS:
+        _encoder_availability_cache[element_name] = True
+        return True
+
+    # Hardware encoder: probe with READY state
+    available = False
+    quiet_handler = GLib.log_set_handler(
+        "GStreamer", GLib.LogLevelFlags.LEVEL_ERROR | GLib.LogLevelFlags.LEVEL_WARNING,
+        lambda *a: True, None
+    )
+    try:
+        elem = factory.create(None)
+        if elem:
+            ret = elem.set_state(Gst.State.READY)
+            available = ret != Gst.StateChangeReturn.FAILURE
+            elem.set_state(Gst.State.NULL)
+    except Exception:
+        pass
+    finally:
+        GLib.log_remove_handler("GStreamer", quiet_handler)
+
+    _encoder_availability_cache[element_name] = available
+    return available
+
+
+def get_auto_encoder(codec: str) -> Optional[str]:
+    """Return best available encoder element name for a codec, or None."""
+    for element_name in AUTO_PRIORITY.get(codec, []):
+        if _is_encoder_available(element_name):
+            return element_name
+    return None
+
+
 def get_encoder_types() -> Dict[str, List[Dict[str, Any]]]:
-    Gst.init(None)
+    global _encoder_cache
+    if _encoder_cache is not None:
+        return _encoder_cache
+
+    if not Gst.is_initialized():
+        Gst.init([])
     encoders = {"audio": [], "video": [], "mux": []}
 
-    # Get all encoder classes from the submodules
     audio_classes = get_module_classes(audio_encoder, audio_encoder.audioEncoderDTO)
     video_classes = get_module_classes(video_encoder, video_encoder.videoEncoderDTO)
     mux_classes = get_module_classes(mux, mux.muxDTO)
 
     encoder_classes = audio_classes + video_classes + mux_classes
 
-    def quiet_log_handler(domain, level, message, user_data):
-        return True
+    for name, obj in encoder_classes:
+        if issubclass(obj, audio_encoder.audioEncoderDTO):
+            encoder_type = "audio"
+        elif issubclass(obj, video_encoder.videoEncoderDTO):
+            encoder_type = "video"
+        elif issubclass(obj, mux.muxDTO):
+            encoder_type = "mux"
+        else:
+            continue
 
-    log_handler_id = GLib.log_set_handler("GStreamer", GLib.LogLevelFlags.LEVEL_ERROR, quiet_log_handler, None)
+        encoder_fields = get_fields(obj, "api.encoder")
+        element_name = encoder_fields.get("element", {}).get("default")
 
-    try:
-        for name, obj in encoder_classes:
-            if issubclass(obj, audio_encoder.audioEncoderDTO):
-                encoder_type = "audio"
-            elif issubclass(obj, video_encoder.videoEncoderDTO):
-                encoder_type = "video"
-            elif issubclass(obj, mux.muxDTO):
-                encoder_type = "mux"
-            else:
-                continue
+        if element_name and _is_encoder_available(element_name):
+            encoder_info = {
+                "name": encoder_fields.get("name", {}).get("default", name),
+                "element": element_name,
+                "fields": encoder_fields
+            }
+            encoders[encoder_type].append(encoder_info)
 
-            encoder_fields = get_fields(obj, "api.encoder")
-            element_name = encoder_fields.get("element", {}).get("default")
-
-            # Check if the element can be created
-            if element_name:
-                element = Gst.ElementFactory.make(element_name, None)
-                if element is not None:
-                    encoder_info = {
-                        "name": encoder_fields.get("name", {}).get("default", name),
-                        "element": element_name,
-                        "fields": encoder_fields
-                    }
-                    encoders[encoder_type].append(encoder_info)
-
-    finally:
-        GLib.log_remove_handler("GStreamer", log_handler_id)
-
+    _encoder_cache = encoders
     return encoders
+
+
+_encoder_dto_map: Optional[Dict[str, type]] = None
+
+def get_encoder_dto_class(element_name: str) -> Optional[type]:
+    """Look up encoder DTO class by GStreamer element name."""
+    global _encoder_dto_map
+    if _encoder_dto_map is None:
+        _encoder_dto_map = {}
+        for _, cls in get_module_classes(video_encoder, video_encoder.videoEncoderDTO):
+            elem_field = cls.model_fields.get('element')
+            if elem_field and elem_field.default:
+                _encoder_dto_map[elem_field.default] = cls
+        for _, cls in get_module_classes(audio_encoder, audio_encoder.audioEncoderDTO):
+            elem_field = cls.model_fields.get('element')
+            if elem_field and elem_field.default:
+                _encoder_dto_map[elem_field.default] = cls
+    return _encoder_dto_map.get(element_name)
 
 
 def get_encoder_names(encoder_type: str) -> List[str]:
@@ -131,7 +206,9 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
 
     fields = {}
     for name, field in properties.items():
-        if name not in parent_fields or name == "type":
+        # Include child-only fields, 'type', and encoder fields overridden with constraints
+        is_encoder_override = name in ("video_encoder", "audio_encoder") and name in model_class.__annotations__
+        if name not in parent_fields or name == "type" or is_encoder_override:
             anyOf = next((item['type'] for item in field.get('anyOf', []) if isinstance(item, dict) and 'type' in item), None)
             field_info = {
                 "name": name,
@@ -143,6 +220,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
                 "type": field.get("type", anyOf),
                 "hidden": field.get("hidden", False),
                 "required": name in required_fields,
+                "enum": field.get("enum"),
             }
 
             if name in ["video_encoder", "audio_encoder", "mux"]:
@@ -210,28 +288,3 @@ def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None
             module = importlib.import_module(full_module_name)
             if hasattr(module, 'router'):
                 yield module.router, module_name
-
-
-from api.websockets import manager
-
-async def create_preview(handler, type, uid):
-    print("CREATE")
-    preview_config = config.get_preview_config(type)
-    if preview_config['type'] == "hlssink2":
-        previewOutput = hlssink2Output(data=hlssink2OutputDTO(
-            src=uid,
-            is_preview=True,
-            ** preview_config
-        ))
-    elif preview_config['type'] == "srtsink":
-        print("SRT!")
-        previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
-            src=uid,
-            is_preview=True,
-            uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
-            ** preview_config
-        ))
-
-    handler.add_pipeline(previewOutput)
-    await manager.broadcast("CREATE", previewOutput.data)
-    return previewOutput

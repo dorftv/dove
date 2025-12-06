@@ -1,49 +1,30 @@
-import json
-from abc import ABC, abstractmethod
-import functools
-from gi.repository import Gst, GLib
-
-from typing import Callable, Optional, Any, Type
-
-from orjson import orjson
 from pydantic import BaseModel
 from api.output_models import OutputDTO
-
-from api.websockets import manager
-from api.input_models import InputDTO
-from logger import logger
-from event_loop_bridge import bridge
 
 from config_handler import ConfigReader
 config = ConfigReader()
 
 
 class GSTBase(BaseModel):
-    inner_pipelines: Optional[list[Gst.Pipeline]] = []
-    _clock = None
+    """Base class for all pipeline components (inputs, outputs, mixers, encoders).
 
-    @abstractmethod
-    def build(self):
-        pass
+    In the single-pipeline architecture, components provide pipeline string
+    fragments via build_pipeline_str() or bins via build_bin().
+    """
 
-    @abstractmethod
     def describe(self):
-        pass
+        return self.data
 
-    def get_clock(cls) -> Gst.Clock:
-        if cls._clock is None:
-            cls._clock = Gst.SystemClock.obtain()
-        return cls._clock
-
-    def get_caps(self, audio_or_video, format = None):
+    def get_caps(self, audio_or_video, format=None):
+        """Generate GStreamer caps string for audio or video."""
         if audio_or_video == "audio":
             if format is None:
-                format=config.get_default_audio_format()
-            caps = f"audio/x-raw,format={format},layout=interleaved,rate={ config.get_default_audio_rate() },channels={ config.get_default_audio_channels()}"
+                format = config.get_default_audio_format()
+            caps = f"audio/x-raw,format={format},layout=interleaved,rate={config.get_default_audio_rate()},channels={config.get_default_audio_channels()}"
         elif audio_or_video == "video":
             if format is None:
-                format="BGRA"
-            caps = f"video/x-raw,format={ format }"
+                format = "BGRA"
+            caps = f"video/x-raw,format={format}"
             if self.data.width is not None:
                 caps += f",width={self.data.width}"
             if self.data.height is not None:
@@ -53,135 +34,9 @@ class GSTBase(BaseModel):
                     caps += f",framerate={self.data.framerate}"
         return caps
 
-
-    def add_pipeline(self, pipeline: str | Gst.Pipeline):
-        if type(pipeline) == str:
-            logger.log(f"Added pipeline: {pipeline}", level='DEBUG')
-
-            pipeline = Gst.parse_launch(pipeline)
-            pipeline.use_clock(self.get_clock())
-
-
-        if pipeline is None:
-            return
-        self.inner_pipelines.append(pipeline)
-        pipeline.set_name(str(self.data.uid))
-        pipeline.set_state(Gst.State.PLAYING)
-
-        bus = pipeline.get_bus()
-        bus.add_signal_watch()
-        bus.connect("message::error", lambda b, m: self.run_on_master(self._on_error, b, m)),
-        bus.connect("message::state-changed", lambda b, m: self.run_on_master(self._on_state_change, b, m))
-        bus.connect("message::eos", lambda b, m: self.run_on_master(self._on_eos, b, m))
-        bus.connect("message::info", lambda b, m: self.run_on_master(self._on_info, b, m))
-
-
-    def run_on_master(self, func: Callable, *args):
-        return GLib.idle_add(func, *args)
-
     def get_pipeline(self):
-        if not self.inner_pipelines:
-            return None
-        return self.inner_pipelines[0]
-
-    def set_state(self, state: Gst.State):
-        for pipeline in self.inner_pipelines:
-            pipeline.set_state(state)
-
-
-    def has_audio_or_video(self, audio_or_video: str):
-        if self.data.type == "playlist":
-            return True
-
-        pipeline = self.get_pipeline()
-        iterator = pipeline.iterate_elements()
-        while True:
-            result, element = iterator.next()
-            if result != Gst.IteratorResult.OK:
-                break
-            pads = element.pads
-            for pad in pads:
-                caps = pad.get_current_caps()
-
-                if caps:
-                    for i in range(caps.get_size()):
-                        structure = caps.get_structure(i)
-                        if structure and structure.get_name().startswith(audio_or_video):
-                            return True
-        return False
-
-    def get_element_from_pipeline(self, element_name):
-        pipeline = self.get_pipeline()
-        iterator = pipeline.iterate_elements()
-        while True:
-            result, element = iterator.next()
-            if result != Gst.IteratorResult.OK:
-                break
-            if element.get_factory().get_name() == element_name:
-                return element
+        """Return queryable element for position/duration. Override in subclasses."""
         return None
-
-    def _on_error(self, bus, message):
-        err, debug = message.parse_error()
-        self.data.state = "ERROR"
-        error_message = GLib.Error(err).message
-
-        debug_array = debug.split('\n')
-        debug_array = [line for line in debug_array if line.strip()]
-        debug_array.insert(0, f"Error: {error_message}")
-
-        self.data.details = debug_array
-        bridge.schedule_async(manager.broadcast("UPDATE", self.data))
-
-
-    def add_duration(self):
-        pipeline = self.get_pipeline()
-        duration = (pipeline.query_duration(Gst.Format.TIME).duration // Gst.SECOND)
-        if duration and duration != -1:
-            self.data.duration = duration
-
-    def add_resolution(self):
-        pipeline = self.get_pipeline()
-        factory_name = pipeline.get_factory().get_name()
-        if factory_name == 'playbin3':
-            video_sink = pipeline.get_property('video-sink')
-            if video_sink:
-                pad = video_sink.get_static_pad('sink')
-                if pad:
-                    caps = pad.get_current_caps()
-                    if caps:
-                        structure = caps.get_structure(0)
-                        if structure:
-                            width = structure.get_int('width')[1]
-                            height = structure.get_int('height')[1]
-                            if width and height:
-                                self.data.width = width
-                                self.data.height = height
-
-    def _on_state_change(self, bus, message):
-        if isinstance(message.src, Gst.Pipeline):
-            old_state, new_state, pending_state = message.parse_state_changed()
-            msg = f"Pipeline {message.src.get_name()} state changed from {Gst.Element.state_get_name(old_state)} to {Gst.Element.state_get_name(new_state)}"
-            self.data.state = Gst.Element.state_get_name(new_state)
-            if issubclass(self.data.__class__, InputDTO) and self.data.state == "PLAYING":
-                self.data.has_audio = self.has_audio_or_video("audio")
-                self.data.has_video = self.has_audio_or_video("video")
-                self.create_preview()
-                self.add_duration()
-                self.add_resolution()
-            bridge.schedule_async(manager.broadcast("UPDATE", self.data))
-
-    def _on_eos(self, bus, message):
-        self.data.state = "EOS"
-        bridge.schedule_async(manager.broadcast("UPDATE", self.data))
-
-    def _on_info(self, bus, message):
-        # await ws_broadcast(orjson.dumps({
-        #     "uid": self.uid,
-        #     "type": "info",
-        #     "message": str(message)
-        # }))
-        bridge.schedule_async(manager.broadcast("INFO", {"message": str(message)}))
 
     class Config:
         arbitrary_types_allowed = True

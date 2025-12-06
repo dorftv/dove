@@ -1,28 +1,15 @@
-from typing import Annotated
 from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 
 from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
-from api.websockets import manager
+from api.auth import require_role
+from event_loop_bridge import safe_broadcast
 from pipeline_handler import PipelineHandler
-from pipelines.description import Description
+
 from pipelines.base import GSTBase
 from pipelines.mixers.scene_mixer import sceneMixer
-
-
-from api.outputs.hlssink2 import hlssink2OutputDTO
-from pipelines.outputs.hlssink2 import hlssink2Output
-from api.outputs.srtsink import srtsinkOutputDTO
-from pipelines.outputs.srtsink import srtsinkOutput
-
-
-from api.output_models import OutputDTO, OutputDeleteDTO
-
-from uuid import UUID, uuid4
-from config_handler import ConfigReader
-config = ConfigReader()
 
 router = APIRouter(prefix="/api")
 
@@ -41,28 +28,9 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
     existing_mixer = handler.get_pipeline("mixers", data.uid)
     if existing_mixer:
         existing_mixer.data = data
+        safe_broadcast("UPDATE", data)
     else:
         handler.add_pipeline(mixer)
-        uid = mixer.data.uid
-        preview_config = config.get_preview_config('scenes')
-        if preview_config['type'] == "hlssink2":
-            previewOutput = hlssink2Output(data=hlssink2OutputDTO(
-                src=uid,
-                is_preview=True,
-                ** preview_config
-            ))
-        elif preview_config['type'] == "srtsink":
-            previewOutput = srtsinkOutput(data=srtsinkOutputDTO(
-                src=uid,
-                is_preview=True,
-                uri=f"srt://mediamtx:8890?streamid=publish:{uid}&pkt_size=1316",
-                ** preview_config
-            ))
-        handler.add_pipeline(previewOutput)
-        await manager.broadcast("CREATE", previewOutput.data)
-
-
-    await manager.broadcast("CREATE", data)
 
     return data
 
@@ -80,11 +48,11 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
         raise HTTPException(status_code=422, detail=e.errors())
 
 
-@router.get("/mixers")
+@router.get("/mixers", dependencies=[require_role("user")])
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     mixers: list[Mixer] = handler._pipelines["mixers"] if handler._pipelines is not None else []
-    descriptions: list[Description] = []
+    descriptions = []
 
     for pipeline in mixers:
         descriptions.append(pipeline.describe())
@@ -92,20 +60,15 @@ async def all(request: Request):
     return descriptions
 
 
-@router.put("/mixers")
+@router.put("/mixers", dependencies=[require_role("supervisor")])
 async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
     return await handle_mixer(request, data)
 
 
-@router.delete("/mixers", response_model=SuccessDTO)
+@router.delete("/mixers", response_model=SuccessDTO, dependencies=[require_role("supervisor")])
 async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    # delete_pipeline handles preview cleanup + DELETE broadcasts
     handler.delete_pipeline("mixers", data.uid)
-    preview = handler.get_preview_pipeline(data.uid)
-    handler.delete_pipeline("outputs", preview.data.uid)
-
-    await manager.broadcast("DELETE", data)
-    await manager.broadcast("DELETE", data=(OutputDeleteDTO(uid=preview.data.uid )))
-    # @TODO handle output deletion
     return SuccessDTO(code=200, details="OK")
 

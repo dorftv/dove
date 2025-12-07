@@ -1,17 +1,16 @@
-import json
-import threading
-
 import orjson
 from fastapi import APIRouter, WebSocket
 import asyncio
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from api.input_models import InputDTO, InputDeleteDTO
 from api.output_models import OutputDTO, OutputDeleteDTO
+from api.encoder_models import EncoderEntityDTO, EncoderEntityDeleteDTO
+from api.auth import is_auth_enabled, _read_cookie, _decode_access_token, _parse_groups, _get_config, _check_api_token
+from authlib.jose import JoseError
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import WebSocketDisconnect, HTTPException
 
 from logger import logger
 
@@ -24,7 +23,6 @@ class ConnectionManager:
     def __init__(self):
         self._connections: list[WebSocket] = []
         self._lock = asyncio.Lock()  # For async context
-        self._sync_lock = threading.Lock()  # For sync context
 
     @property
     def active_connections(self) -> list[WebSocket]:
@@ -37,9 +35,9 @@ class ConnectionManager:
         async with self._lock:
             self._connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        """Thread-safe disconnect."""
-        with self._sync_lock:
+    async def disconnect(self, websocket: WebSocket):
+        """Async disconnect - use async lock since called from async context."""
+        async with self._lock:
             if websocket in self._connections:
                 self._connections.remove(websocket)
 
@@ -52,11 +50,13 @@ class ConnectionManager:
                 type = "output"
             elif issubclass(data.__class__, mixerBaseDTO) or isinstance(data, MixerDeleteDTO):
                 type = "mixer"
+            elif isinstance(data, (EncoderEntityDTO, EncoderEntityDeleteDTO)):
+                type = "encoder"
 
         final_dict = {
             "type": type,
             "channel": channel,
-            "data": data.dict() if hasattr(data, 'dict') else data
+            "data": data.model_dump() if hasattr(data, 'model_dump') else data
         }
 
         message = orjson.dumps(final_dict).decode("utf-8")
@@ -89,21 +89,66 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@staticmethod
 async def update_pipe(data, websocket: WebSocket):
-    handler: "GSTBase" = websocket.app.state._state["pipeline_handler"]
-    pipeline = handler.getpipeline(UUID(data['data']['uid']))
+    handler = websocket.app.state._state["pipeline_handler"]
+    uid = data['data']['uid']
+    pipeline = handler.getpipeline(UUID(uid))
+    if 'audio_filters' in data.get('data', {}) or 'video_filters' in data.get('data', {}):
+        logger.log(f"WS filters: uid={uid[:8]}, keys={list(data['data'].keys())}", level='DEBUG')
+    if not pipeline:
+        logger.log(f"WebSocket update for unknown pipeline {uid}", level='WARNING')
+        return
     await pipeline.update(data['data'])
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    # Authenticate WebSocket upgrade via session cookie or Bearer header
+    if is_auth_enabled():
+        authenticated = False
+
+        # Try session cookie first
+        cookie_data = _read_cookie(websocket)
+        if cookie_data and cookie_data.get('access_token'):
+            try:
+                token_data = await _decode_access_token(cookie_data['access_token'])
+                websocket.state.user_groups = _parse_groups(token_data)
+                authenticated = True
+            except (JoseError, HTTPException):
+                pass
+
+        # Try Bearer header (for API clients that can't set cookies)
+        if not authenticated:
+            auth_header = websocket.headers.get('authorization', '')
+            if auth_header.startswith('Bearer '):
+                token = auth_header[7:]
+                api_user = _check_api_token(token)
+                if api_user:
+                    websocket.state.user_groups = api_user.groups
+                    authenticated = True
+                else:
+                    try:
+                        token_data = await _decode_access_token(token)
+                        websocket.state.user_groups = _parse_groups(token_data)
+                        authenticated = True
+                    except (JoseError, HTTPException):
+                        pass
+
+        if not authenticated:
+            await websocket.close(code=4001, reason="Not authenticated")
+            return
 
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_json()
-            update = await update_pipe(data, websocket)
-
+            try:
+                await update_pipe(data, websocket)
+            except Exception as e:
+                logger.log(f"WebSocket message error: {e}", level='ERROR')
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        pass
+    except Exception as e:
+        logger.log(f"WebSocket connection error: {e}", level='WARNING')
+    finally:
+        await manager.disconnect(websocket)

@@ -18,6 +18,16 @@ import threading
 from typing import Callable, Coroutine, Any, Optional
 
 from gi.repository import GLib
+from logger import logger
+
+
+def _task_exception_handler(task: asyncio.Task):
+    """Log exceptions from fire-and-forget async tasks."""
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.log(f"Async task failed: {exc}", level='ERROR')
 
 
 class EventLoopBridge:
@@ -76,12 +86,14 @@ class EventLoopBridge:
 
         if threading.current_thread() == self._asyncio_thread:
             # Already in asyncio thread, create task directly
-            asyncio.create_task(coro)
+            task = asyncio.create_task(coro)
+            task.add_done_callback(_task_exception_handler)
         else:
             # Cross-thread: use threadsafe scheduling
-            self._asyncio_loop.call_soon_threadsafe(
-                lambda: asyncio.create_task(coro)
-            )
+            def _create():
+                task = asyncio.create_task(coro)
+                task.add_done_callback(_task_exception_handler)
+            self._asyncio_loop.call_soon_threadsafe(_create)
 
     def run_sync_in_glib(self, func: Callable, *args) -> None:
         """
@@ -119,7 +131,8 @@ def safe_broadcast(channel: str, data: Any, type: str = "") -> None:
         # Check if we're in an async context
         asyncio.get_running_loop()
         # We are in async context - create task directly
-        asyncio.create_task(coro)
+        task = asyncio.create_task(coro)
+        task.add_done_callback(_task_exception_handler)
     except RuntimeError:
         # Not in async context (GLib callback) - schedule via bridge
         bridge.schedule_async(coro)

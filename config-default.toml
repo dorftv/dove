@@ -1,25 +1,35 @@
 [preview.inputs]
-type="hlssink2"
+type=["webrtcbin", "hlssink2"]
 width=320
-height=160
-video_encoder.name = "openh264enc"
-audio_encoder.name = "aac"
+height=180
+video_encoder.name = "auto"
 
 [preview.scenes]
-type="hlssink2"
+type=["webrtcbin", "hlssink2"]
 width=640
-height=320
-video_encoder.name = "openh264enc"
-audio_encoder.name = "aac"
+height=360
+video_encoder.name = "auto"
 
 [preview.program]
-type="hlssink2"
+type=["webrtcbin", "hlssink2"]
 width=640
-height=320
-video_encoder.name = "openh264enc"
-audio_encoder.name = "aac"
+height=360
+video_encoder.name = "auto"
+
+[webrtc]
+# stun_server = "stun://stun.l.google.com:19302"
+# turn_server = "turn://edge3.edge.cdn.dorftv.at"
+# turn_user = "AUTH_SECRET"
+# turn_password = "dorfturner"
+# announced_ip = "192.168.178.47"  # Or use ANNOUNCED_IP env var
+min_rtp_port = 10000
+max_rtp_port = 10100
 
 [main]
+
+# Stream types
+enable_video = true
+enable_audio = true
 
 # Video
 default_resolution = "HD720"
@@ -27,7 +37,10 @@ default_framerate = "30/1"
 
 # Audio
 volume = 0.7
-audio_format = "S16LE"
+
+# HTML rendering engine: "auto" (cefsrc if available, else wpesrc), "cefsrc", "wpesrc"
+html_engine = "auto"
+audio_format = "F32LE"
 audio_rate = 48000
 audio_channels = 2
 
@@ -54,6 +67,8 @@ preview_enabled = true
 {width = 1024, height = 576}
 [resolutions."qHD"]
 {width = 960, height = 540}
+[resolutions."nHD"]
+{width = 640, height = 360}
 [resolutions."Preview"]
 {width = 480, height = 270}
 [resolutions."SmallPreview"]
@@ -65,10 +80,56 @@ add_input = true
 add_scene = true
 add_output = true
 input_preview_auto= true
+enabled_inputs = ["uridecodebin3", "playlist", "wpesrc", "cefsrc", "ytdlp", "testsrc", "nodecg", "v4l2src", "imagesrc"]
 
 
+
+[proxy.v4l2]
+type = "v4l2src"
+field = "device"
+
+[proxy.alsa]
+type = "v4l2src"
+field = "audio_device"
+
+[proxy.files]
+type = "uridecodebin3"
+field = "uri"
+paths = ["/videos"]
+extensions = ["mp4", "mkv", "avi", "mov", "webm", "ts", "flv", "mp3", "flac", "ogg", "wav"]
+
+[proxy.images]
+type = "imagesrc"
+field = "location"
+paths = ["/videos"]
+extensions = ["png", "jpg", "jpeg", "bmp", "webp", "svg"]
+
+[proxy.nodecg]
+# url = "http://nodecg:9090"  # or env: NODECG_URL
+
+[auth]
+enabled = false
+# issuer = "https://auth.example.com/realms/dove"
+# client_id = "dove-app"
+# client_secret = ""
+# cookie_secret = ""  # auto-generated if not set (sessions lost on restart)
+# cookie_secure = true  # set false for local HTTP dev
+# allowed_origins = []  # trusted redirect origins, e.g. ["http://localhost:3000"]
+
+# Static API tokens for scripts (no OIDC provider needed)
+# [[auth.api_tokens]]
+# token = "your-secret-here"
+# name = "admin-scripts"
+# role = "admin"
+
+[auth.groups]
+user = "dove-user"
+supervisor = "dove-supervisor"
+outputs = "dove-outputs"
+admin = "dove-admin"
 
 [scenes]
+fallback_pattern = 2  # 0=SMPTE bars (debug), 2=black (production)
 
 
 [inputs]

@@ -4,30 +4,31 @@ from pydantic import Field
 from api.input_models import InputDeleteDTO, SuccessDTO
 from api.inputs.wpesrc import WpesrcInputDTO
 
-from typing import Optional
+from typing import Optional, Union
 from helpers import get_default_height, get_default_width
 
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 router = APIRouter()
 
 
 class NodeCGInputDTO(WpesrcInputDTO):
     type: str =  Field(
-        label="ModeCG Source",
+        label="NodeCG Source",
         default="nodecg",
         description="NodeCG allows overlaying HTML and controlling its output via Dashboard panels.",
     )
-    nodecg_baseurl: str =  Field(
+    nodecg_baseurl: Optional[str] = Field(
+        default=None,
         label="NodeCG base url",
         placeholder="http://localhost:9090",
-        description="Enter the NodeCG base url.",
+        description="Only needed without proxy. Leave empty when [nodecg] config is set.",
         help="starts with http://"
     )
-    panels: str =  Field(
+    panels: Union[str, list[str]] = Field(
         label="Dashboard Panels",
         placeholder="/graphics/",
-        description="path to NodeCG Dashboard Panel",
-        help=""
+        description="path(s) to NodeCG Dashboard Panel(s)",
+        help="single path or list of paths"
     )
     index: Optional[int] = None
     show_controls: bool = False
@@ -41,10 +42,9 @@ async def create_nodecg_input(request: Request, data: NodeCGInputDTO):
 
     if input:
         input.data = data
+        safe_broadcast("UPDATE", data)
     else:
         input = NodeCGInput(data=data)
         handler.add_pipeline(input)
-
-    await manager.broadcast("CREATE", data)
 
     return data

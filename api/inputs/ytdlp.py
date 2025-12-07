@@ -4,10 +4,9 @@ from pydantic import Field
 from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional
 
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 router = APIRouter()
 
-# @TODO move receiving url here, and use playbin input class
 class YtdlpInputDTO(InputDTO):
     type: str = Field(
         label="Youtube&Co",
@@ -34,10 +33,9 @@ async def create_ytdlp_input(request: Request, data: YtdlpInputDTO):
 
     if input:
         input.data = data
+        safe_broadcast("UPDATE", data)
     else:
         input = YtdlpInput(data=data)
         handler.add_pipeline(input)
-
-    await manager.broadcast("CREATE", data)
 
     return data

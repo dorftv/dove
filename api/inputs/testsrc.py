@@ -5,7 +5,7 @@ from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional
 from helpers import get_default_height, get_default_width
 
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 router = APIRouter()
 
 
@@ -17,17 +17,17 @@ class TestsrcInputDTO(InputDTO):
     )
     pattern: Optional[int] =  Field(
         label="Pattern",
-        default=1,
-        description="Pattern to draw",
-        help="Allowed values: 1-25",
-        placeholder="1",
+        default=0,
+        description="Pattern to draw (0=SMPTE, 1=snow, 2=black, 18=ball, etc.)",
+        help="Allowed values: 0-25",
+        placeholder="0",
     )
     wave: Optional[int] = Field(
-        label="Pattern",
-        default=1,
-        description="Waveform for Audio",
-        help="Allowed values 1-12",
-        placeholder="1",
+        label="Waveform",
+        default=8,
+        description="Waveform for Audio (0=sine, 4=silence, 8=ticks, etc.)",
+        help="Allowed values 0-12",
+        placeholder="8",
     )
     freq: Optional[float] = Field(
         label="Frequency",
@@ -49,10 +49,9 @@ async def create_testsrc_input(request: Request, data: TestsrcInputDTO):
 
     if input:
         input.data = data
+        safe_broadcast("UPDATE", data)
     else:
         input = TestsrcInput(data=data)
         handler.add_pipeline(input)
-
-    await manager.broadcast("CREATE", data)
 
     return data

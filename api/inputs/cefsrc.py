@@ -9,30 +9,25 @@ from event_loop_bridge import safe_broadcast
 router = APIRouter()
 
 
-class WpesrcInputDTO(InputDTO):
-    type: str =  Field(
-        label="HTML/Websites",
-        default="wpesrc",
-        description="Wpesrc allows rendering HTML.",
+class CefsrcInputDTO(InputDTO):
+    type: str = Field(
+        label="HTML/CEF",
+        default="cefsrc",
+        description="CEF (Chromium Embedded Framework) allows rendering HTML.",
     )
-    location: Optional[str] =  Field(
-        label="Location",
+    url: Optional[str] = Field(
+        label="URL",
         placeholder="https://dorftv.at",
-        description="Enter the location of the HTML source.",
+        description="Enter the URL of the HTML source.",
         help="file:// or http://"
-    )
-    draw_background: Optional[bool] = Field(
-        label="Draw Background",
-        default=False,
-        help="use transparent background when not set."
     )
     show_controls: bool = False
 
 
-from pipelines.inputs.wpesrc import WpesrcInput
+from pipelines.inputs.cefsrc import CefsrcInput
 
-@router.put("/wpesrc", response_model=SuccessDTO)
-async def create_wpesrc_input(request: Request, data: WpesrcInputDTO):
+@router.put("/cefsrc", response_model=SuccessDTO)
+async def create_cefsrc_input(request: Request, data: CefsrcInputDTO):
     handler = request.app.state._state["pipeline_handler"]
     input = handler.get_pipeline("inputs", data.uid)
 
@@ -40,7 +35,7 @@ async def create_wpesrc_input(request: Request, data: WpesrcInputDTO):
         input.data = data
         safe_broadcast("UPDATE", data)
     else:
-        input = WpesrcInput(data=data)
+        input = CefsrcInput(data=data)
         handler.add_pipeline(input)
 
     return data

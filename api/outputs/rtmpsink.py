@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
-from typing import Optional, Literal, Union
+from typing import Union
+from uuid import UUID
 from api.encoder.video_encoder import h264EncoderUnion, x264EncoderDTO
-from api.encoder.audio_encoder import aacEncoderDTO, mp3EncoderDTO
+from api.encoder.audio_encoder import aacEncoderDTO
 from api.encoder.mux import flvMuxDTO
-from api.websockets import manager
-
+from event_loop_bridge import safe_broadcast
 
 
 router = APIRouter()
@@ -24,13 +24,13 @@ class rtmpsinkOutputDTO(OutputDTO):
         placeholder="rtmp://server:port/myapp/mystream"
     )
 
-    video_encoder: h264EncoderUnion = Field(
+    video_encoder: Union[UUID, h264EncoderUnion] = Field(
         default_factory=lambda: x264EncoderDTO(
             options="tune=zerolatency pass=cbr bitrate=8192",
             profile="baseline",
         )
     )
-    audio_encoder: Union[aacEncoderDTO] = Field(
+    audio_encoder: Union[UUID, aacEncoderDTO] = Field(
         default_factory=lambda: aacEncoderDTO(
             name="aac",
             options=""
@@ -53,10 +53,9 @@ async def create_rtmpsink_output(request: Request, data: rtmpsinkOutputDTO):
 
     if output:
         output.data = data
+        safe_broadcast("UPDATE", data)
     else:
         output = rtmpsinkOutput(data=data)
         handler.add_pipeline(output)
-
-    await manager.broadcast("CREATE", data)
 
     return data

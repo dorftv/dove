@@ -1,11 +1,13 @@
 
-from fastapi import APIRouter, Request
+import asyncio
+from fastapi import APIRouter, Request, HTTPException
 from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional, List
 from pydantic import BaseModel, Field, validator
 
 from helpers import get_default_height, get_default_width
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
+from api.inputs.uridecodebin3 import check_uri_content_type
 router = APIRouter()
 
 
@@ -47,10 +49,10 @@ class PlaylistInputDTO(InputDTO):
         default=0,
         description="Current.",
     )
-    current_clip: Optional[PlaylistItemDTO] =  Field(
+    current_clip: Optional[PlaylistItemDTO] = Field(
         label="current Clip",
         hidden=True,
-        default=0,
+        default=None,
         description="Current Clip.",
     )
     looping: bool = Field(
@@ -73,7 +75,7 @@ class PlaylistInputDTO(InputDTO):
         hidden=True,
         default_factory=list
     )
-    show_controls: bool = False
+    show_controls: bool = True
 
 
 
@@ -83,15 +85,25 @@ from pipelines.inputs.playlist import PlaylistInput
 
 @router.put("/playlist", response_model=SuccessDTO)
 async def create_playlist_input(request: Request, data: PlaylistInputDTO):
+    if data.playlist:
+        video_clips = [c for c in data.playlist if c.type == "video"]
+        if video_clips:
+            results = await asyncio.gather(
+                *[check_uri_content_type(c.uri) for c in video_clips],
+                return_exceptions=True
+            )
+            for clip, result in zip(video_clips, results):
+                if isinstance(result, str):
+                    raise HTTPException(422, f"Clip '{clip.uri}': {result}")
+
     handler = request.app.state._state["pipeline_handler"]
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:
         input.data = data
+        safe_broadcast("UPDATE", data)
     else:
         input = PlaylistInput(data=data)
         handler.add_pipeline(input)
-
-    await manager.broadcast("CREATE", data)
 
     return data

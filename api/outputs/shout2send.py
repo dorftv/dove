@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
-from typing import Optional,  Literal, Union
+from typing import Union
+from uuid import UUID
 from api.encoder.audio_encoder import mp3EncoderDTO
 
-from api.websockets import manager
+from event_loop_bridge import safe_broadcast
 
 
 
@@ -42,7 +43,7 @@ class Shout2sendOutputDTO(OutputDTO):
         help="Password to connect to the server.",
         placeholder="password"
     )
-    audio_encoder: Union[mp3EncoderDTO] = Field(
+    audio_encoder: Union[UUID, mp3EncoderDTO] = Field(
         default_factory=lambda: mp3EncoderDTO(
             name="mp3",
             options="bitrate=128"
@@ -52,16 +53,15 @@ class Shout2sendOutputDTO(OutputDTO):
 from pipelines.outputs.shout2send import Shout2sendOutput
 
 @router.put("/shout2send", response_model=SuccessDTO)
-async def create_srtsink_output(request: Request, data: Shout2sendOutputDTO):
+async def create_shout2send_output(request: Request, data: Shout2sendOutputDTO):
     handler = request.app.state._state["pipeline_handler"]
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:
         output.data = data
+        safe_broadcast("UPDATE", data)
     else:
         output = Shout2sendOutput(data=data)
         handler.add_pipeline(output)
-
-    await manager.broadcast("CREATE", data)
 
     return data

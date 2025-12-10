@@ -1,147 +1,171 @@
-from fastapi import APIRouter, Request, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse, RedirectResponse
-import httpx
+"""Reverse proxy for NodeCG — mounts at root level so iframes work with
+root-relative URLs (/bundles/..., /socket.io/, /assets/...).
+
+Only registered when [proxy.nodecg] config or NODECG_URL env var is set.
+"""
+
 import asyncio
-from websockets.exceptions import ConnectionClosed
 
+import httpx
+import websockets
+from fastapi import APIRouter, Request, WebSocket, HTTPException
+from fastapi.responses import Response
 
+from config_handler import ConfigReader
+from logger import logger
+
+config = ConfigReader()
 router = APIRouter()
-NODECG_URL = "http://192.168.23.219:9090"  # Adjust this to your NodeCG URL
+
+_nodecg_url = ""
+_http_client = None
 
 
-# CORS middleware function
-async def cors_middleware(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+def _get_url() -> str:
+    global _nodecg_url
+    if not _nodecg_url:
+        cfg = config.get_nodecg_config()
+        _nodecg_url = cfg['url'] if cfg else ""
+    return _nodecg_url
 
-# Apply CORS middleware to each route
-def add_cors_middleware(route):
-    original_route = route.endpoint
-    async def wrapped_route(*args, **kwargs):
-        request = kwargs.get('request')
-        if request:
-            response = await original_route(*args, **kwargs)
-            return await cors_middleware(request, lambda _: response)
-        return await original_route(*args, **kwargs)
-    route.endpoint = wrapped_route
 
-# Apply CORS middleware to all routes
-for route in router.routes:
-    if not isinstance(route, WebSocket):
-        add_cors_middleware(route)
+def _get_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(follow_redirects=False, timeout=30.0)
+    return _http_client
 
+
+# --- HTTP proxy core ---
+
+async def _proxy(request: Request, path: str) -> Response:
+    url = _get_url()
+    if not url:
+        raise HTTPException(status_code=502, detail="NodeCG not configured")
+
+    target = f"{url}{path}"
+    if request.query_params:
+        target += f"?{request.query_params}"
+
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in ('host', 'content-length', 'content-encoding')}
+
+    try:
+        client = _get_client()
+        body = await request.body() if request.method != "GET" else None
+        resp = await client.request(request.method, target, headers=headers, content=body)
+
+        resp_headers = dict(resp.headers)
+        resp_headers.pop('content-encoding', None)
+        resp_headers.pop('content-length', None)
+        resp_headers.pop('transfer-encoding', None)
+
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers=resp_headers,
+        )
+    except (httpx.ConnectError, httpx.ConnectTimeout):
+        raise HTTPException(status_code=502, detail="NodeCG unreachable")
+    except httpx.ReadTimeout:
+        raise HTTPException(status_code=504, detail="NodeCG timeout")
+
+
+# --- Routes ---
 
 @router.api_route("/bundles/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_bundles(request: Request, path: str):
-    return await proxy_request(request, f"/bundles/{path}")
+    return await _proxy(request, f"/bundles/{path}")
+
 
 @router.api_route("/assets/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-async def proxy_bundles(request: Request, path: str):
-    return await proxy_request(request, f"/assets/{path}")
+async def proxy_assets(request: Request, path: str):
+    return await _proxy(request, f"/assets/{path}")
+
 
 @router.api_route("/dashboard/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_dashboard(request: Request, path: str):
-    return await proxy_request(request, f"/dashboard/{path}")
+    return await _proxy(request, f"/dashboard/{path}")
+
 
 @router.api_route("/node_modules/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_node_modules(request: Request, path: str):
-    return await proxy_request(request, f"/node_modules/{path}")
+    return await _proxy(request, f"/node_modules/{path}")
+
 
 @router.api_route("/socket.io/{path:path}", methods=["GET", "POST"])
 async def proxy_socket_io(request: Request, path: str):
-    return await proxy_request(request, f"/socket.io/{path}")
+    return await _proxy(request, f"/socket.io/{path}")
+
 
 @router.get("/socket.js")
 async def proxy_socket_js(request: Request):
-    return await proxy_request(request, "/socket.js")
+    return await _proxy(request, "/socket.js")
+
 
 @router.get("/nodecg-api.min.js")
 async def proxy_nodecg_api_js(request: Request):
-    return await proxy_request(request, "/nodecg-api.min.js")
+    return await _proxy(request, "/nodecg-api.min.js")
+
 
 @router.get("/client_registration.js")
 async def proxy_client_registration_js(request: Request):
-    return await proxy_request(request, "/client_registration.js")
+    return await _proxy(request, "/client_registration.js")
+
 
 @router.get("/dialog_opener.js")
 async def proxy_dialog_opener_js(request: Request):
-    return await proxy_request(request, "/dialog_opener.js")
+    return await _proxy(request, "/dialog_opener.js")
+
 
 @router.get("/api.js")
 async def proxy_api_js(request: Request):
-    return await proxy_request(request, "/api.js")
+    return await _proxy(request, "/api.js")
+
 
 @router.get("/dashboard.js")
 async def proxy_dashboard_js(request: Request):
-    return await proxy_request(request, "/dashboard.js")
+    return await _proxy(request, "/dashboard.js")
 
-async def proxy_request(request: Request, path: str):
-    try:
-        async with httpx.AsyncClient(base_url=NODECG_URL, follow_redirects=True, timeout=30.0) as client:
-            url = f"{path}?{request.query_params}"
-            headers = {key: value for key, value in request.headers.items()
-                       if key.lower() not in ('host', 'content-length', 'content-encoding')}
 
-            method = request.method
-            if method == "GET":
-                response = await client.get(url, headers=headers)
-            elif method == "POST":
-                response = await client.post(url, headers=headers, content=await request.body())
-            else:
-                response = await client.request(method, url, headers=headers, content=await request.body())
-
-            # Handle redirects
-            if response.status_code in (301, 302, 303, 307, 308):
-                return RedirectResponse(url=response.headers['Location'], status_code=response.status_code)
-
-            # Remove content-encoding header to prevent double encoding
-            response_headers = dict(response.headers)
-            response_headers.pop('content-encoding', None)
-            response_headers.pop('content-length', None)
-
-            return StreamingResponse(
-                response.iter_bytes(),
-                status_code=response.status_code,
-                headers=response_headers
-            )
-    except httpx.ReadTimeout:
-        raise HTTPException(status_code=504, detail="Gateway Timeout: The NodeCG server took too long to respond")
-    except httpx.NetworkError:
-        raise HTTPException(status_code=502, detail="Bad Gateway: Unable to connect to the NodeCG server")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+# --- WebSocket proxy for socket.io ---
 
 @router.websocket("/socket.io/")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+async def ws_proxy(client_ws: WebSocket):
+    url = _get_url()
+    if not url:
+        await client_ws.close(code=1008, reason="NodeCG not configured")
+        return
 
-    async with httpx.AsyncClient() as client:
+    ws_url = url.replace("http://", "ws://").replace("https://", "wss://")
+    target = f"{ws_url}/socket.io/?{client_ws.query_params}"
+
+    await client_ws.accept()
+    try:
+        async with websockets.connect(target) as server_ws:
+            async def client_to_server():
+                try:
+                    while True:
+                        data = await client_ws.receive_text()
+                        await server_ws.send(data)
+                except Exception:
+                    pass
+
+            async def server_to_client():
+                try:
+                    async for msg in server_ws:
+                        if isinstance(msg, str):
+                            await client_ws.send_text(msg)
+                        else:
+                            await client_ws.send_bytes(msg)
+                except Exception:
+                    pass
+
+            await asyncio.gather(client_to_server(), server_to_client())
+    except Exception as e:
+        logger.log(f"NodeCG WebSocket proxy error: {e}", level='WARNING')
+    finally:
         try:
-            async with client.websocket(f"{NODECG_URL}/socket.io/?{websocket.query_params}") as nodecg_ws:
-                async def forward_to_client():
-                    try:
-                        async for message in nodecg_ws:
-                            await websocket.send_text(message)
-                    except ConnectionClosed:
-                        pass
-
-                async def forward_to_server():
-                    try:
-                        while True:
-                            message = await websocket.receive_text()
-                            await nodecg_ws.send_text(message)
-                    except ConnectionClosed:
-                        pass
-
-                await asyncio.gather(
-                    forward_to_client(),
-                    forward_to_server()
-                )
-        except Exception as e:
-            print(f"WebSocket error: {e}")
-        finally:
-            await websocket.close()
+            await client_ws.close()
+        except Exception:
+            pass

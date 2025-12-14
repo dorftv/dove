@@ -1,30 +1,29 @@
 [tool.poetry]
 name = "dove"
-version = "0.1"
-description = "DORFTV Online Video Editor"
+version = "0.7.0"
+description = "DOVE - DORFTV Online Video Editor"
 authors = ["Stefan Hageneder <stefan.hageneder@dorftv.at>"]
-license = "Apache License"
-#readme = "README.md"
-
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/dorftv/dove"
+repository = "https://github.com/dorftv/dove"
+packages = []
 
 [tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.111.1"
-uvicorn = "^0.24.0.post1"
-websockets = "^13.0"
-orjson = "^3.10.3"
+python = "^3.12"
+fastapi = "^0.135.1"
+uvicorn = "^0.41.0"
+websockets = "^16.0"
+orjson = "^3.11.4"
 toml = "^0.10.2"
-yt-dlp = "^2025.03.26"
-graphviz = "^0.20.3"
-pydantic = "^2.7.1"
-gobject = "^0.1.0"
-pygobject = "^3.48.2"
-
+yt-dlp = "^2026.3.3"
+graphviz = "^0.21"
+pydantic = "^2.12.4"
+httpx = "^0.28.1"
+charset-normalizer = "^3.4.4"
+authlib = "^1.4.1"
+itsdangerous = "^2.2.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.setuptools]
-include-package-data = false
-py-modules = []

@@ -4,6 +4,6 @@ services:
   dove:
     devices:
       - /dev/dri:/dev/dri
-      - /dev/kfd:/dev/kfd
     environment:
       - AMD_VULKAN_ICD=RADV
+      - LIBVA_DRIVER_NAME=radeonsi

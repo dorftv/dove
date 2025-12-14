@@ -1,12 +1,11 @@
 config.toml
-docker-compose.yml
+docker-compose.local.yml
+docker-compose.nodecg.yml
+Dockerfile.rust
 __pycache__/
-.vite/
-.nuxt/
-.output/
-node_modules/
 pyvenv.cfg
 .vscode
 *.code-workspace
+.claude/
 
 

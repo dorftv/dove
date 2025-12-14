@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.26.10
+ARG GSTREAMER_VERSION=1.28.1
 ARG INTERPIPE_VERSION=master
 
 # Core build deps
@@ -17,10 +17,15 @@ RUN apk add --no-cache \
   x264-dev \
   libsrt-dev \
   vulkan-loader-dev vulkan-headers \
-  libva-dev \
+  libva-dev libvpx-dev \
   zlib-dev openssl-dev make
 
 WORKDIR /opt
+
+# Upgrade Vulkan loader + headers from edge (need 1.4.x for Vulkan Video encoding)
+RUN apk upgrade --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    vulkan-loader-dev vulkan-headers vulkan-loader
 
 # Build librtmp (from rtmpdump) and install with a pkg-config file
 RUN git clone https://git.ffmpeg.org/rtmpdump.git /opt/rtmpdump && \
@@ -54,22 +59,16 @@ RUN cd gstreamer && \
     -Dugly=enabled \
     -Dbad=enabled \
     -Dgood=enabled \
-    -Dintrospection=enabled && \
+    -Dintrospection=enabled \
+    -Dgst-plugins-bad:vulkan-video=enabled \
+    -Dtests=disabled && \
   ninja -C builddir && \
   ninja -C builddir install 
   #rm -rf builddir
 
 
 #RUN apk add gtk-doc
-RUN apk add gtk-doc docbook-xml docbook-xsl
-RUN  git clone -b ${INTERPIPE_VERSION} https://github.com/RidgeRun/gst-interpipe.git  && \
-    cd gst-interpipe && \
-    mkdir -p build && \
-    meson setup build --prefix=/usr -Denable-gtk-doc=false && \
-    ninja -C build && \
-    ninja -C build install && \
-    rm -rf /install
-
+#RUN apk add gtk-doc docbook-xml docbook-xsl
 
 # ---------- Runtime stage ----------
 FROM alpine:3.21 AS runtime
@@ -81,7 +80,7 @@ RUN apk add --no-cache \
   alsa-lib pulseaudio cairo pango freetype \
   x264 libsrt \
   vulkan-loader mesa \
-  libva \
+  libva libvpx \
   zlib openssl
 
 
@@ -103,12 +102,19 @@ RUN apk add --no-cache openh264 x265 bash-completion curl libsoup
 RUN apk add --no-cache     intel-media-driver      mesa-va-gallium
 COPY --from=builder /usr /usr
 
+# Upgrade Mesa + deps from edge for Vulkan Video encode support (Mesa 26.x+)
+RUN apk upgrade --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    mesa mesa-gbm mesa-dri-gallium mesa-egl mesa-gl mesa-va-gallium \
+    mesa-vulkan-ati mesa-vulkan-intel mesa-vulkan-swrast \
+    vulkan-loader libxcb wayland-libs-client libva
+
 COPY . /app
 WORKDIR /app
 
-#@TODO run as user && pipenv
 RUN     pip install . --ignore-installed --break-system-packages
 
 EXPOSE 5000
 
-CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]
+# Pre-scan GStreamer plugins on startup (suppresses scanner warnings)
+CMD ["sh", "-c", "gst-inspect-1.0 > /dev/null 2>&1; exec python3 /app/main.py --config /app/config.toml"]

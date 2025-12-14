@@ -1,0 +1,15 @@
+[Unit]
+Description=NodeCG for DOVE overlays
+After=dove-pod.service
+
+[Container]
+Image=ghcr.io/dorftv/nodecg-bundles:latest
+ContainerName=nodecg
+Pod=dove.pod
+AutoUpdate=registry
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

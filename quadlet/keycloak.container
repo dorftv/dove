@@ -1,0 +1,23 @@
+[Unit]
+Description=Keycloak for DOVE auth
+After=dove-pod.service
+
+[Container]
+Image=quay.io/keycloak/keycloak:26.1
+ContainerName=keycloak
+Pod=dove.pod
+Exec=start-dev --import-realm
+
+Environment=KC_BOOTSTRAP_ADMIN_USERNAME=admin
+Environment=KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+Environment=KC_HTTP_PORT=8080
+Environment=KC_HOSTNAME=http://localhost:8080
+
+# Mount realm export — adjust path to your setup
+# Volume=%h/Projects/dorf/src/dove/dove/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

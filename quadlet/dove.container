@@ -1,0 +1,46 @@
+[Unit]
+Description=DOVE Online Video Editor
+After=dove-pod.service
+
+[Container]
+# Image=ghcr.io/dorftv/dove:latest-debian
+Image=192.168.15.5:5001/dove:debug
+ContainerName=dove
+Pod=dove.pod
+
+# Entrypoint (Xvfb + DOVE)
+Exec=/app/entrypoint.sh
+
+# Init for CEF subprocess cleanup
+PodmanArgs=--init --shm-size=256m
+
+# Volumes
+# Volume=/mnt/thek:/storage/thek:ro
+Volume=%h/Videos:/videos
+Volume=%h/dove-crashes:/crashes
+# Volume=%h/.config/dove/config.toml:/app/config.toml:ro
+
+# GPU (AMD — for Intel: remove /dev/kfd, change LIBVA_DRIVER_NAME=iHD)
+AddDevice=/dev/dri
+AddDevice=/dev/kfd
+
+# Environment (CEF defaults are baked into image)
+Environment=TZ=Europe/Vienna
+Environment=AMD_VULKAN_ICD=RADV
+Environment=LIBVA_DRIVER_NAME=radeonsi
+Environment=NODECG_URL=http://localhost:9090
+# Environment=ANNOUNCED_IP=10.10.23.103
+# Environment=LOG_LEVEL=debug
+
+# Security — CEF needs this
+PodmanArgs=--security-opt=seccomp=unconfined
+
+# Resources
+PodmanArgs=--memory=8g
+
+[Service]
+Restart=always
+TimeoutStartSec=90
+
+[Install]
+WantedBy=default.target

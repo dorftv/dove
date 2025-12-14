@@ -1,0 +1,8 @@
+[Pod]
+PodName=dove
+Network=pasta
+PublishPort=5000:5000
+PublishPort=7777:7777/udp
+PublishPort=10000-10100:10000-10100/udp
+PublishPort=8080:8080
+PublishPort=9090:9090

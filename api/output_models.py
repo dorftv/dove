@@ -11,7 +11,7 @@ uniqueId = generateId("Output ")
 
 class OutputDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    src: UUID
+    src: Optional[UUID] = None
     type: str
     is_preview: Optional[bool] = False
     name: str = Field(default_factory=lambda: next(uniqueId))
@@ -21,10 +21,9 @@ class OutputDTO(BaseModel):
     framerate: Optional[str] = Field(default_factory=get_default_framerate)
     locked: Optional[bool] = False
     details: Optional[str] = None
-
-
-#class FakeOutputDTO(OutputDTO):
-#    type: str = "fakesink"
+    stats: Optional[dict] = None
+    video_encoder: Optional[UUID] = None
+    audio_encoder: Optional[UUID] = None
 
 
 class OutputDeleteDTO(BaseModel):

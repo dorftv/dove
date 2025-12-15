@@ -2,7 +2,7 @@
 default_resolution = "qHD"
 
 [ui]
-enabled_inputs = ["playbin3", "wpesrc", "ytdlp", "testsrc"]
+enabled_inputs = ["uridecodebin3", "wpesrc", "ytdlp", "testsrc"]
 enabled_outputs = ["srtsink", "decklink", "shout2send"]
 
 [scenes]

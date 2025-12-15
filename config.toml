@@ -1,0 +1,55 @@
+# DOVE config overrides
+# Values here override config-default.toml (per-section, not deep merge)
+# See config-default.toml for all available options
+
+
+[program]
+[program.overlay]
+name="Broadcast Graphics"
+uid="049e821d-fd5e-49c0-83b3-bb4b5ab1f59e"
+index=1
+type = "nodecg"
+location = "http://nodecg:9090/bundles/broadcast-graphics/graphics/index.html"
+preview = true
+panels = [
+  "bundles/broadcast-graphics/dashboard/lower-third.html",
+  "bundles/broadcast-graphics/dashboard/clock.html",
+  "bundles/broadcast-graphics/dashboard/marquee.html",
+]
+
+[scenes.scene1]
+type="scene"
+name="Scene 1"
+
+[scenes.scene1.slot1]
+[scenes.scene1.slot1.input]
+type = "testsrc"
+pattern = 0
+wave = 8
+
+[scenes.scene2]
+type="scene"
+name="Scene 2"
+program=true
+#locked=true
+#src_locked=true
+
+[scenes.scene2.slot1]
+[scenes.scene2.slot1.input]
+type = "playlist"
+next = "https://dorftv.at/admin/dorftv/playout/playlist/47779?path=local&host=self&resolution=360p"
+locked=false
+
+[proxy.v4l2]
+type = "v4l2src"
+field = "device"
+
+[proxy.alsa]
+type = "v4l2src"
+field = "audio_device"
+
+[proxy.nodecg]
+url = "http://nodecg:9090"
+
+[auth]
+enabled = false

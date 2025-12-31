@@ -60,6 +60,16 @@ def main():
     # Build minimal pipeline before mainloop (no live elements yet)
     handler.finish_initial_setup()
 
+    # Wire name generators to check existing entities (avoids duplicate names)
+    from api.input_models import uniqueId as inputId
+    from api.mixers_dtos import uniqueId as sceneId
+    from api.output_models import uniqueId as outputId
+    from api.encoder_models import uniqueId as encoderId
+    inputId.get_existing = lambda: {p.data.name for p in handler.get_pipelines('inputs') or []}
+    sceneId.get_existing = lambda: {p.data.name for p in handler.get_pipelines('mixers') or []}
+    outputId.get_existing = lambda: {p.data.name for p in handler.get_pipelines('outputs') or []}
+    encoderId.get_existing = lambda: {p.data.name for p in handler.get_pipelines('encoders') or []}
+
     api = APIThread(pipeline_handler=handler)
     api.start()
 

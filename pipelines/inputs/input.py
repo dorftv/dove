@@ -193,13 +193,14 @@ class Input(GSTBase, ABC):
         if data.volume is not None:
             self.data.volume = data.volume
             if self.volume_element:
-                self.volume_element.set_property('volume', data.volume)
+                vol = data.volume
+                GLib.idle_add(lambda: self.volume_element.set_property('volume', vol) or False)
         if data.audio_filters is not None:
             self._update_audio_filter_params(data.audio_filters)
         if data.video_filters is not None:
             self._update_video_filter_params(data.video_filters)
         if data.fit is not None:
-            self.set_fit(data.fit)
+            GLib.idle_add(lambda: self.set_fit(data.fit) or False)
         if data.state is not None and data.state in ('PLAYING', 'PAUSED'):
             gst_state = Gst.State.PLAYING if data.state == 'PLAYING' else Gst.State.PAUSED
             if self._bin:

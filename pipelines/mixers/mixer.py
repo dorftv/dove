@@ -23,11 +23,14 @@ class Mixer(GSTBase, ABC):
     audio_mixer: Optional[Gst.Element] = None
     core_pipeline: Optional[Gst.Pipeline] = None
     _bin: Optional[Gst.Bin] = None  # For dynamic addition
-    _slot_queues: dict = {}  # index -> {video: queue, audio: queue}
-    _tee_pads: dict = {}  # index -> {video: tee_pad, audio: tee_pad}
-    _ghost_pads: dict = {}  # index -> {video: {input: pad, mixer: pad}, audio: {...}}
-    _drop_probes: dict = {}  # index -> {video: (pad, probe_id), audio: (pad, probe_id)}
-    _slot_filters: dict = {}  # index -> {'audio': {'pre': elem, 'post': elem, 'caps': elem, 'filters': [elems]}}
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._slot_queues = {}
+        self._tee_pads = {}
+        self._ghost_pads = {}
+        self._drop_probes = {}
+        self._slot_filters = {}
+        self._ghost_pad_counter = 0
     _ghost_pad_counter: int = 0  # Counter for unique ghost pad names
 
     # CHANGED: Output to tee instead of interpipesink
@@ -307,7 +310,6 @@ class Mixer(GSTBase, ABC):
                     all_old.extend(filter_info.get('filters', []))
 
                     for elem in all_old:
-                        # Unlink from neighbors
                         for p in elem.pads:
                             peer = p.get_peer()
                             if peer:
@@ -315,9 +317,16 @@ class Mixer(GSTBase, ABC):
                                     p.unlink(peer)
                                 else:
                                     peer.unlink(p)
-                        elem.set_state(Gst.State.NULL)
-                        if self.core_pipeline and elem.get_parent() == self.core_pipeline:
-                            self.core_pipeline.remove(elem)
+
+                    # Defer NULL+remove to after probe (avoids EOS during pad probe)
+                    pipeline_ref = self.core_pipeline
+                    def _deferred_cleanup(elems=all_old):
+                        for elem in elems:
+                            elem.set_state(Gst.State.NULL)
+                            if pipeline_ref and elem.get_parent() == pipeline_ref:
+                                pipeline_ref.remove(elem)
+                        return False
+                    GLib.idle_add(_deferred_cleanup)
 
                     self._slot_filters[index].pop(av, None)
                 else:
@@ -618,9 +627,8 @@ class Mixer(GSTBase, ABC):
             if index in self._drop_probes and av in self._drop_probes[index]:
                 del self._drop_probes[index][av]
 
-        # Clean up per-slot audio filter elements before queue removal
-        if av == "audio":
-            self._cleanup_slot_filter_elements(index)
+        # Clean up per-slot filter elements before queue removal
+        self._cleanup_slot_filter_elements(index, av)
 
         if index in self._slot_queues and av in self._slot_queues[index]:
             old_queue = self._slot_queues[index][av]

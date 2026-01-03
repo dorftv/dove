@@ -555,6 +555,93 @@ async def whep_ice_candidate(resource_id: str, request: Request):
     source_uid, peer_id = _resources[resource_id]
     content_type = request.headers.get("content-type", "")
 
+    # Source switching: relink proxysink to different encoder tee
+    if "application/json" in content_type:
+        body = await request.json()
+        new_source = body.get('source')
+        if new_source:
+            loop = asyncio.get_running_loop()
+            result_future = loop.create_future()
+
+            def do_switch():
+                try:
+                    old_mgr = _managers.get(source_uid)
+                    if not old_mgr or peer_id not in old_mgr.peers:
+                        loop.call_soon_threadsafe(result_future.set_result, False)
+                        return
+
+                    # Find new source's preview encoders
+                    new_mgr = _managers.get(new_source)
+                    if not new_mgr:
+                        # Create a temporary manager to find encoders
+                        new_mgr = WebrtcPreviewManager(new_source)
+                    new_video_enc, new_audio_enc = new_mgr._find_preview_encoders()
+                    if not new_video_enc or not new_audio_enc:
+                        loop.call_soon_threadsafe(result_future.set_result, False)
+                        return
+
+                    new_video_tee = new_video_enc.tee
+                    new_audio_tee = new_audio_enc.tee
+                    if not new_video_tee or not new_audio_tee:
+                        loop.call_soon_threadsafe(result_future.set_result, False)
+                        return
+
+                    peer = old_mgr.peers[peer_id]
+
+                    # Swap tee pads for each media type
+                    for media, new_tee in [('video', new_video_tee), ('audio', new_audio_tee)]:
+                        old_tee = peer.get(f'{media}_tee')
+                        old_pad = peer.get(f'{media}_tee_pad')
+                        psink = peer.get(f'{media}_proxysink')
+                        if not (old_tee and old_pad and psink):
+                            continue
+
+                        # Unlink old
+                        sink_pad = psink.get_static_pad("sink")
+                        if sink_pad:
+                            peer_pad = sink_pad.get_peer()
+                            if peer_pad:
+                                peer_pad.unlink(sink_pad)
+                        old_tee.release_request_pad(old_pad)
+
+                        # Link new
+                        new_pad = new_tee.request_pad_simple("src_%u")
+                        new_pad.link(sink_pad)
+
+                        # Update peer refs
+                        peer[f'{media}_tee'] = new_tee
+                        peer[f'{media}_tee_pad'] = new_pad
+
+                    # Request keyframe for fast display
+                    vpay = peer.get('video_pay')
+                    if vpay:
+                        key_event = GstVideo.video_event_new_upstream_force_key_unit(
+                            Gst.CLOCK_TIME_NONE, True, 0)
+                        vpay.send_event(key_event)
+
+                    # Move peer from old manager to new/existing manager
+                    old_mgr.peers.pop(peer_id, None)
+                    if not old_mgr.peers:
+                        _managers.pop(source_uid, None)
+
+                    if new_source not in _managers:
+                        _managers[new_source] = WebrtcPreviewManager(new_source)
+                    _managers[new_source].peers[peer_id] = peer
+
+                    # Update resource mapping
+                    _resources[resource_id] = (new_source, peer_id)
+
+                    logger.log(f"WHEP: switched {peer_id[:8]} from {source_uid[:8]} to {new_source[:8]}", level='INFO')
+                    loop.call_soon_threadsafe(result_future.set_result, True)
+                except Exception as e:
+                    logger.log(f"WHEP switch error: {e}", level='ERROR')
+                    loop.call_soon_threadsafe(result_future.set_result, False)
+
+            bridge.run_sync_in_glib(do_switch)
+            success = await result_future
+            return Response(status_code=204 if success else 500)
+
+    # ICE trickle candidates
     if "application/trickle-ice-sdpfrag" in content_type:
         body = (await request.body()).decode("utf-8")
         sdp_mline_index = 0

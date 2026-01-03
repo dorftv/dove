@@ -20,9 +20,10 @@ DOVE is a live video mixing application. Media sources (**Inputs**) are composit
 - [NodeCG](/help/inputs-nodecg) — broadcast graphics via NodeCG
 - [Test Source](/help/inputs-testsrc) — color bars and test patterns
 
-## Audio
+## Audio & Video Processing
 
 - [Audio Filters](/help/audio-filters) — per-input, per-slot, and program audio processing
+- [Video Filters](/help/video-filters) — color balance, crop, flip, blur, color effects
 
 ## Reference
 

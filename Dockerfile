@@ -2,7 +2,6 @@
 FROM alpine:3.21 AS builder
 
 ARG GSTREAMER_VERSION=1.28.1
-ARG INTERPIPE_VERSION=master
 
 # Core build deps
 RUN apk add --no-cache \

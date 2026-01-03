@@ -36,6 +36,7 @@ from proxy import nodecg as nodecg_proxy
 from pipeline_handler import PipelineHandler
 
 from config_handler import ConfigReader
+from logger import logger
 config = ConfigReader()
 
 
@@ -60,6 +61,11 @@ class APIThread(Thread):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         bridge.set_asyncio_loop(loop, threading.current_thread())
+
+        # Startup checks
+        auth_config = config.get_auth_config()
+        if auth_config.get('enabled') and not auth_config.get('cookie_secret'):
+            logger.log("Auth enabled without cookie_secret — sessions won't persist across restarts", level='WARNING')
 
         fastapi = FastAPI(lifespan=self.lifespan, docs_url="/api/debug/docs", redoc_url=None)
         fastapi.include_router(auth_module.router, tags=['Auth'])

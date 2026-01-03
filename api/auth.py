@@ -72,8 +72,6 @@ def _get_config() -> dict:
         secret = _auth_config.get('cookie_secret')
         if not secret:
             secret = secrets.token_hex(32)
-            if _auth_config.get('enabled'):
-                logger.log("No cookie_secret configured — sessions won't persist across restarts", level='WARNING')
         _cookie_signer = URLSafeTimedSerializer(secret)
     return _auth_config
 

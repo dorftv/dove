@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from uuid import UUID
 
 from api.encoder_models import EncoderEntityDTO
@@ -18,12 +18,12 @@ async def create_encoder(request: Request, data: EncoderEntityDTO):
     if data.element == "auto":
         resolved = get_auto_encoder(data.codec)
         if not resolved:
-            return {"error": f"No available encoder for codec {data.codec}"}
+            raise HTTPException(status_code=422, detail=f"No available encoder for codec {data.codec}")
         data.element = resolved
 
     # Check encoder availability
     if not _is_encoder_available(data.element):
-        return {"error": f"Encoder element {data.element} not available"}
+        raise HTTPException(status_code=422, detail=f"Encoder element {data.element} not available")
 
     existing = handler.get_pipeline("encoders", data.uid)
     if existing:
@@ -50,7 +50,7 @@ async def get_encoder(uid: UUID, request: Request):
     handler = request.app.state._state["pipeline_handler"]
     encoder = handler.get_pipeline("encoders", uid)
     if not encoder:
-        return {"error": "Encoder not found"}
+        raise HTTPException(status_code=404, detail="Encoder not found")
     return encoder.describe()
 
 
@@ -59,13 +59,13 @@ async def delete_encoder(uid: UUID, request: Request):
     handler = request.app.state._state["pipeline_handler"]
     encoder = handler.get_pipeline("encoders", uid)
     if not encoder:
-        return {"error": "Encoder not found"}
+        raise HTTPException(status_code=404, detail="Encoder not found")
 
     # Check if any output uses this encoder
     for output in (handler.get_pipelines("outputs") or []):
         if getattr(output, '_video_encoder_uid', None) == uid or \
            getattr(output, '_audio_encoder_uid', None) == uid:
-            return {"error": f"Encoder is used by output \"{output.data.name}\". Remove the output first."}
+            raise HTTPException(status_code=409, detail=f"Encoder is used by output \"{output.data.name}\". Remove the output first.")
 
     handler.delete_pipeline("encoders", uid)
     return {"uid": uid}

@@ -9,7 +9,7 @@ class ConfigReader:
             self = super(ConfigReader, cls).__new__(cls)
             self.default_config_path = "config-default.toml"
             parser = argparse.ArgumentParser()
-            parser.add_argument("--config", action="store", type=str, required=False)
+            parser.add_argument("-c", "--config", action="store", type=str, required=False)
             self.args = parser.parse_args()
             self.config = self.load_config()
             cls._instance = self

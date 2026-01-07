@@ -1,6 +1,5 @@
 services:
   dove:
-    entrypoint: python3 main.py --config /app/config.toml
     build:
       context: .
       dockerfile: Dockerfile

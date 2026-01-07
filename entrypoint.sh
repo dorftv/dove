@@ -1,19 +1,8 @@
 #!/bin/sh
-# Start Xvfb, wait for readiness, launch DOVE
-rm -f /tmp/.X99-lock
-Xvfb :99 -screen 0 1920x1080x24 -ac -nolisten tcp &
-XVFB_PID=$!
+# Start D-Bus session bus (silences WPE a11y/bus warnings)
+export DBUS_SESSION_BUS_ADDRESS=$(dbus-daemon --session --fork --print-address)
 
-for i in $(seq 1 50); do
-    if xdpyinfo -display :99 >/dev/null 2>&1; then
-        break
-    fi
-    sleep 0.1
-done
+# Pre-scan GStreamer plugins (suppresses scanner warnings on first use)
+gst-inspect-1.0 > /dev/null 2>&1
 
-export DISPLAY=:99
-
-python3 /app/main.py --config /app/config.toml
-DOVE_EXIT=$?
-kill $XVFB_PID 2>/dev/null
-exit $DOVE_EXIT
+exec python3 /app/main.py --config /app/config.toml

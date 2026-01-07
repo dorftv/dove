@@ -21,7 +21,7 @@ _ELEMENTS_TO_PROBE = [
     # Core pipeline
     'compositor', 'audiomixer', 'audioconvert', 'videoconvert',
     'videoscale', 'videorate', 'audiorate', 'audioresample',
-    'uridecodebin3', 'wpesrc', 'cefsrc', 'tee', 'queue',
+    'uridecodebin3', 'wpesrc', 'tee', 'queue',  # cefsrc: deprecated, re-add if needed
     'identity', 'capsfilter', 'level', 'volume',
     # Outputs
     'webrtcbin', 'proxysink', 'proxysrc',

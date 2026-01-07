@@ -38,8 +38,8 @@ default_framerate = "30/1"
 # Audio
 volume = 0.7
 
-# HTML rendering engine: "auto" (cefsrc if available, else wpesrc), "cefsrc", "wpesrc"
-html_engine = "auto"
+# HTML rendering engine
+html_engine = "wpesrc"
 audio_format = "F32LE"
 audio_rate = 48000
 audio_channels = 2
@@ -80,7 +80,7 @@ add_input = true
 add_scene = true
 add_output = true
 input_preview_auto= true
-enabled_inputs = ["uridecodebin3", "playlist", "wpesrc", "cefsrc", "ytdlp", "testsrc", "nodecg", "v4l2src", "imagesrc"]
+enabled_inputs = ["uridecodebin3", "playlist", "wpesrc", "ytdlp", "testsrc", "nodecg", "v4l2src", "imagesrc"]
 
 
 

@@ -115,5 +115,9 @@ RUN     pip install . --ignore-installed --break-system-packages
 
 EXPOSE 5000
 
-# Pre-scan GStreamer plugins on startup (suppresses scanner warnings)
-CMD ["sh", "-c", "gst-inspect-1.0 > /dev/null 2>&1; exec python3 /app/main.py --config /app/config.toml"]
+# Suppress harmless warnings from WPE/WebKit/Mesa in headless container
+ENV EGL_LOG_LEVEL=fatal
+ENV NO_AT_BRIDGE=1
+ENV JSC_SIGNAL_FOR_GC=14
+
+ENTRYPOINT ["/app/entrypoint.sh"]

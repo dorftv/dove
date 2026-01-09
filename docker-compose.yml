@@ -5,10 +5,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/app
-      - /tmp/.X11-unix:/tmp/.X11-unix
 #    environment:
-#      - WPE_USE_DMA_BUF=0
-#      - LIBGL_ALWAYS_SOFTWARE=true
 #      - LOG_LEVEL=debug
 #      - GST_DEBUG=2
 #      - ANNOUNCED_IP=127.0.0.1

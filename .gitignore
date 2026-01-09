@@ -7,5 +7,6 @@ pyvenv.cfg
 .vscode
 *.code-workspace
 .claude/
+tmp/
 
 

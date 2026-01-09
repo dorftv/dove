@@ -34,10 +34,6 @@ RUN git clone https://git.ffmpeg.org/rtmpdump.git /opt/rtmpdump && \
     mkdir -p /usr/lib/pkgconfig && \
     printf "prefix=/usr\nexec_prefix=\${prefix}\nlibdir=\${exec_prefix}/lib\nincludedir=\${prefix}/include\n\nName: librtmp\nDescription: RTMP library\nVersion: 2.4\nLibs: -L\${libdir} -lrtmp\nCflags: -I\${includedir}/librtmp\n" > /usr/lib/pkgconfig/librtmp.pc
 
-# Clone GStreamer monorepo
-
-
-
 # WPE/WebKit + FDO backend for wpesrc
 RUN apk add --no-cache \
   wpewebkit-dev libwpe-dev libwpebackend-fdo-dev \
@@ -62,12 +58,7 @@ RUN cd gstreamer && \
     -Dgst-plugins-bad:vulkan-video=enabled \
     -Dtests=disabled && \
   ninja -C builddir && \
-  ninja -C builddir install 
-  #rm -rf builddir
-
-
-#RUN apk add gtk-doc
-#RUN apk add gtk-doc docbook-xml docbook-xsl
+  ninja -C builddir install
 
 # ---------- Runtime stage ----------
 FROM alpine:3.21 AS runtime

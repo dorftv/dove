@@ -2,12 +2,6 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.trixie.yml -f docker-compose.local.yml up
 services:
   dove:
-    init: true
-    entrypoint: /app/entrypoint.sh
     build:
       context: .
       dockerfile: Dockerfile.trixie
-    shm_size: '256m'
-    #environment:
-      #- GST_CEF_LOG_SEVERITY=verbose
-      #- LOG_LEVEL=debug

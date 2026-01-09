@@ -16,7 +16,7 @@ if os.path.isdir(_crash_dir):
         pass
 _fault_out = _crash_file or sys.stderr
 faulthandler.enable(file=_fault_out, all_threads=True)
-faulthandler.register(signal.SIGUSR1, file=_fault_out, all_threads=True)
+faulthandler.register(signal.SIGUSR2, file=_fault_out, all_threads=True)
 
 from uuid import uuid4
 import gi
@@ -81,6 +81,16 @@ def main():
     handler.mainloop = GLib.MainLoop()
     GLib.idle_add(_on_mainloop_ready)
     start_glib_watchdog()
+
+    # Graceful shutdown on SIGTERM (docker stop) and SIGINT (Ctrl+C)
+    def _on_shutdown(*args):
+        print("Shutting down…", file=sys.stderr, flush=True)
+        handler.mainloop.quit()
+        return GLib.SOURCE_REMOVE
+
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, _on_shutdown)
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, _on_shutdown)
+
     handler.mainloop.run()
 
 

@@ -23,6 +23,7 @@ from api import output_routes
 from api import input_routes
 from api import encoders as encoder_routes
 from api import webrtc_whep
+from api import webrtc_whip
 from api import websockets
 from api import configuration
 from api import graphviz
@@ -84,6 +85,7 @@ class APIThread(Thread):
         preview_deps = [auth_module.require_role("user")]
         fastapi.include_router(hls_preview.router, tags=['Preview'], dependencies=preview_deps)
         fastapi.include_router(webrtc_whep.router, tags=['WebRTC Preview'], dependencies=preview_deps)
+        fastapi.include_router(webrtc_whip.router, tags=['WebRTC Ingest'], dependencies=preview_deps)
 
         fastapi.include_router(docs.router, tags=['Docs'])
 

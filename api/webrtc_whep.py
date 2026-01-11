@@ -11,13 +11,10 @@ webrtcbin element (~52KB) is kept alive to prevent GC finalize segfault in libni
 """
 
 import asyncio
-import os
 import re
-import socket
 import time
 import uuid
 import threading
-from urllib.parse import urlparse
 from fastapi import APIRouter, Request, Response
 
 import gi
@@ -27,11 +24,14 @@ gi.require_version('GstWebRTC', '1.0')
 gi.require_version('GstSdp', '1.0')
 from gi.repository import Gst, GLib, GstVideo, GstWebRTC, GstSdp
 
-from config_handler import ConfigReader
+from api.webrtc_utils import (
+    get_host_ip, rewrite_sdp_candidates,
+    patch_offer_h264_profile, inject_ice_candidates, get_pipeline,
+    configure_webrtcbin,
+)
 from event_loop_bridge import bridge
 from logger import logger
 
-config = ConfigReader()
 router = APIRouter()
 
 _managers: dict[str, "WebrtcPreviewManager"] = {}  # source_uid -> manager
@@ -40,62 +40,6 @@ _resources: dict[str, tuple[str, str]] = {}  # resource_id -> (source_uid, peer_
 # Keep refs alive (~52KB each). Pipeline and all other resources are fully freed.
 _orphaned_webrtcbins: list = []
 
-_LOOPBACK = ("", "localhost", "127.0.0.1", "::1")
-
-
-def _get_host_ip(request: Request) -> str | None:
-    """Determine external IP for SDP candidates.
-    Priority: ANNOUNCED_IP env > config > Origin/X-Forwarded-Host > None.
-    """
-    env_ip = os.environ.get('ANNOUNCED_IP')
-    if env_ip:
-        return env_ip
-
-    announced = config.get_webrtc_config().get('announced_ip')
-    if announced:
-        return announced
-
-    for header in ("origin", "x-forwarded-host"):
-        val = request.headers.get(header, "")
-        if not val:
-            continue
-        hostname = urlparse(val).hostname if "://" in val else val.split(":")[0]
-        if hostname and hostname not in _LOOPBACK:
-            try:
-                return socket.gethostbyname(hostname)
-            except socket.gaierror:
-                return hostname
-    return None
-
-
-def _get_container_ip() -> str | None:
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return None
-
-
-def _rewrite_sdp_candidates(sdp_text: str, host_ip: str) -> str:
-    """Replace Docker internal IPs in ICE candidates with host IP."""
-    container_ip = _get_container_ip()
-    if not container_ip or container_ip == host_ip:
-        return sdp_text
-    return sdp_text.replace(container_ip, host_ip)
-
-
-def _patch_offer_h264_profile(sdp_offer: str) -> str:
-    """Rewrite H264 profile-level-id in offer to match our encoder (42c01e).
-    Needed for GStreamer webrtcbin caps intersection.
-    """
-    return re.sub(
-        r'profile-level-id=4[02][ecd0][01][12][0-9a-f]',
-        'profile-level-id=42c01e',
-        sdp_offer, flags=re.IGNORECASE,
-    )
 
 
 def _extract_offer_pts(sdp_text: str) -> tuple[int | None, int | None]:
@@ -119,20 +63,6 @@ def _extract_offer_pts(sdp_text: str) -> tuple[int | None, int | None]:
     return video_pt, opus_pt
 
 
-def _inject_ice_candidates(sdp_text: str, candidates: list[dict]) -> str:
-    """Inject gathered ICE candidates into SDP answer."""
-    cand_lines = [f"a={c['candidate']}" for c in candidates if c.get('candidate')]
-    if not cand_lines:
-        return sdp_text
-    insert = "\r\n".join(cand_lines) + "\r\n"
-    if "a=end-of-candidates" in sdp_text:
-        return sdp_text.replace("a=end-of-candidates", insert + "a=end-of-candidates", 1)
-    return sdp_text.rstrip() + "\r\n" + insert
-
-
-def _get_pipeline():
-    from pipeline_handler import HandlerSingleton
-    return HandlerSingleton().core_pipeline.pipeline
 
 
 class WebrtcPreviewManager:
@@ -189,7 +119,7 @@ class WebrtcPreviewManager:
                     elements_ready.set()
                     return False
 
-                pipeline = _get_pipeline()
+                pipeline = get_pipeline()
                 pid = peer_id[:8]
 
                 # --- Create proxysinks in main pipeline ---
@@ -217,30 +147,13 @@ class WebrtcPreviewManager:
                 a_psrc.set_property("proxysink", a_psink)
 
                 # --- Create webrtcbin ---
-                webrtc_config = config.get_webrtc_config()
                 webrtcbin = Gst.ElementFactory.make("webrtcbin", f"wb_{pid}")
                 if not webrtcbin:
                     elements_ready.set()
                     return False
 
-                webrtcbin.set_property("bundle-policy", GstWebRTC.WebRTCBundlePolicy.MAX_BUNDLE)
+                ice_agent_ref = configure_webrtcbin(webrtcbin)
                 webrtcbin.set_property("latency", 50)
-                stun = webrtc_config.get('stun_server')
-                if stun:
-                    webrtcbin.set_property("stun-server", stun)
-                turn = webrtc_config.get('turn_server')
-                if turn and webrtc_config.get('turn_user'):
-                    url = turn.replace("turn://", f"turn://{webrtc_config['turn_user']}:{webrtc_config.get('turn_password', '')}@")
-                    webrtcbin.set_property("turn-server", url)
-
-                ice_agent_ref = None
-                min_port = webrtc_config.get('min_rtp_port', 0)
-                max_port = webrtc_config.get('max_rtp_port', 0)
-                if min_port and max_port:
-                    ice_agent_ref = webrtcbin.get_property("ice-agent")
-                    if ice_agent_ref:
-                        ice_agent_ref.set_property("min-rtp-port", min_port)
-                        ice_agent_ref.set_property("max-rtp-port", max_port)
 
                 # --- Create per-viewer elements ---
                 video_pt, audio_pt = _extract_offer_pts(sdp_offer)
@@ -326,7 +239,7 @@ class WebrtcPreviewManager:
                 webrtcbin = peer['webrtcbin']
 
                 # 1. Set remote description
-                patched = _patch_offer_h264_profile(sdp_offer)
+                patched = patch_offer_h264_profile(sdp_offer)
                 res, sdpmsg = GstSdp.SDPMessage.new_from_text(patched)
                 if res != GstSdp.SDPResult.OK:
                     logger.log(f"WHEP: failed to parse SDP offer", level='ERROR')
@@ -373,9 +286,9 @@ class WebrtcPreviewManager:
                 candidates = list(peer.get('ice_candidates', [])) if peer else []
                 if peer:
                     peer['ice_candidates'] = []
-                sdp_text = _inject_ice_candidates(sdp_text, candidates)
+                sdp_text = inject_ice_candidates(sdp_text, candidates)
                 if host_ip:
-                    sdp_text = _rewrite_sdp_candidates(sdp_text, host_ip)
+                    sdp_text = rewrite_sdp_candidates(sdp_text, host_ip)
 
                 loop.call_soon_threadsafe(answer_future.set_result, sdp_text)
 
@@ -442,7 +355,7 @@ class WebrtcPreviewManager:
         peer = self.peers.pop(peer_id, None)
         if not peer:
             return
-        pipeline = _get_pipeline()
+        pipeline = get_pipeline()
         viewer_pipe = peer.get('viewer_pipeline')
         webrtcbin = peer.get('webrtcbin')
         name = viewer_pipe.get_name() if viewer_pipe else peer_id[:8]
@@ -524,7 +437,7 @@ async def whep_offer(source_uid: str, request: Request):
     sdp_offer = (await request.body()).decode("utf-8")
     peer_id = str(uuid.uuid4())
     resource_id = str(uuid.uuid4())
-    host_ip = _get_host_ip(request)
+    host_ip = get_host_ip(request)
     _resources[resource_id] = (source_uid, peer_id)
 
     loop = asyncio.get_running_loop()

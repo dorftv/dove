@@ -18,6 +18,7 @@ RUN apt-get update && \
     gstreamer1.0-vaapi \
     gstreamer1.0-fdkaac \
     gstreamer1.0-x \
+    gstreamer1.0-libav \
     gir1.2-gstreamer-1.0 \
     gir1.2-gst-plugins-base-1.0 \
     gir1.2-gst-plugins-bad-1.0 \

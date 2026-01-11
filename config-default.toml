@@ -80,7 +80,7 @@ add_input = true
 add_scene = true
 add_output = true
 input_preview_auto= true
-enabled_inputs = ["uridecodebin3", "playlist", "wpesrc", "ytdlp", "testsrc", "nodecg", "v4l2src", "imagesrc"]
+enabled_inputs = ["uridecodebin3", "playlist", "wpesrc", "ytdlp", "testsrc", "nodecg", "v4l2src", "imagesrc", "whip"]
 
 
 

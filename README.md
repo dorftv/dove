@@ -38,6 +38,7 @@ Inputs → Scenes → Program → Outputs
 | `v4l2src` | Webcams and capture cards (V4L2) |
 | `imagesrc` | Still images (PNG, JPEG, WebP, SVG) |
 | `testsrc` | SMPTE color bars and test patterns |
+| `whip` | Browser screen share or webcam via WebRTC (experimental) |
 
 ### Outputs
 

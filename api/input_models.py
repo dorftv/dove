@@ -50,6 +50,7 @@ class InputDTO(BaseModel):
 class updateInputDTO(BaseModel):
     uid: UUID
     type: str = 'update'
+    name: Optional[str] = None
     position: Optional[int] = None
     state: Optional[str] = None
     volume: Optional[float] = None

@@ -78,8 +78,12 @@ class sceneMixer(Mixer):
         from api.input_models import AudioFilterDTO, VideoFilterDTO
         logger.log(f"Scene {self.data.uid} update: {list(data.keys())}", level='DEBUG')
 
-        # Handle mixer-level filter updates (not per-slot)
+        # Handle mixer-level updates (not per-slot)
         if 'index' not in data:
+            if 'name' in data:
+                self.data.name = data['name']
+                safe_broadcast("UPDATE", self.data)
+                return
             if 'audio_filters' in data:
                 new_filters = [AudioFilterDTO(**f) if isinstance(f, dict) else f for f in data['audio_filters']]
                 self._update_mixer_audio_filter_params(new_filters)

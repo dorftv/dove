@@ -69,6 +69,8 @@ class WhipInput(Input):
         self._video_proxy_sink = None
         self._publisher_connected = False
         self._fallback_video_downstream_pad = None  # pad that was linked to testsrc
+        # Suppress transient not-linked errors from videotestsrc during filter rebuilds/swaps
+        self._suppress_teardown_error = True
 
     @property
     def is_publishing(self) -> bool:
@@ -302,9 +304,6 @@ class WhipInput(Input):
         # Save for reconnection on publisher disconnect
         self._fallback_video_downstream_pad = downstream_sink_pad
 
-        # Suppress transient not-linked errors during swap
-        self._suppress_teardown_error = True
-
         # Stop testsrc FIRST so it doesn't push into unlinked pad
         fallback_element.set_state(Gst.State.NULL)
 
@@ -321,7 +320,6 @@ class WhipInput(Input):
             fallback_src_pad.link(downstream_sink_pad)
             return
 
-        self._suppress_teardown_error = False
         self._publisher_connected = True
         self.data.state = "PLAYING"
         safe_broadcast("UPDATE", self.data)

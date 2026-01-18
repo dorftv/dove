@@ -145,8 +145,11 @@ class Input(GSTBase, ABC):
             logger.log(f"[FILTER] {uid}: af_in={'found' if af_in else 'MISSING'} af_out={'found' if af_out else 'MISSING'}", level='ERROR')
             return False
 
+        self._suppress_teardown_error = True
         pipe = af_in.get_parent()
-        return rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe)
+        result = rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe)
+        self._suppress_teardown_error = False
+        return result
 
     def _update_video_filter_params(self, new_filters: list[VideoFilterDTO]):
         """Update video filter chain at runtime — mirrors audio filter logic."""
@@ -181,9 +184,12 @@ class Input(GSTBase, ABC):
             logger.log(f"Video filter anchors missing for {uid}", level='ERROR')
             return False
 
+        self._suppress_teardown_error = True
         pipe = vf_in.get_parent()
-        return rebuild_between_anchors(vf_in, vf_out, new_filters, uid, pipe,
+        result = rebuild_between_anchors(vf_in, vf_out, new_filters, uid, pipe,
                                         element_map=VIDEO_FILTER_ELEMENT_MAP, audio=False)
+        self._suppress_teardown_error = False
+        return result
 
     async def update(self, data):
         if not isinstance(data, updateInputDTO):
@@ -234,7 +240,6 @@ class Input(GSTBase, ABC):
         if data.position is not None:
             self.seek_to_position(data.position)
             self.data.position = data.position
-
         safe_broadcast("UPDATE", self.data)
 
     def set_fit(self, fit: bool):

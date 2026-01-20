@@ -1,6 +1,7 @@
 import os
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+import toml
+from fastapi import APIRouter, Request, Query
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from api.helper import get_encoder_types
 from api.auth import require_role
@@ -233,6 +234,171 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
     GLib.idle_add(apply_fps)
 
     return {"fps": fps, "updated": len(capsfilters)}
+
+
+@router.get("/config/export", dependencies=[require_role("supervisor")])
+def export_config(
+    request: Request,
+    inputs: bool = Query(True, description="Include inputs"),
+    scenes: bool = Query(True, description="Include scenes and slots"),
+    outputs: bool = Query(True, description="Include outputs and encoders"),
+    settings: bool = Query(True, description="Include global settings"),
+):
+    """Export current runtime config as TOML. Filters out auto-generated preview items."""
+    handler = request.app.state._state.get("pipeline_handler")
+    if not handler or not handler._pipelines:
+        return Response(status_code=503, content="Pipeline not ready")
+
+    export = {}
+
+    # Global settings — admin only (may contain credentials like cookie_secret)
+    if settings:
+        is_admin = _check_admin(request)
+        if is_admin:
+            full_config = config.get_config()
+            for section in ('main', 'ui', 'preview', 'resolutions', 'webrtc', 'auth', 'proxy'):
+                if section in full_config:
+                    export[section] = full_config[section]
+
+    # Inputs — exclude auto-generated (nodecg overlays created by program config)
+    if inputs:
+        export['inputs'] = {}
+        used_keys = set()
+        for pipeline in handler._pipelines.get("inputs", []):
+            data = pipeline.data
+            input_dict = _dto_to_dict(data)
+            key = _sanitize_key(data.name)
+            # Ensure unique keys
+            if key in used_keys:
+                key = f"{key}_{str(data.uid)[:8]}"
+            used_keys.add(key)
+            export['inputs'][key] = input_dict
+
+    # Scenes + slots
+    if scenes:
+        export['scenes'] = {}
+        for pipeline in handler._pipelines.get("mixers", []):
+            data = pipeline.data
+            if data.type == "scene":
+                scene_key = _sanitize_key(data.name)
+                scene_dict = {
+                    'type': 'scene',
+                    'name': data.name,
+                }
+                if data.locked:
+                    scene_dict['locked'] = True
+                if data.src_locked:
+                    scene_dict['src_locked'] = True
+                # Scene-level filters
+                if data.audio_filters:
+                    scene_dict['audio_filters'] = [f.model_dump() for f in data.audio_filters]
+                if data.video_filters:
+                    scene_dict['video_filters'] = [f.model_dump() for f in data.video_filters]
+                # Slots
+                for i, source in enumerate(data.sources):
+                    slot_key = f"slot{i}"
+                    slot_dict = {}
+                    for prop in ('alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'mute', 'name'):
+                        val = getattr(source, prop, None)
+                        if val is not None:
+                            slot_dict[prop] = val
+                    # Slot-level filters
+                    if source.audio_filters:
+                        slot_dict['audio_filters'] = [f.model_dump() for f in source.audio_filters]
+                    if source.video_filters:
+                        slot_dict['video_filters'] = [f.model_dump() for f in source.video_filters]
+                    # Resolve source input
+                    if source.src:
+                        src_input = handler.get_pipeline("inputs", source.src)
+                        if src_input:
+                            slot_dict['input'] = {'type': src_input.data.type, 'name': src_input.data.name}
+                    scene_dict[slot_key] = slot_dict
+                export['scenes'][scene_key] = scene_dict
+            elif data.type == "program":
+                pass  # Program active state is runtime, not config
+
+    # Outputs + encoders — exclude preview-generated ones
+    if outputs:
+        export['outputs'] = {}
+        for pipeline in handler._pipelines.get("outputs", []):
+            data = pipeline.data
+            if getattr(data, 'is_preview', False):
+                continue  # Skip auto-generated preview outputs
+            output_dict = _dto_to_dict(data)
+            key = _sanitize_key(getattr(data, 'name', str(data.uid)))
+            export['outputs'][key] = output_dict
+
+        export['encoders'] = {}
+        for pipeline in handler._pipelines.get("encoders", []):
+            data = pipeline.data
+            if getattr(data, 'is_preview', False):
+                continue  # Skip preview encoders
+            encoder_dict = _dto_to_dict(data)
+            key = _sanitize_key(getattr(data, 'name', str(data.uid)))
+            export['encoders'][key] = encoder_dict
+
+    # Remove empty sections
+    export = {k: v for k, v in export.items() if v}
+
+    toml_str = toml.dumps(export)
+    return Response(
+        content=toml_str,
+        media_type="application/toml",
+        headers={"Content-Disposition": "attachment; filename=dove-config.toml"},
+    )
+
+
+def _dto_to_dict(dto):
+    """Convert a Pydantic DTO to a clean dict, dropping None values and internal fields."""
+    exclude = {'uid', 'state', 'details', 'buffering', 'position', 'duration',
+               'has_video', 'has_audio', 'is_preview', 'show_controls', 'sources',
+               'playlist', 'index', 'total_duration', 'total_position', 'looping',
+               'current_clip', 'order'}
+    result = {}
+    for key, value in dto.model_dump().items():
+        if key in exclude:
+            continue
+        if value is None:
+            continue
+        # Skip empty lists/dicts
+        if isinstance(value, (list, dict)) and not value:
+            continue
+        # Convert UUID to string
+        if hasattr(value, 'hex'):
+            value = str(value)
+        # Ensure numeric types aren't strings
+        if isinstance(value, str):
+            try:
+                if '.' in value:
+                    value = float(value)
+                elif value.isdigit():
+                    value = int(value)
+            except (ValueError, AttributeError):
+                pass
+        result[key] = value
+    return result
+
+
+def _sanitize_key(name):
+    """Convert a display name to a TOML-safe key."""
+    return name.lower().replace(' ', '_').replace('-', '_')[:32] if name else 'unnamed'
+
+
+def _check_admin(request: Request) -> bool:
+    """Check if the current user has admin role. Returns True if auth disabled."""
+    from api.auth import is_auth_enabled, get_current_user, _get_config
+    if not is_auth_enabled():
+        return True
+    try:
+        user = request.state.user if hasattr(request.state, 'user') else None
+        if not user:
+            return False
+        cfg = _get_config()
+        groups_map = cfg.get('groups', {})
+        admin_group = groups_map.get('admin', 'dove-admin')
+        return admin_group in user.groups
+    except Exception:
+        return False
 
 
 def _get_current_preview_fps(handler):

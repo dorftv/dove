@@ -43,8 +43,28 @@ def healthz(request: Request):
 
 
 @router.get("/config", dependencies=[require_role("user")])
-def get_full_config():
-    return config.get_config()
+def get_safe_config():
+    """Return config without sensitive fields (secrets, credentials)."""
+    full = config.get_config()
+    safe = {}
+    for section, values in full.items():
+        if section == 'auth':
+            # Strip secrets, keep only public auth settings
+            safe['auth'] = {k: v for k, v in values.items()
+                           if k not in ('cookie_secret', 'client_secret', 'api_tokens')}
+        elif section == 'proxy':
+            # Strip credentials from proxy configs
+            safe['proxy'] = {}
+            for name, proxy in values.items():
+                safe['proxy'][name] = {k: v for k, v in proxy.items()
+                                       if k not in ('password', 'secret', 'token', 'api_key')}
+        elif section == 'webrtc':
+            # Strip TURN credentials
+            safe['webrtc'] = {k: v for k, v in values.items()
+                             if k not in ('turn_password',)}
+        else:
+            safe[section] = values
+    return safe
 
 @router.get("/config/preview_enabled", dependencies=[require_role("user")])
 def get_preview_enabled():
@@ -237,7 +257,7 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
 
 
 @router.get("/config/export", dependencies=[require_role("supervisor")])
-def export_config(
+async def export_config(
     request: Request,
     inputs: bool = Query(True, description="Include inputs"),
     scenes: bool = Query(True, description="Include scenes and slots"),
@@ -253,7 +273,7 @@ def export_config(
 
     # Global settings — admin only (may contain credentials like cookie_secret)
     if settings:
-        is_admin = _check_admin(request)
+        is_admin = await _check_admin(request)
         if is_admin:
             full_config = config.get_config()
             for section in ('main', 'ui', 'preview', 'resolutions', 'webrtc', 'auth', 'proxy'):
@@ -384,13 +404,13 @@ def _sanitize_key(name):
     return name.lower().replace(' ', '_').replace('-', '_')[:32] if name else 'unnamed'
 
 
-def _check_admin(request: Request) -> bool:
+async def _check_admin(request: Request) -> bool:
     """Check if the current user has admin role. Returns True if auth disabled."""
     from api.auth import is_auth_enabled, get_current_user, _get_config
     if not is_auth_enabled():
         return True
     try:
-        user = request.state.user if hasattr(request.state, 'user') else None
+        user = await get_current_user(request)
         if not user:
             return False
         cfg = _get_config()

@@ -98,6 +98,27 @@ async def update_pipe(data, websocket: WebSocket):
     if not pipeline:
         logger.log(f"WebSocket update for unknown pipeline {uid}", level='WARNING')
         return
+
+    # Role check: determine required role from the pipeline's category, not client data
+    if is_auth_enabled():
+        user_groups = getattr(websocket.state, 'user_groups', [])
+        from api.auth import _get_config as _get_auth_config
+        auth_cfg = _get_auth_config()
+        groups_map = auth_cfg.get('groups', {})
+        admin_group = groups_map.get('admin', 'dove-admin')
+        if admin_group not in user_groups:
+            # Resolve entity type from pipeline handler, not from client message
+            entity_category = handler._get_category(pipeline)
+            required_role = 'user'
+            if entity_category == 'mixers':
+                required_role = 'supervisor'
+            elif entity_category in ('outputs', 'encoders'):
+                required_role = 'outputs'
+            required_group = groups_map.get(required_role, required_role)
+            if required_group not in user_groups:
+                logger.log(f"WS update denied: {entity_category} requires {required_role}", level='WARNING')
+                return
+
     await pipeline.update(data['data'])
 
 

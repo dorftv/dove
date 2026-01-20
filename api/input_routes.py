@@ -36,7 +36,10 @@ async def get_all_inputs(request: Request):
 @router.delete("/inputs", response_model=SuccessDTO, dependencies=[require_role("user")])
 async def delete(request: Request, data: InputDeleteDTO):
     handler: "PipelineHandler" = request.app.state._state["pipeline_handler"]
-    if handler.get_pipeline("inputs", data.uid) is not None:
+    pipeline = handler.get_pipeline("inputs", data.uid)
+    if pipeline is not None:
+        if getattr(pipeline.data, 'locked', False):
+            raise HTTPException(status_code=403, detail="Input is locked")
         # delete_pipeline handles preview cleanup + mixer unlinking + DELETE broadcasts
         handler.delete_pipeline("inputs", data.uid)
 

@@ -603,8 +603,6 @@ class PlaylistInput(Uridecodebin3Input):
             item = self.data.playlist[next_idx]
             if item.type == "video":
                 uri = item.uri
-                if uri.startswith("file://") and not os.path.isfile(uri.replace("file://", "")):
-                    return
                 self._do_prestart_video(uri)
 
     def _do_prestart_video(self, uri):
@@ -698,14 +696,10 @@ class PlaylistInput(Uridecodebin3Input):
                 self.data.current_clip = item
 
             if item.type == "video":
-                if uri.startswith("file://"):
-                    if os.path.isfile(uri.replace("file://", "")):
-                        return "video", uri
-                    logger.log(f"File not found: {uri}", level='WARNING')
-                    continue
-                else:
-                    # Let uridecodebin3 handle HTTP/SRT/RTMP errors
-                    return "video", uri
+                # Let uridecodebin3 handle all URIs (file/HTTP/SRT/RTMP).
+                # No os.path.isfile() — it blocks GLib thread on network storage.
+                # Missing files are caught by uridecodebin3 error → handle_error → skip.
+                return "video", uri
             elif item.type == "html":
                 return "html", uri
             else:

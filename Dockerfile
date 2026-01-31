@@ -102,7 +102,13 @@ RUN apk upgrade --no-cache \
 COPY . /app
 WORKDIR /app
 
-RUN     pip install . --ignore-installed --break-system-packages
+RUN pip install . --ignore-installed --break-system-packages
+
+# Non-root user with video group (GPU access via /dev/dri)
+RUN addgroup -S dove && adduser -S -G dove dove \
+    && addgroup dove video \
+    && mkdir -p /var/dove/hls /crashes \
+    && chown -R dove:dove /app /var/dove /crashes
 
 EXPOSE 5000
 
@@ -111,4 +117,5 @@ ENV EGL_LOG_LEVEL=fatal
 ENV NO_AT_BRIDGE=1
 ENV JSC_SIGNAL_FOR_GC=14
 
+USER dove
 ENTRYPOINT ["/app/entrypoint.sh"]

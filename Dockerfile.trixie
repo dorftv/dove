@@ -41,6 +41,11 @@ RUN pip install . --ignore-installed --break-system-packages && \
     apt-get remove -y python3-dev libcairo2-dev libgirepository1.0-dev && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Non-root user with video group (GPU access via /dev/dri)
+RUN useradd -r -m -G video dove \
+    && mkdir -p /var/dove/hls /crashes \
+    && chown -R dove:dove /app /var/dove /crashes
+
 # Suppress harmless warnings from WPE/WebKit/Mesa in headless container
 ENV EGL_LOG_LEVEL=fatal
 ENV NO_AT_BRIDGE=1
@@ -48,4 +53,5 @@ ENV XDG_RUNTIME_DIR=/tmp
 
 EXPOSE 5000
 
+USER dove
 ENTRYPOINT ["/app/entrypoint.sh"]

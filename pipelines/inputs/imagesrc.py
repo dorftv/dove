@@ -14,6 +14,7 @@ class ImagesrcInput(Input):
     def build_bin(self) -> Gst.Bin:
         uid = self.data.uid
         location = self.data.location
+        self.data.has_audio = False
 
         container = Gst.Bin.new(f"input_bin_{uid}")
 
@@ -44,41 +45,10 @@ class ImagesrcInput(Input):
         vqueue_sync.set_property("leaky", 2)
         vqueue_sync.set_property("max-size-buffers", 1)
 
-        # --- Audio chain: silent audiotestsrc → convert → tee ---
-        audiotestsrc = Gst.ElementFactory.make("audiotestsrc", f"audiotestsrc_{uid}")
-        audiotestsrc.set_property("do-timestamp", True)
-        audiotestsrc.set_property("is-live", True)
-        audiotestsrc.set_property("wave", 4)  # silence
-        audiotestsrc.set_property("volume", 0)
-
-        volume = Gst.ElementFactory.make("volume", f"volume_{uid}")
-        volume.set_property("volume", self.data.volume)
-        audioconvert = Gst.ElementFactory.make("audioconvert", f"audioconvert_{uid}")
-        audiorate = Gst.ElementFactory.make("audiorate", f"audiorate_{uid}")
-        audiorate.set_property("skip-to-first", True)
-        audioresample = Gst.ElementFactory.make("audioresample", f"audioresample_{uid}")
-        acapsfilter = Gst.ElementFactory.make("capsfilter", f"acapsfilter_{uid}")
-        acapsfilter.set_property("caps", Gst.Caps.from_string(self.get_caps('audio')))
-        level = Gst.ElementFactory.make("level", f"level_{uid}")
-        level.set_property("interval", 200000000)
-        level.set_property("post-messages", True)
-
-        audio_tee = Gst.ElementFactory.make("tee", f"audio_tee_{uid}")
-        audio_tee.set_property("allow-not-linked", True)
-
-        audio_fakesink = Gst.ElementFactory.make("fakesink", f"audio_fakesink_{uid}")
-        audio_fakesink.set_property("sync", False)
-        audio_fakesink.set_property("async", False)
-        aqueue_sync = Gst.ElementFactory.make("queue", f"aqueue_sync_{uid}")
-        aqueue_sync.set_property("leaky", 2)
-        aqueue_sync.set_property("max-size-buffers", 1)
-
         # --- Add all elements ---
         for elem in [filesrc, decodebin, imagefreeze,
                      videoconvert, videoscale, videorate, vcapsfilter,
-                     video_tee, vqueue_sync, video_fakesink,
-                     audiotestsrc, volume, audioconvert, audiorate, audioresample,
-                     acapsfilter, level, audio_tee, aqueue_sync, audio_fakesink]:
+                     video_tee, vqueue_sync, video_fakesink]:
             container.add(elem)
 
         # --- Link static chains ---
@@ -91,16 +61,6 @@ class ImagesrcInput(Input):
         vcapsfilter.link(video_tee)
         video_tee.link(vqueue_sync)
         vqueue_sync.link(video_fakesink)
-
-        audiotestsrc.link(volume)
-        volume.link(audioconvert)
-        audioconvert.link(audiorate)
-        audiorate.link(audioresample)
-        audioresample.link(acapsfilter)
-        acapsfilter.link(level)
-        level.link(audio_tee)
-        audio_tee.link(aqueue_sync)
-        aqueue_sync.link(audio_fakesink)
 
         # --- Dynamic pad linking ---
         video_linked = [False]
@@ -131,8 +91,8 @@ class ImagesrcInput(Input):
 
         # --- Store references ---
         self.video_tee = video_tee
-        self.audio_tee = audio_tee
-        self.volume_element = volume
+        self.audio_tee = None
+        self.volume_element = None
 
         logger.log(f"imagesrc bin created for {uid}: location={location}", level='DEBUG')
         return container

@@ -353,16 +353,19 @@ class PipelineHandler(object):
                     if not ensure_video_encoder():
                         continue
 
-                    audio_enc = Encoder(data=EncoderEntityDTO(
-                        name="Preview Audio",
-                        type="audio", element="opusenc",
-                        src=src_uid, is_preview=True,
-                        options="bitrate=64000 frame-size=10",
-                    ))
-                    if not self._add_pipeline_direct(audio_enc):
-                        continue
+                    # Skip audio encoder if the source has no audio tee
+                    has_audio_tee = getattr(pipeline, 'audio_tee', None) is not None
+                    if has_audio_tee:
+                        audio_enc = Encoder(data=EncoderEntityDTO(
+                            name="Preview Audio",
+                            type="audio", element="opusenc",
+                            src=src_uid, is_preview=True,
+                            options="bitrate=64000 frame-size=10",
+                        ))
+                        if not self._add_pipeline_direct(audio_enc):
+                            continue
 
-                    logger.log(f"Created WebRTC preview encoders for {category} {pipeline.data.uid}", level='DEBUG')
+                    logger.log(f"Created WebRTC preview encoders for {category} {pipeline.data.uid} (audio={has_audio_tee})", level='DEBUG')
                 except Exception as e:
                     logger.log(f"Failed to create WebRTC preview encoders for {pipeline.data.uid}: {e}", level='ERROR')
                     import traceback
@@ -376,13 +379,15 @@ class PipelineHandler(object):
                     if not ensure_video_encoder():
                         continue
 
-                    audio_enc = Encoder(data=EncoderEntityDTO(
-                        name="Preview Audio",
-                        type="audio", element="fdkaacenc",
-                        src=src_uid, is_preview=True,
-                    ))
-                    if not self._add_pipeline_direct(audio_enc):
-                        continue
+                    has_audio_tee = getattr(pipeline, 'audio_tee', None) is not None
+                    if has_audio_tee:
+                        audio_enc = Encoder(data=EncoderEntityDTO(
+                            name="Preview Audio",
+                            type="audio", element="fdkaacenc",
+                            src=src_uid, is_preview=True,
+                        ))
+                        if not self._add_pipeline_direct(audio_enc):
+                            continue
 
                     preview = hlssink2Output(data=hlssink2OutputDTO(
                         name="Preview",

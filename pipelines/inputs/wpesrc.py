@@ -43,14 +43,12 @@ class WpesrcInput(Input):
                 f"{self.get_caps('audio')} ! {self.get_audio_end()} "
             )
         else:
+            self.data.has_audio = False
             video_str = (
                 f' wpesrc location="{self.data.location or ""}" draw-background={self.data.draw_background} '
                 f"name=wpesrc_{uid} ! videoconvert ! videoscale name=videoscale_{uid} add-borders={add_borders} ! videorate skip-to-first=true ! "
                 f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA ! "
                 f"videoconvert ! {self.get_video_end()} "
             )
-            audio_str = (
-                f" audiotestsrc wave=4 volume=0 do-timestamp=true is-live=true "
-                f"name=audiotestsrc_{uid} ! {self.get_caps('audio')} ! {self.get_audio_end()} "
-            )
+            audio_str = ""
         return video_str + audio_str

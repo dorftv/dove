@@ -104,7 +104,7 @@ class WebrtcPreviewManager:
             try:
                 logger.log(f"WHEP create_elements attempt={attempt} for {self.source_uid[:8]}", level='WARNING')
                 video_enc, audio_enc = self._find_preview_encoders()
-                if not video_enc or not audio_enc:
+                if not video_enc:
                     if attempt < 10:
                         GLib.timeout_add(200, lambda a=attempt+1: create_elements(a) or False)
                         return False
@@ -113,26 +113,31 @@ class WebrtcPreviewManager:
                     return False
 
                 video_tee = video_enc.tee
-                audio_tee = audio_enc.tee
-                if not video_tee or not audio_tee:
-                    logger.log(f"WHEP: encoder tees not available", level='ERROR')
+                audio_tee = audio_enc.tee if audio_enc else None
+                if not video_tee:
+                    logger.log(f"WHEP: video encoder tee not available", level='ERROR')
                     elements_ready.set()
                     return False
 
+                has_audio = audio_enc is not None and audio_tee is not None
                 pipeline = get_pipeline()
                 pid = peer_id[:8]
 
                 # --- Create proxysinks in main pipeline ---
                 v_psink = Gst.ElementFactory.make("proxysink", f"psink_v_{pid}")
-                a_psink = Gst.ElementFactory.make("proxysink", f"psink_a_{pid}")
-                for ps in (v_psink, a_psink):
-                    pipeline.add(ps)
-                    ps.sync_state_with_parent()
-
+                pipeline.add(v_psink)
+                v_psink.sync_state_with_parent()
                 video_tee_pad = video_tee.request_pad_simple("src_%u")
-                audio_tee_pad = audio_tee.request_pad_simple("src_%u")
                 video_tee_pad.link(v_psink.get_static_pad("sink"))
-                audio_tee_pad.link(a_psink.get_static_pad("sink"))
+
+                a_psink = None
+                audio_tee_pad = None
+                if has_audio:
+                    a_psink = Gst.ElementFactory.make("proxysink", f"psink_a_{pid}")
+                    pipeline.add(a_psink)
+                    a_psink.sync_state_with_parent()
+                    audio_tee_pad = audio_tee.request_pad_simple("src_%u")
+                    audio_tee_pad.link(a_psink.get_static_pad("sink"))
 
                 # --- Create viewer pipeline ---
                 viewer_pipe = Gst.Pipeline.new(f"viewer_{pid}")
@@ -140,13 +145,10 @@ class WebrtcPreviewManager:
                 viewer_pipe.set_base_time(pipeline.get_base_time())
                 viewer_pipe.set_start_time(Gst.CLOCK_TIME_NONE)
 
-                # --- Create proxysrc elements ---
+                # --- Create proxysrc + payloader elements ---
                 v_psrc = Gst.ElementFactory.make("proxysrc", f"psrc_v_{pid}")
-                a_psrc = Gst.ElementFactory.make("proxysrc", f"psrc_a_{pid}")
                 v_psrc.set_property("proxysink", v_psink)
-                a_psrc.set_property("proxysink", a_psink)
 
-                # --- Create webrtcbin ---
                 webrtcbin = Gst.ElementFactory.make("webrtcbin", f"wb_{pid}")
                 if not webrtcbin:
                     elements_ready.set()
@@ -155,7 +157,6 @@ class WebrtcPreviewManager:
                 ice_agent_ref = configure_webrtcbin(webrtcbin)
                 webrtcbin.set_property("latency", 50)
 
-                # --- Create per-viewer elements ---
                 video_pt, audio_pt = _extract_offer_pts(sdp_offer)
 
                 vq = Gst.ElementFactory.make("queue", f"pvq_{pid}")
@@ -167,26 +168,39 @@ class WebrtcPreviewManager:
                 if video_pt:
                     vpay.set_property("pt", video_pt)
 
-                aq = Gst.ElementFactory.make("queue", f"paq_{pid}")
-                aq.set_property("leaky", 2)
-                aq.set_property("max-size-buffers", 1)
-                apay = Gst.ElementFactory.make("rtpopuspay", f"apay_{pid}")
-                if audio_pt:
-                    apay.set_property("pt", audio_pt)
+                # --- Build viewer pipeline ---
+                viewer_elements = [v_psrc, vq, vpay, webrtcbin]
 
-                # --- Add all to viewer pipeline ---
-                for e in (v_psrc, vq, vpay, a_psrc, aq, apay, webrtcbin):
+                a_psrc = None
+                aq = None
+                apay = None
+                wb_audio_sink = None
+                if has_audio:
+                    a_psrc = Gst.ElementFactory.make("proxysrc", f"psrc_a_{pid}")
+                    a_psrc.set_property("proxysink", a_psink)
+                    aq = Gst.ElementFactory.make("queue", f"paq_{pid}")
+                    aq.set_property("leaky", 2)
+                    aq.set_property("max-size-buffers", 1)
+                    apay = Gst.ElementFactory.make("rtpopuspay", f"apay_{pid}")
+                    if audio_pt:
+                        apay.set_property("pt", audio_pt)
+                    viewer_elements.extend([a_psrc, aq, apay])
+
+                for e in viewer_elements:
                     viewer_pipe.add(e)
 
-                # --- Link chains ---
+                # --- Link video chain ---
                 v_psrc.link(vq)
                 vq.link(vpay)
-                a_psrc.link(aq)
-                aq.link(apay)
                 wb_video_sink = webrtcbin.request_pad_simple("sink_%u")
-                wb_audio_sink = webrtcbin.request_pad_simple("sink_%u")
                 vpay.get_static_pad("src").link(wb_video_sink)
-                apay.get_static_pad("src").link(wb_audio_sink)
+
+                # --- Link audio chain (optional) ---
+                if has_audio:
+                    a_psrc.link(aq)
+                    aq.link(apay)
+                    wb_audio_sink = webrtcbin.request_pad_simple("sink_%u")
+                    apay.get_static_pad("src").link(wb_audio_sink)
 
                 # --- Start viewer pipeline ---
                 viewer_pipe.set_state(Gst.State.PLAYING)
@@ -489,20 +503,23 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                         # Create a temporary manager to find encoders
                         new_mgr = WebrtcPreviewManager(new_source)
                     new_video_enc, new_audio_enc = new_mgr._find_preview_encoders()
-                    if not new_video_enc or not new_audio_enc:
+                    if not new_video_enc:
                         loop.call_soon_threadsafe(result_future.set_result, False)
                         return
 
                     new_video_tee = new_video_enc.tee
-                    new_audio_tee = new_audio_enc.tee
-                    if not new_video_tee or not new_audio_tee:
+                    new_audio_tee = new_audio_enc.tee if new_audio_enc else None
+                    if not new_video_tee:
                         loop.call_soon_threadsafe(result_future.set_result, False)
                         return
 
                     peer = old_mgr.peers[peer_id]
 
-                    # Swap tee pads for each media type
-                    for media, new_tee in [('video', new_video_tee), ('audio', new_audio_tee)]:
+                    # Swap tee pads for each media type (audio optional)
+                    swap_list = [('video', new_video_tee)]
+                    if new_audio_tee:
+                        swap_list.append(('audio', new_audio_tee))
+                    for media, new_tee in swap_list:
                         old_tee = peer.get(f'{media}_tee')
                         old_pad = peer.get(f'{media}_tee_pad')
                         psink = peer.get(f'{media}_proxysink')

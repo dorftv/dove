@@ -77,13 +77,12 @@ class WhipInput(Input):
         return self._publisher_connected
 
     def build_pipeline_str(self) -> str:
-        """Fallback: black video + silence. Both needed for preview encoder creation."""
+        """Fallback: black video until publisher connects. Video-only input."""
         uid = self.data.uid
+        self.data.has_audio = False
         return (
             f" videotestsrc do-timestamp=true is-live=true pattern=2 "
             f" name=videotestsrc_{uid} ! {self.get_caps('video')} ! {self.get_video_end()} "
-            f" audiotestsrc do-timestamp=true is-live=true wave=4 "
-            f" name=audiotestsrc_{uid} ! {self.get_caps('audio')} ! {self.get_audio_end()} "
         )
 
     # ── SDP negotiation ──────────────────────────────────────────────

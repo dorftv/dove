@@ -12,9 +12,7 @@ webrtcbin element (~52KB) is kept alive to prevent GC finalize segfault in libni
 
 import asyncio
 import re
-import time
 import uuid
-import threading
 from fastapi import APIRouter, Request, Response
 
 import gi
@@ -96,27 +94,24 @@ class WebrtcPreviewManager:
         return video_enc, audio_enc
 
     def setup_peer(self, peer_id: str, sdp_offer: str, answer_future, loop, host_ip: str = None):
-        """Create per-viewer elements on GLib thread, SDP negotiation on worker thread."""
-        elements_ready = threading.Event()
-        setup_ok = [False]
-
+        """Create per-viewer elements + negotiate SDP, all on the GLib thread."""
         def create_elements(attempt=0):
             try:
-                logger.log(f"WHEP create_elements attempt={attempt} for {self.source_uid[:8]}", level='WARNING')
+                logger.log(f"WHEP create_elements attempt={attempt} for {self.source_uid[:8]}", level='DEBUG')
                 video_enc, audio_enc = self._find_preview_encoders()
                 if not video_enc:
                     if attempt < 10:
                         GLib.timeout_add(200, lambda a=attempt+1: create_elements(a) or False)
                         return False
                     logger.log(f"WHEP: no preview encoders for {self.source_uid}", level='ERROR')
-                    elements_ready.set()
+                    loop.call_soon_threadsafe(answer_future.set_result, None)
                     return False
 
                 video_tee = video_enc.tee
                 audio_tee = audio_enc.tee if audio_enc else None
                 if not video_tee:
                     logger.log(f"WHEP: video encoder tee not available", level='ERROR')
-                    elements_ready.set()
+                    loop.call_soon_threadsafe(answer_future.set_result, None)
                     return False
 
                 has_audio = audio_enc is not None and audio_tee is not None
@@ -151,7 +146,8 @@ class WebrtcPreviewManager:
 
                 webrtcbin = Gst.ElementFactory.make("webrtcbin", f"wb_{pid}")
                 if not webrtcbin:
-                    elements_ready.set()
+                    logger.log("WHEP: webrtcbin element not available", level='ERROR')
+                    loop.call_soon_threadsafe(answer_future.set_result, None)
                     return False
 
                 ice_agent_ref = configure_webrtcbin(webrtcbin)
@@ -226,94 +222,98 @@ class WebrtcPreviewManager:
                     webrtcbin.connect('on-ice-candidate', self._on_ice_candidate, peer_id),
                     webrtcbin.connect('notify::ice-connection-state', self._on_ice_state, peer_id),
                 ]
-                setup_ok[0] = True
-                elements_ready.set()
+
+                self._negotiate_sdp(peer_id, sdp_offer, answer_future, loop, host_ip)
             except Exception as e:
                 import traceback
                 logger.log(f"WHEP create_elements error: {e}\n{traceback.format_exc()}", level='ERROR')
-                elements_ready.set()
+                loop.call_soon_threadsafe(answer_future.set_result, None)
             return False
 
-        def sdp_worker():
+        GLib.idle_add(create_elements)
+
+    def _negotiate_sdp(self, peer_id: str, sdp_offer: str, answer_future, loop, host_ip: str = None):
+        """SDP negotiation on GLib thread — same pattern as pipelines/inputs/whip.py."""
+        peer = self.peers.get(peer_id)
+        if not peer:
+            loop.call_soon_threadsafe(answer_future.set_result, None)
+            return
+        webrtcbin = peer['webrtcbin']
+
+        # Step 1: set remote description (fire-and-forget)
+        patched = patch_offer_h264_profile(sdp_offer)
+        res, sdpmsg = GstSdp.SDPMessage.new_from_text(patched)
+        if res != GstSdp.SDPResult.OK:
+            logger.log("WHEP: failed to parse SDP offer", level='ERROR')
+            self._cleanup_peer(peer_id)
+            loop.call_soon_threadsafe(answer_future.set_result, None)
+            return
+
+        offer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.OFFER, sdpmsg)
+        set_remote_promise = Gst.Promise.new()
+        webrtcbin.emit('set-remote-description', offer, set_remote_promise)
+        set_remote_promise.interrupt()
+
+        # Step 2: create answer (callback fires when ready)
+        def on_answer_created(answer_promise):
             try:
-                got_it = elements_ready.wait(timeout=5)
-                if not setup_ok[0]:
-                    # Test if GLib is responsive
-                    glib_probe = threading.Event()
-                    GLib.idle_add(lambda: glib_probe.set() or False)
-                    glib_alive = glib_probe.wait(timeout=2)
-                    logger.log(f"WHEP sdp_worker: elements not ready (waited={got_it}, glib_alive={glib_alive}) for {self.source_uid[:8]}", level='ERROR')
-                    loop.call_soon_threadsafe(answer_future.set_result, None)
-                    return
-
-                peer = self.peers.get(peer_id)
-                if not peer:
-                    loop.call_soon_threadsafe(answer_future.set_result, None)
-                    return
-                webrtcbin = peer['webrtcbin']
-
-                # 1. Set remote description
-                patched = patch_offer_h264_profile(sdp_offer)
-                res, sdpmsg = GstSdp.SDPMessage.new_from_text(patched)
-                if res != GstSdp.SDPResult.OK:
-                    logger.log(f"WHEP: failed to parse SDP offer", level='ERROR')
-                    GLib.idle_add(lambda: self._cleanup_peer(peer_id) or False)
-                    loop.call_soon_threadsafe(answer_future.set_result, None)
-                    return
-
-                offer = GstWebRTC.WebRTCSessionDescription.new(GstWebRTC.WebRTCSDPType.OFFER, sdpmsg)
-                promise = Gst.Promise.new()
-                webrtcbin.emit('set-remote-description', offer, promise)
-                promise.wait()
-
-                # 2. Create answer
-                promise = Gst.Promise.new()
-                webrtcbin.emit('create-answer', None, promise)
-                promise.wait()
-                reply = promise.get_reply()
-                if not reply or not reply.get_value('answer'):
+                reply = answer_promise.get_reply()
+                answer_desc = reply.get_value('answer') if reply else None
+                # GObject wrapper evaluates as falsy — must use `is None`
+                if answer_desc is None:
                     logger.log(f"WHEP: no answer for peer {peer_id[:8]}", level='ERROR')
-                    GLib.idle_add(lambda: self._cleanup_peer(peer_id) or False)
+                    self._cleanup_peer(peer_id)
                     loop.call_soon_threadsafe(answer_future.set_result, None)
                     return
 
-                # 3. Set local description (triggers ICE gathering)
-                answer = reply.get_value('answer')
-                promise = Gst.Promise.new()
-                webrtcbin.emit('set-local-description', answer, promise)
-                promise.wait()
+                # Step 3: set local description (fire-and-forget) — triggers ICE gathering
+                set_local_promise = Gst.Promise.new()
+                webrtcbin.emit('set-local-description', answer_desc, set_local_promise)
+                set_local_promise.interrupt()
 
-                # 4. Wait for ICE gathering (poll at 10ms for fast response)
-                for _ in range(200):
-                    if webrtcbin.get_property('ice-gathering-state') == GstWebRTC.WebRTCICEGatheringState.COMPLETE:
-                        break
-                    time.sleep(0.01)
+                # Step 4: poll ICE gathering until complete
+                poll_count = [0]
 
-                # 5. Build final SDP answer
-                local_desc = webrtcbin.get_property('local-description')
-                if not local_desc:
-                    loop.call_soon_threadsafe(answer_future.set_result, None)
-                    return
+                def poll_ice_gathering():
+                    poll_count[0] += 1
+                    gathering_state = webrtcbin.get_property('ice-gathering-state')
+                    if gathering_state == GstWebRTC.WebRTCICEGatheringState.COMPLETE or poll_count[0] >= 200:
+                        self._resolve_sdp_answer(peer_id, host_ip, loop, answer_future)
+                        return False
+                    return True
 
-                sdp_text = local_desc.sdp.as_text()
-                peer = self.peers.get(peer_id)
-                candidates = list(peer.get('ice_candidates', [])) if peer else []
-                if peer:
-                    peer['ice_candidates'] = []
-                sdp_text = inject_ice_candidates(sdp_text, candidates)
-                if host_ip:
-                    sdp_text = rewrite_sdp_candidates(sdp_text, host_ip)
-
-                loop.call_soon_threadsafe(answer_future.set_result, sdp_text)
+                GLib.timeout_add(10, poll_ice_gathering)
 
             except Exception as e:
                 import traceback
-                logger.log(f"WHEP sdp_worker error: {e}\n{traceback.format_exc()}", level='ERROR')
-                GLib.idle_add(lambda: self._cleanup_peer(peer_id) or False)
+                logger.log(f"WHEP on_answer_created error: {e}\n{traceback.format_exc()}", level='ERROR')
+                self._cleanup_peer(peer_id)
                 loop.call_soon_threadsafe(answer_future.set_result, None)
 
-        GLib.idle_add(create_elements)
-        threading.Thread(target=sdp_worker, daemon=True).start()
+        create_answer_promise = Gst.Promise.new_with_change_func(on_answer_created)
+        webrtcbin.emit('create-answer', None, create_answer_promise)
+
+    def _resolve_sdp_answer(self, peer_id: str, host_ip, loop, answer_future):
+        """Build final SDP answer with ICE candidates. Called on GLib thread."""
+        peer = self.peers.get(peer_id)
+        if not peer:
+            loop.call_soon_threadsafe(answer_future.set_result, None)
+            return
+        webrtcbin = peer['webrtcbin']
+
+        local_desc = webrtcbin.get_property('local-description')
+        if local_desc is None:
+            loop.call_soon_threadsafe(answer_future.set_result, None)
+            return
+
+        sdp_text = local_desc.sdp.as_text()
+        candidates = list(peer.get('ice_candidates', []))
+        peer['ice_candidates'] = []
+        sdp_text = inject_ice_candidates(sdp_text, candidates)
+        if host_ip:
+            sdp_text = rewrite_sdp_candidates(sdp_text, host_ip)
+
+        loop.call_soon_threadsafe(answer_future.set_result, sdp_text)
 
     def _on_ice_state(self, webrtcbin, pspec, peer_id):
         try:

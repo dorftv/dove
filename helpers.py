@@ -16,7 +16,6 @@ def get_default_volume() -> int:
     return config.get_default_volume()
 
 
-# generates unique IDs for DTOS
 def generateId(prefix="", start=1):
     """Name generator that checks existing names to avoid duplicates.
     Set .existing to a callable returning current names before first use.

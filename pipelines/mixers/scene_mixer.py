@@ -68,8 +68,6 @@ class sceneMixer(Mixer):
                 except Exception as e:
                     logger.log(f"Failed to link initial source at index {i}: {e}", level='ERROR')
 
-        # Note: Preview is created by add_pipeline via _create_preview_for
-
     pass
 
     async def update(self, data):
@@ -101,7 +99,12 @@ class sceneMixer(Mixer):
             # Handle source linking/unlinking (must run on GLib thread for GStreamer ops)
             if 'src' in data:
                 if src and src != "None":
-                    bridge.run_sync_in_glib(lambda: self.link_source(index, UUID(src)))
+                    try:
+                        src_uid = UUID(str(src))
+                    except ValueError:
+                        logger.log(f"scene update: invalid src UUID {src!r}", level='WARNING')
+                        return
+                    bridge.run_sync_in_glib(lambda: self.link_source(index, src_uid))
                 else:
                     bridge.run_sync_in_glib(lambda: self.unlink_source(index))
 

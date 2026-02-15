@@ -31,18 +31,7 @@ def _task_exception_handler(task: asyncio.Task):
 
 
 class EventLoopBridge:
-    """
-    Singleton that bridges GLib MainLoop and asyncio event loop.
-
-    Usage:
-        bridge = EventLoopBridge.get_instance()
-
-        # From GLib callback, schedule async work:
-        bridge.schedule_async(manager.broadcast("UPDATE", data))
-
-        # From async context, run in GLib loop:
-        bridge.run_sync_in_glib(some_glib_function, arg1, arg2)
-    """
+    """Singleton bridging GLib MainLoop and asyncio event loop."""
 
     _instance: Optional['EventLoopBridge'] = None
     _lock = threading.Lock()
@@ -61,25 +50,12 @@ class EventLoopBridge:
         return cls._instance
 
     def set_asyncio_loop(self, loop: asyncio.AbstractEventLoop, thread: threading.Thread):
-        """
-        Register the asyncio event loop (called from API thread startup).
-
-        Args:
-            loop: The asyncio event loop running in the API thread
-            thread: The thread running the asyncio event loop
-        """
+        """Register the asyncio event loop (called from API thread startup)."""
         self._asyncio_loop = loop
         self._asyncio_thread = thread
 
     def schedule_async(self, coro: Coroutine) -> None:
-        """
-        Schedule an async coroutine from a GLib callback (non-async context).
-
-        Thread-safe: Uses call_soon_threadsafe to schedule on asyncio loop.
-
-        Args:
-            coro: The coroutine to schedule
-        """
+        """Schedule an async coroutine from a GLib callback. Thread-safe via call_soon_threadsafe."""
         if self._asyncio_loop is None:
             # Event loop not yet registered, silently skip
             return
@@ -96,15 +72,7 @@ class EventLoopBridge:
             self._asyncio_loop.call_soon_threadsafe(_create)
 
     def run_sync_in_glib(self, func: Callable, *args) -> None:
-        """
-        Schedule a synchronous function to run in GLib main loop.
-
-        Use from asyncio context when you need to interact with GStreamer.
-
-        Args:
-            func: The function to run in GLib context
-            *args: Arguments to pass to the function
-        """
+        """Schedule a synchronous function to run in GLib main loop (from asyncio context)."""
         GLib.idle_add(func, *args)
 
 
@@ -113,16 +81,7 @@ bridge = EventLoopBridge.get_instance()
 
 
 def safe_broadcast(channel: str, data: Any, type: str = "") -> None:
-    """
-    Broadcast to WebSocket clients from any context (GLib or asyncio).
-
-    Automatically detects context and uses appropriate scheduling.
-
-    Args:
-        channel: The broadcast channel (e.g., "UPDATE", "CREATE", "DELETE")
-        data: The data to broadcast (must have .dict() method)
-        type: Optional type override (e.g., "input", "output", "mixer")
-    """
+    """Broadcast to WebSocket clients from any context (GLib or asyncio); auto-detects scheduling."""
     from api.websockets import manager
 
     coro = manager.broadcast(channel, data, type)

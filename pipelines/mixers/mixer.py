@@ -33,7 +33,6 @@ class Mixer(GSTBase, ABC):
         self._ghost_pad_counter = 0
     _ghost_pad_counter: int = 0  # Counter for unique ghost pad names
 
-    # CHANGED: Output to tee instead of interpipesink
     def get_video_end(self) -> str:
         return f" queue max-size-time=300000000 leaky=downstream max-size-buffers=5 ! tee name=scene_video_tee_{self.data.uid} allow-not-linked=true "
 
@@ -147,11 +146,7 @@ class Mixer(GSTBase, ABC):
                                         element_map=VIDEO_FILTER_ELEMENT_MAP, audio=False)
 
     def _create_slot_filter_elements(self, index, enabled_filters, av='audio'):
-        """Create per-slot filter elements and add them to the pipeline.
-
-        Returns (pre, caps, filters_list, post) or None on failure.
-        av: 'audio' or 'video'
-        """
+        """Create per-slot filter elements. Returns (pre, caps, filters_list, post) or None."""
         # Clean up any existing slot filters first (idempotent)
         self._cleanup_slot_filter_elements(index, av)
         uid = self.data.uid
@@ -220,11 +215,7 @@ class Mixer(GSTBase, ABC):
         self._update_slot_filters(index, new_filters, av='video')
 
     def _update_slot_filters(self, index, new_filters, av='audio'):
-        """Update per-slot filters at runtime (audio or video).
-
-        Parameter-only changes: set_property on existing elements.
-        Structural changes: pad block on queue src, remove old, insert new, unblock.
-        """
+        """Update per-slot filters at runtime. Param-only: set_property; structural: pad-block + swap."""
         uid = self.data.uid
         mixerInput = self.data.getMixerInputDTO(index)
         if not mixerInput:
@@ -260,11 +251,7 @@ class Mixer(GSTBase, ABC):
         setattr(mixerInput, f'{av}_filters', new_filters)
 
     def _rebuild_slot_filter_chain(self, index, new_filters, av='audio'):
-        """Replace per-slot filter elements in the running pipeline.
-
-        Uses pad blocking on queue src pad to safely swap filter elements.
-        av: 'audio' or 'video'
-        """
+        """Replace per-slot filter elements in the running pipeline via pad blocking on the queue src."""
         uid = self.data.uid
         queue = self._slot_queues.get(index, {}).get(av)
         if not queue:
@@ -877,7 +864,11 @@ class Mixer(GSTBase, ABC):
         src = data.src
         if src and str(src) != "None":
             if isinstance(src, str):
-                src = UUID(src)
+                try:
+                    src = UUID(src)
+                except ValueError:
+                    logger.log(f"add_source: invalid UUID {src!r}", level='WARNING')
+                    return self.data
             # Schedule on GLib thread for GStreamer operations
             bridge.run_sync_in_glib(lambda: self.link_source(index, src))
         return self.data

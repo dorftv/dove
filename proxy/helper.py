@@ -6,15 +6,7 @@ config = ConfigReader()
 
 
 async def fetch_proxy_items(proxy_type, fetcher_fn):
-    """Generic async proxy fetcher.
-
-    Reads all configured endpoints for proxy_type, calls fetcher_fn for each,
-    merges results. Single httpx.AsyncClient shared across all endpoints.
-
-    Args:
-        proxy_type: Config key (e.g., 'srtrelay', 'playlist')
-        fetcher_fn: async def(name, details, client) -> list[dict]
-    """
+    """Generic async proxy fetcher: calls fetcher_fn for each configured endpoint, merges results."""
     names = config.get_proxy(proxy_type)
     results = []
     async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:

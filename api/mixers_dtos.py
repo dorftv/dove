@@ -40,7 +40,6 @@ class mixerInputsDTO(BaseModel):
 
 class mixerBaseDTO(BaseModel):
     uid: Annotated[Optional[UUID], Field(default_factory=lambda: uuid4())]
-    #sources:  Optional[List[mixerInputDTO]] = Field(default_factory=list)
     sources: Optional[List[mixerInputDTO]] = []
 
     preview: Optional[bool] = True

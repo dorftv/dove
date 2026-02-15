@@ -76,13 +76,17 @@ class programMixer(Mixer):
                 except Exception as e:
                     logger.log(f"Failed to link initial source at index {i}: {e}", level='ERROR')
 
-        # Note: Preview is created by add_pipeline via _create_preview_for
-
     async def cut_program(self, data: mixerCutProgramDTO):
         """Switch program source using A/B slots (last-wins with cooldown)."""
         from event_loop_bridge import bridge
 
-        src_uid = UUID(str(data.src)) if data.src and data.src != "None" else None
+        src_uid = None
+        if data.src and data.src != "None":
+            try:
+                src_uid = UUID(str(data.src))
+            except ValueError:
+                logger.log(f"cut_program: invalid UUID {data.src!r}", level='WARNING')
+                return data
 
         # Store latest request — rapid clicks overwrite, only last one executes
         self._pending_transition = {
@@ -99,7 +103,13 @@ class programMixer(Mixer):
 
     def cut_program_sync(self, data: mixerCutProgramDTO):
         """Synchronous cut for use on GLib thread (startup)."""
-        src_uid = UUID(str(data.src)) if data.src and data.src != "None" else None
+        src_uid = None
+        if data.src and data.src != "None":
+            try:
+                src_uid = UUID(str(data.src))
+            except ValueError:
+                logger.log(f"cut_program_sync: invalid UUID {data.src!r}", level='WARNING')
+                return
         self._pending_transition = {
             'src_uid': src_uid,
             'transition': data.transition,

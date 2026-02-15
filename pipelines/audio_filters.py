@@ -1,8 +1,4 @@
-"""Shared audio filter definitions for inputs, mixers, and slots.
-
-Single source of truth for filter types, GStreamer element mapping,
-pipeline string generation, and runtime parameter handling.
-"""
+"""Shared audio filter definitions for inputs, mixers, and slots — types, element mapping, pipeline strings, and runtime params."""
 
 import itertools
 from gi.repository import Gst, GLib
@@ -98,20 +94,9 @@ def transform_filter_param(filter_type, key, val):
 
 
 def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=None, audio=True):
-    """Create GStreamer filter elements and add them to a pipeline.
+    """Create filter elements + scaffolding (audioconvert/F32LE for audio, identity for video).
 
-    Args:
-        uid: Component UID for element naming
-        prefix: Name prefix (e.g., "af" for inputs, "vf" for video)
-        enabled_filters: List of filter DTOs
-        pipeline: GStreamer pipeline/bin to add elements to
-        element_map: Override filter type → factory mapping
-        audio: If True, wrap in audioconvert+F32LE scaffolding. If False, no scaffolding (video).
-
-    Returns:
-        (pre, caps_or_None, filter_elems, post) or None on failure.
-        For audio: (audioconvert, capsfilter, filters, audioconvert)
-        For video: (identity_pre, None, filters, identity_post) — passthrough wrappers
+    Returns (pre, caps_or_None, filter_elems, post) or None on failure.
     """
     gen = next(_rebuild_counter)
     emap = element_map or FILTER_ELEMENT_MAP
@@ -185,11 +170,7 @@ def link_filter_chain(pre, caps_elem, filter_elems, post):
 
 
 def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_out=None):
-    """Update filter parameters in-place on existing GStreamer elements.
-
-    Walks the chain between anchors to find filter elements by position
-    (skips audioconvert/capsfilter/identity scaffolding).
-    """
+    """Update filter parameters in-place; walks the chain between anchors, skipping scaffolding."""
     anchor_in = anchor_in or f"af_in_{uid}"
     anchor_out = anchor_out or f"af_out_{uid}"
     af_in = find_element_fn(anchor_in)
@@ -229,13 +210,7 @@ def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_o
 
 
 def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=None, audio=True):
-    """Rebuild filter chain between identity anchor elements via pad blocking.
-
-    Blocks af_in's src pad, removes all elements between af_in and af_out,
-    creates new filter elements, links them, and unblocks.
-    Works for audio filters, video filters, and mixer-level filter chains.
-    Pass element_map to override the default FILTER_ELEMENT_MAP (e.g., for video filters).
-    """
+    """Rebuild filter chain between identity anchors via pad blocking. Works for audio/video/mixer chains."""
     in_src = af_in.get_static_pad("src")
     if not in_src:
         return False

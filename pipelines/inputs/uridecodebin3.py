@@ -267,7 +267,7 @@ class Uridecodebin3Input(Input):
                 caps_str = caps.to_string()
                 try:
                     structure = Gst.Structure.from_string(caps_str)[0]
-                except (TypeError, Exception):
+                except (TypeError, IndexError):
                     structure = None
                 name = structure.get_name() if structure else caps_str.split(",")[0]
 

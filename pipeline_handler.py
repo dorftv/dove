@@ -61,8 +61,8 @@ class PipelineHandler(object):
                             break
                 from api.websockets import manager as ws_manager
                 tick_data['viewers'] = len(ws_manager.active_connections)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.log(f"tick metrics collection failed: {e}", level='WARNING')
             safe_broadcast("TICK", tick_data, type="tick")
 
             inputs = self.get_pipelines('inputs')
@@ -353,9 +353,9 @@ class PipelineHandler(object):
                     if not ensure_video_encoder():
                         continue
 
-                    # Skip audio encoder if the source has no audio tee
-                    has_audio_tee = getattr(pipeline, 'audio_tee', None) is not None
-                    if has_audio_tee:
+                    # Skip audio encoder only when source has explicitly no audio
+                    has_audio = getattr(pipeline.data, 'has_audio', True)
+                    if has_audio:
                         audio_enc = Encoder(data=EncoderEntityDTO(
                             name="Preview Audio",
                             type="audio", element="opusenc",
@@ -365,7 +365,7 @@ class PipelineHandler(object):
                         if not self._add_pipeline_direct(audio_enc):
                             continue
 
-                    logger.log(f"Created WebRTC preview encoders for {category} {pipeline.data.uid} (audio={has_audio_tee})", level='DEBUG')
+                    logger.log(f"Created WebRTC preview encoders for {category} {pipeline.data.uid} (audio={has_audio})", level='DEBUG')
                 except Exception as e:
                     logger.log(f"Failed to create WebRTC preview encoders for {pipeline.data.uid}: {e}", level='ERROR')
                     import traceback
@@ -379,8 +379,9 @@ class PipelineHandler(object):
                     if not ensure_video_encoder():
                         continue
 
-                    has_audio_tee = getattr(pipeline, 'audio_tee', None) is not None
-                    if has_audio_tee:
+                    has_audio = getattr(pipeline.data, 'has_audio', True)
+                    audio_enc = None
+                    if has_audio:
                         audio_enc = Encoder(data=EncoderEntityDTO(
                             name="Preview Audio",
                             type="audio", element="fdkaacenc",
@@ -394,7 +395,7 @@ class PipelineHandler(object):
                         src=src_uid,
                         is_preview=True,
                         video_encoder=video_enc.data.uid,
-                        audio_encoder=audio_enc.data.uid,
+                        audio_encoder=audio_enc.data.uid if audio_enc else None,
                     ))
                     if not self._add_pipeline_direct(preview):
                         logger.log(f"HLS preview creation failed for {pipeline.data.uid}", level='WARNING')
@@ -491,12 +492,6 @@ class PipelineHandler(object):
         if self._pipelines is not None:
             for pipeline in self._pipelines.get(type, []):
                 if pipeline.data.uid == uid:
-                    return pipeline
-
-    async def get_pipeline_by_name(self, type: str, name: str):
-        if self._pipelines is not None:
-            for pipeline in self._pipelines.get(type, []):
-                if pipeline.data.name == name:
                     return pipeline
 
     def get_program(self):

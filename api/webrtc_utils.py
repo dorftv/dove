@@ -1,8 +1,4 @@
-"""
-Shared WebRTC utilities for WHEP (preview) and WHIP (ingest).
-
-Extracted from webrtc_whep.py to avoid duplication.
-"""
+"""Shared WebRTC utilities for WHEP (preview) and WHIP (ingest)."""
 
 import os
 import re

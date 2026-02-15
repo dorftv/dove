@@ -238,7 +238,6 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
                     capsfilters.append(element)
                     break
 
-    # Change capsfilter framerate on GLib thread
     def apply_fps():
         for cf in capsfilters:
             old_caps = cf.get_property("caps")
@@ -280,7 +279,6 @@ async def export_config(
                 if section in full_config:
                     export[section] = full_config[section]
 
-    # Inputs — exclude auto-generated (nodecg overlays created by program config)
     if inputs:
         export['inputs'] = {}
         used_keys = set()
@@ -288,7 +286,6 @@ async def export_config(
             data = pipeline.data
             input_dict = _dto_to_dict(data)
             key = _sanitize_key(data.name)
-            # Ensure unique keys
             if key in used_keys:
                 key = f"{key}_{str(data.uid)[:8]}"
             used_keys.add(key)
@@ -314,7 +311,6 @@ async def export_config(
                     scene_dict['audio_filters'] = [f.model_dump() for f in data.audio_filters]
                 if data.video_filters:
                     scene_dict['video_filters'] = [f.model_dump() for f in data.video_filters]
-                # Slots
                 for i, source in enumerate(data.sources):
                     slot_key = f"slot{i}"
                     slot_dict = {}
@@ -322,12 +318,10 @@ async def export_config(
                         val = getattr(source, prop, None)
                         if val is not None:
                             slot_dict[prop] = val
-                    # Slot-level filters
                     if source.audio_filters:
                         slot_dict['audio_filters'] = [f.model_dump() for f in source.audio_filters]
                     if source.video_filters:
                         slot_dict['video_filters'] = [f.model_dump() for f in source.video_filters]
-                    # Resolve source input
                     if source.src:
                         src_input = handler.get_pipeline("inputs", source.src)
                         if src_input:
@@ -337,13 +331,12 @@ async def export_config(
             elif data.type == "program":
                 pass  # Program active state is runtime, not config
 
-    # Outputs + encoders — exclude preview-generated ones
     if outputs:
         export['outputs'] = {}
         for pipeline in handler._pipelines.get("outputs", []):
             data = pipeline.data
             if getattr(data, 'is_preview', False):
-                continue  # Skip auto-generated preview outputs
+                continue
             output_dict = _dto_to_dict(data)
             key = _sanitize_key(getattr(data, 'name', str(data.uid)))
             export['outputs'][key] = output_dict
@@ -352,12 +345,11 @@ async def export_config(
         for pipeline in handler._pipelines.get("encoders", []):
             data = pipeline.data
             if getattr(data, 'is_preview', False):
-                continue  # Skip preview encoders
+                continue
             encoder_dict = _dto_to_dict(data)
             key = _sanitize_key(getattr(data, 'name', str(data.uid)))
             export['encoders'][key] = encoder_dict
 
-    # Remove empty sections
     export = {k: v for k, v in export.items() if v}
 
     toml_str = toml.dumps(export)

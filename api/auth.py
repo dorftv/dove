@@ -366,8 +366,8 @@ async def logout(request: Request):
                     f"&client_id={_get_config()['client_id']}"
                 )
                 response.delete_cookie(COOKIE_NAME, path="/")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.log(f"OIDC end-session lookup failed during logout: {e}", level='WARNING')
     return response
 
 

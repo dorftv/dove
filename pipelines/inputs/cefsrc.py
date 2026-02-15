@@ -9,7 +9,6 @@ class CefsrcInput(Input):
         """Return pipeline string fragment for this input."""
         uid = self.data.uid
         add_borders = "true" if getattr(self.data, 'fit', True) else "false"
-        # Video pipeline: cefsrc → cefdemux → video processing → caps → tee
         video_str = (
             f' cefsrc url="{self.data.url or ""}" do-timestamp=true name=cefsrc_{uid} ! '
             f"cefdemux name=cefdemux_{uid} "
@@ -17,7 +16,6 @@ class CefsrcInput(Input):
             f"video/x-raw,width={self.data.width},height={self.data.height},format=BGRA ! "
             f"videoconvert ! {self.get_video_end()} "
         )
-        # Audio pipeline: cefdemux audio pad → audioconvert → audioresample → caps → tee
         audio_str = (
             f" cefdemux_{uid}.audio ! audioconvert ! audioresample ! "
             f"{self.get_caps('audio')} ! {self.get_audio_end()} "

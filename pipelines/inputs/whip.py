@@ -24,6 +24,7 @@ from gi.repository import GstWebRTC, GstSdp
 from api.webrtc_utils import (
     get_pipeline, configure_webrtcbin,
     inject_ice_candidates, rewrite_sdp_candidates,
+    patch_offer_h264_profile,
 )
 from event_loop_bridge import safe_broadcast
 from logger import logger
@@ -124,7 +125,8 @@ class WhipInput(Input):
                 publisher_pipeline.set_state(Gst.State.PLAYING)
 
                 # ── SDP negotiation (all on GLib thread, no promise.wait) ──
-                res, sdp_message = GstSdp.SDPMessage.new_from_text(sdp_offer)
+                patched_offer = patch_offer_h264_profile(sdp_offer)
+                res, sdp_message = GstSdp.SDPMessage.new_from_text(patched_offer)
                 if res != GstSdp.SDPResult.OK:
                     logger.log("WHIP: failed to parse SDP offer", level='ERROR')
                     loop.call_soon_threadsafe(answer_future.set_result, None)

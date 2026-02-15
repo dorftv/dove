@@ -1,9 +1,4 @@
-"""Video filter definitions for inputs.
-
-Mirrors audio_filters.py architecture — identity anchors (vf_in/vf_out),
-dynamic add/remove via pad blocking. Reuses shared create/rebuild/update
-functions from audio_filters.py.
-"""
+"""Video filter definitions — mirrors audio_filters.py (vf_in/vf_out anchors, shared create/rebuild/update)."""
 
 
 # Filter type → GStreamer pipeline string builder

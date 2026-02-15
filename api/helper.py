@@ -238,7 +238,6 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
                 default_value = None
                 default_factory = model_class.__fields__[name].default_factory
                 if default_factory:
-                    # Get the default value as a string representation
                     default_value = default_factory.__name__.replace('lambda:', '').strip().split('(')[0]
                 elif field.get('default') is not None:
                     default_value = get_option_name(field['default'].__class__)

@@ -1,10 +1,4 @@
-"""
-Playlist input for playing sequences of video/HTML clips.
-
-Inherits from Uridecodebin3Input for the shared processing chain
-(compositor, audiomixer, clocksync, tee, etc.).
-Adds a separate HTML source (cefsrc or wpesrc) path to the compositor for HTML clips.
-"""
+"""Playlist input for sequences of video/HTML clips. Extends Uridecodebin3Input with a wpesrc HTML path into the compositor."""
 
 import os
 import httpx
@@ -107,12 +101,7 @@ class PlaylistInput(Uridecodebin3Input):
         return uri
 
     def build_bin(self) -> Gst.Bin:
-        """Build bin with wpesrc chain for HTML clips.
-
-        Super creates the full chain including compositor/audiomixer with
-        fallback sources. We just add the wpesrc chain as another input
-        to the existing compositor/audiomixer.
-        """
+        """Build bin with wpesrc chain for HTML clips, attached to the parent's compositor/audiomixer."""
         container = super().build_bin()
         # Playlist follows global config (not pad detection like uridecodebin3)
         from config_handler import ConfigReader

@@ -511,6 +511,9 @@ class PipelineHandler(object):
         for pipeline in self._pipelines.get('outputs', []):
             if pipeline.data.uid == uid:
                 return pipeline
+        for pipeline in self._pipelines.get('encoders', []):
+            if pipeline.data.uid == uid:
+                return pipeline
         return None
 
     def get_preview_pipeline(self, src: UUID):
@@ -520,6 +523,65 @@ class PipelineHandler(object):
                 return pipeline
 
         return None
+
+    def _recompute_video_delays_for_src(self, src_uid):
+        """Auto-sync video encoder delays to match the longest audio filter latency on this source.
+
+        When an audio encoder adds/removes loudnorm (3s lookahead), the sibling video encoders
+        on the same source need matching delay so A/V stays in sync on the encoded output.
+        Preview encoders are skipped — live preview stays at zero latency.
+        """
+        from pipelines.audio_filters import FILTER_LATENCY_MS
+        encoders = self.get_pipelines('encoders') or []
+
+        # Compute max latency across all non-preview audio encoders on this source
+        max_lat = 0
+        for e in encoders:
+            if e.data.type != 'audio' or getattr(e.data, 'is_preview', False):
+                continue
+            if e.data.src != src_uid:
+                continue
+            for f in (getattr(e.data, 'audio_filters', None) or []):
+                if not f.enabled:
+                    continue
+                max_lat = max(max_lat, FILTER_LATENCY_MS.get(f.type, 0))
+
+        logger.log(f"Video delay sync for src={src_uid}: max latency = {max_lat}ms", level='INFO')
+
+        # Apply to every non-preview video encoder on this source
+        for e in encoders:
+            if e.data.type != 'video' or getattr(e.data, 'is_preview', False):
+                continue
+            if e.data.src != src_uid:
+                continue
+            current = getattr(e.data, 'video_delay_ms', 0) or 0
+            if current != max_lat:
+                logger.log(f"Encoder {e.data.uid} video_delay_ms: {current} → {max_lat}", level='INFO')
+                e.data.video_delay_ms = max_lat
+                self._rebuild_encoder(e)
+                safe_broadcast("UPDATE", e.data, type="encoder")
+
+    def _rebuild_encoder(self, encoder):
+        """Rebuild an encoder by removing and re-adding it with the new pipeline string.
+
+        Video encoders can't be patched live because the delay queue's min-threshold-time
+        is fixed at construction. Simpler to delete + re-add — briefly drops the encoder's
+        output which is acceptable since the live preview path is a separate branch.
+        """
+        uid = encoder.data.uid
+        category = self._get_category(encoder)
+
+        # Preserve the existing DTO (with new video_delay_ms) so settings carry over
+        saved_data = encoder.data
+
+        # Delete on GLib thread (current call may be from an idle callback already)
+        self._delete_component(encoder, category)
+
+        # Recreate with the updated DTO
+        from pipelines.encoders.encoder import Encoder as EncoderClass
+        new_encoder = EncoderClass(data=saved_data)
+        self.add_pipeline(new_encoder)
+        logger.log(f"Encoder {uid} rebuilt with video_delay_ms={saved_data.video_delay_ms}", level='INFO')
 
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)

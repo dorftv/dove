@@ -1,10 +1,17 @@
-"""Shared audio filter definitions for inputs, mixers, and slots — types, element mapping, pipeline strings, and runtime params."""
+"""Shared audio filter definitions for inputs, mixers, slots, and encoders — types, element mapping, pipeline strings, and runtime params."""
 
 import itertools
 from gi.repository import Gst, GLib
 from logger import logger
 
 _rebuild_counter = itertools.count()
+
+
+# Known filter latencies in milliseconds — used by pipeline_handler to auto-sync
+# video delay on sibling video encoders when loudnorm (3s lookahead) is applied.
+FILTER_LATENCY_MS = {
+    'loudnorm': 3000,   # audioloudnorm (gst-plugins-rs audiofx) has a 3-second lookahead buffer
+}
 
 
 # Filter type → GStreamer pipeline string builder (for Gst.parse_bin_from_description)
@@ -33,6 +40,16 @@ AUDIO_FILTER_MAP = {
     'pan': lambda uid, i, p: f"audiopanorama name=af_{uid}_{i} panorama={p.get('panorama', 0.0)}",
     'invert': lambda uid, i, p: f"audioinvert name=af_{uid}_{i} degree={p.get('degree', 0.0)}",
     'echo': lambda uid, i, p: f"audioecho name=af_{uid}_{i} max-delay=1000000000 delay={int(p.get('delay', 250) * 1000000)} intensity={p.get('intensity', 0.5)} feedback={p.get('feedback', 0.0)}",
+    # gst-plugins-rs audiofx — RNNoise-based denoiser, ~10ms latency, safe for live chain
+    'denoise': lambda uid, i, p: f"audiornnoise name=af_{uid}_{i} voice-activity-threshold={p.get('vad_threshold', 0.0)}",
+    # Encoder-only (gst-plugins-rs audiofx) — 3s lookahead, unsuitable for live inputs/mixers
+    'loudnorm': lambda uid, i, p: (
+        f"audioloudnorm name=af_{uid}_{i}"
+        f" loudness-target={p.get('target', -24.0)}"
+        f" loudness-range-target={p.get('range', 7.0)}"
+        f" max-true-peak={p.get('peak', -2.0)}"
+        f" offset={p.get('offset', 0.0)}"
+    ),
 }
 
 # Filter type → (element_factory, property_dict) for dynamic Gst.ElementFactory.make()
@@ -48,6 +65,14 @@ FILTER_ELEMENT_MAP = {
     'pan': lambda p: ('audiopanorama', {'panorama': p.get('panorama', 0.0)}),
     'invert': lambda p: ('audioinvert', {'degree': p.get('degree', 0.0)}),
     'echo': lambda p: ('audioecho', {'max-delay': 1000000000, 'delay': int(p.get('delay', 250) * 1000000), 'intensity': p.get('intensity', 0.5), 'feedback': p.get('feedback', 0.0)}),
+    'denoise': lambda p: ('audiornnoise', {'voice-activity-threshold': p.get('vad_threshold', 0.0)}),
+    # Encoder-only
+    'loudnorm': lambda p: ('audioloudnorm', {
+        'loudness-target': p.get('target', -24.0),
+        'loudness-range-target': p.get('range', 7.0),
+        'max-true-peak': p.get('peak', -2.0),
+        'offset': p.get('offset', 0.0),
+    }),
 }
 
 
@@ -90,11 +115,24 @@ def transform_filter_param(filter_type, key, val):
             return key, int(val * 1000000)
         if key == 'max-delay':
             return None
+    if filter_type == 'denoise':
+        if key == 'vad_threshold':
+            return 'voice-activity-threshold', val
     return key, val
 
 
-def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=None, audio=True):
+def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=None,
+                            audio=True, allow_rate_conversion=False):
     """Create filter elements + scaffolding (audioconvert/F32LE for audio, identity for video).
+
+    When `allow_rate_conversion` is True (encoder chains only), the single hardcoded
+    F32LE capsfilter is replaced with per-filter audioconvert+audioresample wrappers
+    in `link_filter_chain`, so filters with narrow caps (e.g. audioloudnorm requires
+    192kHz F64LE) can negotiate their own format. A final audioconvert+audioresample
+    + capsfilter(F32LE 48kHz) before `post` restores the pipeline format.
+
+    Input/mixer/slot chains keep the simple single-caps behavior (no rate conversion
+    wrappers) to avoid the flush-chain problems we hit earlier.
 
     Returns (pre, caps_or_None, filter_elems, post) or None on failure.
     """
@@ -104,7 +142,12 @@ def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=N
     if audio:
         pre = Gst.ElementFactory.make("audioconvert", f"{prefix}_pre_{uid}_{gen}")
         caps_elem = Gst.ElementFactory.make("capsfilter", f"{prefix}_caps_{uid}_{gen}")
-        caps_elem.set_property("caps", Gst.Caps.from_string("audio/x-raw,format=F32LE"))
+        if allow_rate_conversion:
+            # Final caps lock the chain output back to pipeline format (48kHz F32LE)
+            # — per-filter converters in link_filter_chain handle intermediate formats.
+            caps_elem.set_property("caps", Gst.Caps.from_string("audio/x-raw,format=F32LE,rate=48000"))
+        else:
+            caps_elem.set_property("caps", Gst.Caps.from_string("audio/x-raw,format=F32LE"))
         post = Gst.ElementFactory.make("audioconvert", f"{prefix}_post_{uid}_{gen}")
     else:
         pre = Gst.ElementFactory.make("identity", f"{prefix}_pre_{uid}_{gen}")
@@ -146,13 +189,38 @@ def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=N
         elem.set_state(Gst.State.PLAYING)
         filter_elems.append(elem)
 
+    # Flag the pre element so link_filter_chain knows whether to insert per-filter wrappers
+    pre._dove_rate_conv = allow_rate_conversion and audio
     return pre, caps_elem, filter_elems, post
+
+
+def _make_wrapper(pipeline, name):
+    """Create audioconvert+audioresample pair for per-filter format negotiation."""
+    conv = Gst.ElementFactory.make("audioconvert", f"{name}_conv")
+    resamp = Gst.ElementFactory.make("audioresample", f"{name}_resamp")
+    pipeline.add(conv)
+    pipeline.add(resamp)
+    conv.set_state(Gst.State.PLAYING)
+    resamp.set_state(Gst.State.PLAYING)
+    return conv, resamp
 
 
 def link_filter_chain(pre, caps_elem, filter_elems, post):
     """Link a filter chain: pre → [caps] → [filters] → post.
     caps_elem may be None (video path — no format conversion needed).
+
+    Encoder mode (pre._dove_rate_conv is True):
+        pre → resamp → filter1 → [conv+resamp → filterN]* → conv+resamp → caps → post
+        Per-filter wrappers let filters with narrow caps (audioloudnorm = 192kHz F64LE)
+        negotiate their own format independently.
     """
+    rate_conv = getattr(pre, '_dove_rate_conv', False)
+
+    if rate_conv and filter_elems:
+        _link_rate_conv_chain(pre, caps_elem, filter_elems, post)
+        return
+
+    # Simple (legacy) path for input/mixer/slot chains
     first = caps_elem or (filter_elems[0] if filter_elems else post)
     pre.get_static_pad("src").link(first.get_static_pad("sink"))
     if caps_elem and filter_elems:
@@ -169,6 +237,38 @@ def link_filter_chain(pre, caps_elem, filter_elems, post):
         pass
 
 
+def _link_rate_conv_chain(pre, caps_elem, filter_elems, post):
+    """Link with per-filter audioconvert+audioresample wrappers for encoder chains."""
+    pipeline = pre.get_parent()
+
+    def link(a, b):
+        a.get_static_pad("src").link(b.get_static_pad("sink"))
+
+    # pre → resamp_in → filter1 (pre is audioconvert, needs resampler for rate changes)
+    first = filter_elems[0]
+    resamp_in = Gst.ElementFactory.make("audioresample", f"{first.get_name()}_in_resamp")
+    pipeline.add(resamp_in)
+    resamp_in.set_state(Gst.State.PLAYING)
+    link(pre, resamp_in)
+    link(resamp_in, first)
+
+    # Between each pair of filters: audioconvert + audioresample
+    for j in range(len(filter_elems) - 1):
+        a, b = filter_elems[j], filter_elems[j + 1]
+        conv, resamp = _make_wrapper(pipeline, f"{a.get_name()}_to_{b.get_name()}")
+        link(a, conv)
+        link(conv, resamp)
+        link(resamp, b)
+
+    # last filter → audioconvert+audioresample → caps(F32LE 48kHz) → post
+    last = filter_elems[-1]
+    conv_out, resamp_out = _make_wrapper(pipeline, f"{last.get_name()}_to_caps")
+    link(last, conv_out)
+    link(conv_out, resamp_out)
+    link(resamp_out, caps_elem)
+    link(caps_elem, post)
+
+
 def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_out=None):
     """Update filter parameters in-place; walks the chain between anchors, skipping scaffolding."""
     anchor_in = anchor_in or f"af_in_{uid}"
@@ -179,6 +279,7 @@ def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_o
         return
 
     # Collect filter elements between anchors (skip scaffolding)
+    # Also skip audioresample and queue — used by encoder rate-conversion wrappers.
     filter_elems = []
     pad = af_in.get_static_pad("src")
     current = pad.get_peer()
@@ -187,7 +288,7 @@ def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_o
         if elem == af_out:
             break
         factory = elem.get_factory()
-        if factory and factory.get_name() not in ("audioconvert", "capsfilter", "identity"):
+        if factory and factory.get_name() not in ("audioconvert", "audioresample", "capsfilter", "identity", "queue"):
             filter_elems.append(elem)
         src = elem.get_static_pad("src")
         current = src.get_peer() if src else None
@@ -209,8 +310,13 @@ def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_o
                 logger.log(f"Failed to set {key}={val} on {elem.get_name()}: {e}", level='WARNING')
 
 
-def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=None, audio=True):
-    """Rebuild filter chain between identity anchors via pad blocking. Works for audio/video/mixer chains."""
+def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=None, audio=True,
+                             allow_rate_conversion=False):
+    """Rebuild filter chain between identity anchors via pad blocking. Works for audio/video/mixer chains.
+
+    allow_rate_conversion: encoder-only flag that enables per-filter audioconvert+audioresample
+    wrappers, so loudnorm (192kHz F64LE) can coexist with other filters in the same chain.
+    """
     in_src = af_in.get_static_pad("src")
     if not in_src:
         return False
@@ -260,7 +366,8 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
 
             if enabled:
                 prefix = "af" if audio else "vf"
-                result = create_filter_elements(uid, prefix, enabled, pipe, emap, audio=audio)
+                result = create_filter_elements(uid, prefix, enabled, pipe, emap, audio=audio,
+                                                 allow_rate_conversion=allow_rate_conversion)
                 if result:
                     ac_pre, caps_elem, filter_elems, ac_post = result
                     in_src.link(ac_pre.get_static_pad("sink"))

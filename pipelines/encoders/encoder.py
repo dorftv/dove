@@ -1,20 +1,36 @@
 from typing import Optional
-from gi.repository import Gst
+from gi.repository import Gst, GLib
 
-from api.encoder_models import EncoderEntityDTO
+from api.encoder_models import EncoderEntityDTO, EncoderUpdateDTO
+from api.input_models import AudioFilterDTO
 from api.helper import get_encoder_dto_class
 from event_loop_bridge import safe_broadcast
+from logger import logger
 from pipelines.base import GSTBase
+from pipelines.audio_filters import (
+    FILTER_ELEMENT_MAP,
+    update_filter_params,
+    rebuild_between_anchors,
+)
 from config_handler import ConfigReader
 
 config = ConfigReader()
 
 
 class Encoder(GSTBase):
-    """Encoder entity — encodes a source stream and exposes a tee for consumers."""
+    """Encoder entity — encodes a source stream and exposes a tee for consumers.
+
+    Audio encoders support a per-encoder filter chain (between identity anchors
+    af_enc_in_<uid> / af_enc_out_<uid>) so loudness normalization can be applied
+    to the encoded output without affecting the live preview path.
+
+    Video encoders support an auto-synced delay (via queue min-threshold-time) to
+    match any audio filter latency on the same source.
+    """
     data: EncoderEntityDTO
     tee: Optional[Gst.Element] = None
     _bin: Optional[Gst.Bin] = None
+    core_pipeline: Optional[Gst.Pipeline] = None
 
     def build_pipeline_str(self, dynamic=False) -> str:
         uid = self.data.uid
@@ -59,9 +75,22 @@ class Encoder(GSTBase):
         vscale = "videoscale"
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
+        ]
+        # Optional video delay — auto-set by pipeline_handler to match audio filter latency.
+        # `queue min-threshold-time` holds buffers until the threshold is met, then
+        # releases them maintaining a constant delay. No dedicated videodelay element needed.
+        delay_ms = getattr(self.data, 'video_delay_ms', 0) or 0
+        if delay_ms > 0 and not is_preview:
+            delay_ns = delay_ms * 1_000_000
+            max_ns = delay_ns + 500_000_000  # +500ms headroom
+            parts.append(
+                f"queue name=enc_delay_{uid} min-threshold-time={delay_ns} "
+                f"max-size-time={max_ns} max-size-buffers=0 max-size-bytes=0"
+            )
+        parts.extend([
             "videoconvert", vscale, "videorate skip-to-first=true",
             caps_str,
-        ]
+        ])
         if pre:
             parts.append(pre)
         parts.append(enc_str)
@@ -79,12 +108,35 @@ class Encoder(GSTBase):
         pre = getattr(cls, 'pre_elements', '') if cls else ''
         post = getattr(cls, 'post_elements', '') if cls else ''
 
+        # Audio filter chain anchors: identity elements that stay in place forever.
+        # At startup the chain between them is empty (direct link); rebuild_between_anchors
+        # re-populates it when the user adds/removes filters via the API.
+        # These anchors are only rendered for non-preview audio encoders (preview path
+        # stays at zero latency — no filter chain).
+        is_preview = getattr(self.data, 'is_preview', False)
+        use_filters = not is_preview
+
         parts = [
             f"queue name=enc_queue_{uid} max-size-time=200000000 max-size-buffers=0 max-size-bytes=0",
             "audioconvert", "audioresample",
         ]
 
+        if use_filters:
+            # Normalize to pipeline format before the filter anchors so filter chain
+            # always gets consistent input. The filter chain output is re-normalized
+            # to the same format by the post-anchor audioconvert+audioresample.
+            parts.append(
+                f"audio/x-raw,format=F32LE,layout=interleaved,"
+                f"rate={config.get_default_audio_rate()},"
+                f"channels={config.get_default_audio_channels()}"
+            )
+            parts.append(f"identity name=af_enc_in_{uid} silent=true")
+            parts.append(f"identity name=af_enc_out_{uid} silent=true")
+            parts.append("audioconvert")
+            parts.append("audioresample")
+
         if fmt:
+            # Final format caps required by the encoder element (e.g. S16LE for opusenc/fdkaacenc)
             caps_str = (
                 f"audio/x-raw,format={fmt},layout=interleaved,"
                 f"rate={config.get_default_audio_rate()},"
@@ -114,5 +166,92 @@ class Encoder(GSTBase):
 
     def attach(self, pipeline: Gst.Pipeline):
         uid = self.data.uid
+        self.core_pipeline = pipeline
         self._bin = None
         self.tee = pipeline.get_by_name(f"enc_tee_{uid}")
+
+    def _find_element(self, name):
+        """Find a named element in bin or core pipeline."""
+        elem = None
+        if self._bin:
+            elem = self._bin.get_by_name(name)
+        if not elem and self.core_pipeline:
+            elem = self.core_pipeline.get_by_name(name)
+        return elem
+
+    async def update(self, data):
+        """Handle runtime update — name changes, audio filter chain edits."""
+        if not isinstance(data, EncoderUpdateDTO):
+            data = EncoderUpdateDTO.model_validate(data) if hasattr(EncoderUpdateDTO, 'model_validate') \
+                else EncoderUpdateDTO.parse_obj(data)
+        if data.name is not None:
+            self.data.name = data.name
+        if data.audio_filters is not None:
+            if self.data.type != "audio":
+                logger.log(f"Encoder {self.data.uid}: audio_filters update ignored on video encoder", level='WARNING')
+            elif getattr(self.data, 'is_preview', False):
+                logger.log(f"Encoder {self.data.uid}: audio_filters update ignored on preview encoder", level='WARNING')
+            else:
+                self._update_audio_filters(data.audio_filters)
+        safe_broadcast("UPDATE", self.data, type="encoder")
+
+    def _update_audio_filters(self, new_filters: list[AudioFilterDTO]):
+        """Apply audio filter changes on the running pipeline. Mirrors Input._update_audio_filter_params."""
+        uid = self.data.uid
+        old_filters = self.data.audio_filters or []
+
+        structure_match = (
+            len(new_filters) == len(old_filters) and
+            all(n.type == o.type and n.enabled == o.enabled
+                for n, o in zip(new_filters, old_filters))
+        )
+
+        if structure_match:
+            def do_update_params():
+                update_filter_params(
+                    new_filters, self._find_element, uid,
+                    anchor_in=f"af_enc_in_{uid}", anchor_out=f"af_enc_out_{uid}",
+                )
+                return False
+            GLib.idle_add(do_update_params)
+        else:
+            GLib.idle_add(self._rebuild_audio_filter_chain, new_filters)
+
+        self.data.audio_filters = new_filters
+
+        # Auto-sync video delay on sibling video encoders (same src) via the pipeline handler.
+        # Deferred to idle so we're not re-entering while the filter rebuild is still running.
+        def _sync_delays():
+            try:
+                from pipelines.encoders.encoder import _resolve_pipeline_handler
+                handler = _resolve_pipeline_handler()
+                if handler and self.data.src:
+                    handler._recompute_video_delays_for_src(self.data.src)
+            except Exception as e:
+                logger.log(f"Encoder {uid}: video delay sync failed: {e}", level='ERROR')
+            return False
+        GLib.idle_add(_sync_delays)
+
+    def _rebuild_audio_filter_chain(self, new_filters):
+        """Replace audio filter elements between the encoder's af_enc_in/af_enc_out anchors."""
+        uid = self.data.uid
+        af_in = self._find_element(f"af_enc_in_{uid}")
+        af_out = self._find_element(f"af_enc_out_{uid}")
+        if not af_in or not af_out:
+            logger.log(f"Encoder {uid}: filter anchors missing (in={af_in is not None}, out={af_out is not None})", level='ERROR')
+            return False
+        pipe = af_in.get_parent()
+        rebuild_between_anchors(
+            af_in, af_out, new_filters, uid, pipe,
+            element_map=FILTER_ELEMENT_MAP, audio=True, allow_rate_conversion=True,
+        )
+        return False
+
+
+def _resolve_pipeline_handler():
+    """Locate the pipeline handler singleton. Avoids circular import at module level."""
+    try:
+        from pipeline_handler import HandlerSingleton
+        return HandlerSingleton()
+    except Exception:
+        return None

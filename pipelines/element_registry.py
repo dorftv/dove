@@ -25,6 +25,9 @@ _ELEMENTS_TO_PROBE = [
     'identity', 'capsfilter', 'level', 'volume',
     # Outputs
     'webrtcbin', 'proxysink', 'proxysrc',
+    # Rust plugins (gst-plugins-rs) — optional
+    'ebur128level', 'audioloudnorm', 'audiornnoise',
+    'livesync', 'fallbackswitch', 'fallbacksrc',
 ]
 
 # Map: filter type → required GStreamer element(s)
@@ -40,6 +43,9 @@ _AUDIO_FILTER_ELEMENTS = {
     'pan': ['audiopanorama'],
     'invert': ['audioinvert'],
     'echo': ['audioecho'],
+    # Rust plugins (gst-plugins-rs audiofx) — optional
+    'loudnorm': ['audioloudnorm'],
+    'denoise': ['audiornnoise'],
 }
 
 _VIDEO_FILTER_ELEMENTS = {

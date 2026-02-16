@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.28.1
+ARG GSTREAMER_VERSION=1.28.2
 
 # Core build deps
 RUN apk add --no-cache \
@@ -60,6 +60,30 @@ RUN cd gstreamer && \
   ninja -C builddir && \
   ninja -C builddir install
 
+# ---------- Rust plugin builder ----------
+# Inherits /usr with GStreamer 1.28 from builder, just adds rust toolchain
+FROM builder AS rust-builder
+
+RUN apk add --no-cache clang gcc musl-dev curl pkgconfig openssl-dev zlib-dev
+# Use rustup for newer rust (Alpine 3.21 ships 1.83, gst-plugins-rs 0.15 needs 1.92+)
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+# Disable static crt so cargo-c links dynamically against system libs (avoids static lib chain)
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+RUN cargo install --locked cargo-c
+
+ARG GST_RS_VERSION=0.15
+RUN git clone --depth 1 -b ${GST_RS_VERSION} \
+    https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
+
+WORKDIR /opt/gst-plugins-rs
+# Audio effects (ebur128level, audioloudnorm, audiornnoise, hrtfrender)
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-audiofx
+# livesync for live source resync
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-livesync
+# fallbackswitch/fallbacksrc for graceful failover
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-fallbackswitch
+
 # ---------- Runtime stage ----------
 FROM alpine:3.21 AS runtime
 
@@ -91,6 +115,8 @@ RUN apk add --no-cache openh264 x265 bash-completion curl libsoup
 
 RUN apk add --no-cache     intel-media-driver      mesa-va-gallium
 COPY --from=builder /usr /usr
+# Rust gst-plugins-rs (audiofx + optional livesync/fallbackswitch)
+COPY --from=rust-builder /install/gst-plugins-rs/ /usr/lib/gstreamer-1.0/
 
 # Upgrade Mesa + deps from edge for Vulkan Video encode support (Mesa 26.x+)
 RUN apk upgrade --no-cache \

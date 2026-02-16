@@ -1,3 +1,29 @@
+# ---------- Rust plugin builder ----------
+FROM debian:trixie-slim AS rust-builder
+
+RUN apt-get update && apt-get install -yq --no-install-recommends \
+    git curl ca-certificates build-essential pkg-config clang \
+    libssl-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo install cargo-c
+
+ARG GST_RS_VERSION=0.15
+RUN git clone --depth 1 -b ${GST_RS_VERSION} \
+    https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
+
+WORKDIR /opt/gst-plugins-rs
+# Audio effects (ebur128level, audioloudnorm, audiornnoise, hrtfrender)
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-audiofx
+# livesync for live source resync
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-livesync
+# fallbackswitch/fallbacksrc for graceful failover
+RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-fallbackswitch
+
+# ---------- Runtime ----------
 FROM debian:trixie-slim
 
 RUN sed -i 's/^Components: main$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
@@ -33,6 +59,9 @@ RUN apt-get update && \
     # Build deps (removed after pip install)
     python3-dev libgirepository1.0-dev libcairo2-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Rust gst-plugins-rs (audiofx + optional livesync/fallbackswitch)
+COPY --from=rust-builder /install/gst-plugins-rs/ /usr/lib/x86_64-linux-gnu/gstreamer-1.0/
 
 COPY . /app
 WORKDIR /app

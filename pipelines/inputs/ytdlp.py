@@ -22,7 +22,7 @@ class YtdlpInput(Uridecodebin3Input):
         ydl_opts = {
             # Single combined stream preferred, fallback to best merged
             'format': f'best[height<={height}]/bestvideo[height<={height}]+bestaudio/best',
-            'format_sort': [f'res:{height}', 'ext:mp4:m4a', 'proto:https'],
+            'format_sort': [f'res:{height}', 'vcodec:h264', 'ext:mp4:m4a', 'proto:https'],
             'quiet': True,
             'no_warnings': True,
         }

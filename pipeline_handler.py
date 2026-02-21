@@ -1,7 +1,8 @@
+import asyncio
 import sys
 import time
 from pathlib import Path
-from typing import List, ClassVar, Any
+from typing import List, ClassVar, Any, Optional
 from uuid import UUID
 import gi
 gi.require_version('Gst', '1.0')
@@ -165,8 +166,8 @@ class PipelineHandler(object):
             return "mixers"
         raise KeyError("Invalid pipeline type")
 
-    def add_pipeline(self, pipeline: "GSTBase", start=True):
-        """Add pipeline to core pipeline and broadcast CREATE."""
+    def add_pipeline(self, pipeline: "GSTBase", start=True) -> Optional[asyncio.Future]:
+        """Add pipeline and broadcast CREATE. Returns a Future when scheduled from asyncio, else None."""
         if self._pipelines is None:
             self._pipelines = {"inputs": [], "outputs": [], "mixers": [], "encoders": []}
 
@@ -199,14 +200,14 @@ class PipelineHandler(object):
                         logger.log(f"Dynamic encoder add failed for {pipeline.data.uid}", level='ERROR')
                         pipeline.data.state = "ERROR"
                 elif category == "outputs":
-                    # Auto-create encoder entities from embedded encoder DTOs
                     if not self._ensure_output_encoders(pipeline):
                         logger.log(f"Failed to create encoder entities for output {pipeline.data.uid}", level='ERROR')
-                        return
-                    success = self.core_pipeline.add_output_dynamic(pipeline)
-                    if not success:
-                        logger.log(f"Dynamic output add failed for {pipeline.data.uid}", level='ERROR')
-                        pipeline.data.state = "ERROR"
+                        pipeline.data.details = pipeline.data.details or "Failed to create output encoders"
+                    else:
+                        success = self.core_pipeline.add_output_dynamic(pipeline)
+                        if not success:
+                            logger.log(f"Dynamic output add failed for {pipeline.data.uid}", level='ERROR')
+                            pipeline.data.state = "ERROR"
                 elif category == "mixers":
                     # Pass preview creation as callback (runs after mixer is fully set up)
                     def create_preview(component):
@@ -232,17 +233,18 @@ class PipelineHandler(object):
                     except ValueError:
                         pass
 
-            # If on GLib thread already, call directly; otherwise schedule
+                return success
+
+            # Already on GLib thread: run inline. Otherwise schedule and return future.
             ctx = GLib.MainContext.default()
             if ctx.is_owner() or not (self.mainloop and self.mainloop.is_running()):
                 do_dynamic_add()
-            else:
-                bridge.run_sync_in_glib(do_dynamic_add)
+                return None
+            return bridge.call_glib_async(do_dynamic_add)
         else:
-            # Fallback: if called before finish_initial_setup(), just add to components
-            # This shouldn't happen in normal flow but keeps things safe
             logger.log(f"Warning: add_pipeline called before finish_initial_setup for {pipeline.data.uid}", level='WARNING')
             self.core_pipeline.add_component(pipeline)
+            return None
 
     def _add_pipeline_direct(self, pipeline):
         """Add pipeline directly (already on GLib thread). Used by _create_preview_for_dynamic."""

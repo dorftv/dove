@@ -4,6 +4,7 @@ from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 router = APIRouter()
@@ -46,6 +47,6 @@ async def create_decklink_output(request: Request, data: DecklinkOutputDTO):
         safe_broadcast("UPDATE", data)
     else:
         output = DecklinkOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

@@ -6,6 +6,7 @@ from uuid import UUID
 from api.encoder.audio_encoder import mp3EncoderDTO
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 
@@ -62,6 +63,6 @@ async def create_shout2send_output(request: Request, data: Shout2sendOutputDTO):
         safe_broadcast("UPDATE", data)
     else:
         output = Shout2sendOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

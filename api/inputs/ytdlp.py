@@ -5,6 +5,7 @@ from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 router = APIRouter()
 
 class YtdlpInputDTO(InputDTO):
@@ -36,6 +37,6 @@ async def create_ytdlp_input(request: Request, data: YtdlpInputDTO):
         safe_broadcast("UPDATE", data)
     else:
         input = YtdlpInput(data=data)
-        handler.add_pipeline(input)
+        await create_or_raise(handler, input)
 
     return data

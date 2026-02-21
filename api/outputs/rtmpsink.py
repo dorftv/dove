@@ -7,6 +7,7 @@ from api.encoder.video_encoder import h264EncoderUnion, x264EncoderDTO
 from api.encoder.audio_encoder import aacEncoderDTO
 from api.encoder.mux import flvMuxDTO
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 router = APIRouter()
@@ -56,6 +57,6 @@ async def create_rtmpsink_output(request: Request, data: rtmpsinkOutputDTO):
         safe_broadcast("UPDATE", data)
     else:
         output = rtmpsinkOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

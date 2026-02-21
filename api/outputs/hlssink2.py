@@ -3,6 +3,7 @@ from pydantic import Field
 from api.output_models import OutputDTO, SuccessDTO
 from typing import Optional
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 
@@ -27,6 +28,6 @@ async def create_hlssink2_output(request: Request, data: hlssink2OutputDTO):
         safe_broadcast("UPDATE", data)
     else:
         output = hlssink2Output(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

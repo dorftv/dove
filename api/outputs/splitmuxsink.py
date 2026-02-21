@@ -8,6 +8,7 @@ from api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO, vorbisEncode
 from api.encoder.mux import mp4MuxDTO, matroskaMuxDTO, mpegtsMuxDTO
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 router = APIRouter()
@@ -60,6 +61,6 @@ async def create_splitmuxsink_output(request: Request, data: splitmuxsinkOutputD
         safe_broadcast("UPDATE", data)
     else:
         output = splitmuxsinkOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

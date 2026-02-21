@@ -3,7 +3,7 @@ from uuid import UUID
 
 from api.encoder_models import EncoderEntityDTO
 from api.auth import require_role
-from api.helper import get_auto_encoder, _is_encoder_available
+from api.helper import get_auto_encoder, _is_encoder_available, create_or_raise
 from event_loop_bridge import safe_broadcast
 from pipelines.encoders.encoder import Encoder
 
@@ -31,7 +31,7 @@ async def create_encoder(request: Request, data: EncoderEntityDTO):
         safe_broadcast("UPDATE", data)
     else:
         encoder = Encoder(data=data)
-        handler.add_pipeline(encoder)
+        await create_or_raise(handler, encoder)
 
     return {"uid": data.uid}
 

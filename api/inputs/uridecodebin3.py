@@ -4,6 +4,7 @@ from pydantic import Field
 from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 import httpx
 
 router = APIRouter()
@@ -65,6 +66,6 @@ async def create_uridecodebin3_input(request: Request, data: Uridecodebin3InputD
         safe_broadcast("UPDATE", data)
     else:
         input = Uridecodebin3Input(data=data)
-        handler.add_pipeline(input)
+        await create_or_raise(handler, input)
 
     return data

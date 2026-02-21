@@ -233,6 +233,7 @@ class CorePipeline(BaseModel):
             return True
 
         except Exception as e:
+            input_component.data.details = str(e)
             logger.log(f"Failed to add input dynamically: {e}", level='ERROR')
             import traceback
             traceback.print_exc()
@@ -320,6 +321,7 @@ class CorePipeline(BaseModel):
             return True
 
         except Exception as e:
+            mixer_component.data.details = str(e)
             logger.log(f"Failed to add mixer dynamically: {e}", level='ERROR')
             import traceback
             traceback.print_exc()
@@ -534,6 +536,7 @@ class CorePipeline(BaseModel):
             return True
 
         except Exception as e:
+            output_component.data.details = str(e)
             logger.log(f"Failed to add output dynamically: {e}", level='ERROR')
             import traceback
             traceback.print_exc()
@@ -684,6 +687,7 @@ class CorePipeline(BaseModel):
             return True
 
         except Exception as e:
+            encoder_component.data.details = str(e)
             logger.log(f"Failed to add encoder dynamically: {e}", level='ERROR')
             import traceback
             traceback.print_exc()

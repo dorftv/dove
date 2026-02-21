@@ -7,6 +7,7 @@ from api.encoder.video_encoder import h264EncoderUnion, h265EncoderUnion, x264En
 from api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO, opusEncoderDTO
 from api.encoder.mux import mpegtsMuxDTO
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 router = APIRouter()
@@ -51,6 +52,6 @@ async def create_rtspclientsink_output(request: Request, data: rtspclientsinkOut
         safe_broadcast("UPDATE", data)
     else:
         output = rtspclientsinkOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data

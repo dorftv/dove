@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
 from api.auth import require_role
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 from pipeline_handler import PipelineHandler
 
 from pipelines.base import GSTBase
@@ -30,7 +31,7 @@ async def handle_mixer(request: Request, data: unionMixerDTO):
         existing_mixer.data = data
         safe_broadcast("UPDATE", data)
     else:
-        handler.add_pipeline(mixer)
+        await create_or_raise(handler, mixer)
 
     return data
 

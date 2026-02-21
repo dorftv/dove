@@ -75,6 +75,25 @@ class EventLoopBridge:
         """Schedule a synchronous function to run in GLib main loop (from asyncio context)."""
         GLib.idle_add(func, *args)
 
+    def call_glib_async(self, func: Callable, *args) -> asyncio.Future:
+        """Run func on GLib main loop, return awaitable Future with its result."""
+        if self._asyncio_loop is None:
+            raise RuntimeError("asyncio loop not registered on bridge")
+
+        loop = self._asyncio_loop
+        future: asyncio.Future = loop.create_future()
+
+        def _runner():
+            try:
+                result = func(*args)
+                loop.call_soon_threadsafe(future.set_result, result)
+            except Exception as e:
+                loop.call_soon_threadsafe(future.set_exception, e)
+            return False
+
+        GLib.idle_add(_runner)
+        return future
+
 
 # Module-level singleton access
 bridge = EventLoopBridge.get_instance()

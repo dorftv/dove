@@ -8,6 +8,7 @@ from typing import Optional, Union
 from helpers import get_default_height, get_default_width
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 router = APIRouter()
 
 
@@ -45,6 +46,6 @@ async def create_nodecg_input(request: Request, data: NodeCGInputDTO):
         safe_broadcast("UPDATE", data)
     else:
         input = NodeCGInput(data=data)
-        handler.add_pipeline(input)
+        await create_or_raise(handler, input)
 
     return data

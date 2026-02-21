@@ -1,7 +1,7 @@
 import os
 import pkgutil
 import importlib
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List, get_args, get_origin, Annotated
 from api.output_models import OutputDTO
 from api.input_models import InputDTO
@@ -287,3 +287,20 @@ def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None
             module = importlib.import_module(full_module_name)
             if hasattr(module, 'router'):
                 yield module.router, module_name
+
+
+async def create_or_raise(handler, entity):
+    """Await dynamic entity build; raise HTTP 500 with the failure detail on error."""
+    try:
+        fut = handler.add_pipeline(entity)
+        if fut is not None:
+            success = await fut
+            if not success:
+                detail = getattr(entity.data, "details", None) or f"Failed to create {entity.data.type}"
+                entity_type = getattr(entity.data, "type", None) or "entity"
+                raise HTTPException(status_code=500, detail=f"{entity_type}: {detail}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        entity_type = getattr(entity.data, "type", None) or "entity"
+        raise HTTPException(status_code=500, detail=f"{entity_type}: {e}")

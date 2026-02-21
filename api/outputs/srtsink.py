@@ -8,6 +8,7 @@ from api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO
 from api.encoder.mux import mpegtsMuxDTO
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 
 
 
@@ -71,7 +72,7 @@ async def create_srtsink_output(request: Request, data: srtsinkOutputDTO):
         safe_broadcast("UPDATE", data)
     else:
         output = srtsinkOutput(data=data)
-        handler.add_pipeline(output)
+        await create_or_raise(handler, output)
 
     return data
 

@@ -6,6 +6,7 @@ from typing import Optional
 from helpers import get_default_height, get_default_width
 
 from event_loop_bridge import safe_broadcast
+from api.helper import create_or_raise
 router = APIRouter()
 
 
@@ -41,6 +42,6 @@ async def create_wpesrc_input(request: Request, data: WpesrcInputDTO):
         safe_broadcast("UPDATE", data)
     else:
         input = WpesrcInput(data=data)
-        handler.add_pipeline(input)
+        await create_or_raise(handler, input)
 
     return data

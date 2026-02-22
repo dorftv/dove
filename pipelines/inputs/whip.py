@@ -69,6 +69,7 @@ class WhipInput(Input):
         self._video_proxy_src = None
         self._video_proxy_sink = None
         self._publisher_connected = False
+        self._publisher_claimed = False
         self._fallback_video_downstream_pad = None  # pad that was linked to testsrc
         # Suppress transient not-linked errors from videotestsrc during filter rebuilds/swaps
         self._suppress_teardown_error = True
@@ -76,6 +77,13 @@ class WhipInput(Input):
     @property
     def is_publishing(self) -> bool:
         return self._publisher_connected
+
+    def try_claim(self) -> bool:
+        """Atomic check-and-set for publisher session ownership. Safe because it contains no await."""
+        if self._publisher_pipeline is not None or self._publisher_claimed:
+            return False
+        self._publisher_claimed = True
+        return True
 
     def build_pipeline_str(self) -> str:
         """Fallback: black video until publisher connects. Video-only input."""
@@ -362,6 +370,11 @@ class WhipInput(Input):
         webrtcbin = self._publisher_webrtcbin
         publisher_pipeline = self._publisher_pipeline
 
+        # Always release the claim, even on early-return paths where
+        # connect_publisher failed before assigning _publisher_pipeline.
+        # Otherwise a failed POST would leave the input permanently 409-locked.
+        self._publisher_claimed = False
+
         if not publisher_pipeline:
             return
 
@@ -419,6 +432,7 @@ class WhipInput(Input):
         uid = self.data.uid
         input_bin = self._bin
         saved_downstream_pad = self._fallback_video_downstream_pad
+        self._fallback_video_downstream_pad = None
 
         if not input_bin or not saved_downstream_pad:
             return
@@ -436,9 +450,16 @@ class WhipInput(Input):
         else:
             logger.log(f"WHIP: failed to restore video fallback: {link_result}", level='WARNING')
 
-        self._fallback_video_downstream_pad = None
-
     def cleanup(self):
         """Called when input is deleted."""
         if self._publisher_pipeline:
             self.disconnect_publisher()
+        try:
+            from api.webrtc_whip import remove_resources_for_input
+            remove_resources_for_input(str(self.data.uid))
+        except Exception as e:
+            logger.log(
+                f"WHIP cleanup: remove_resources_for_input failed: {e}",
+                level='WARNING',
+            )
+        self._fallback_video_downstream_pad = None

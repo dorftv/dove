@@ -54,35 +54,60 @@ async def whip_offer(input_uid: str, request: Request):
     if not whip_input:
         return Response(status_code=404, content="Input not found or not a WHIP input")
 
-    if whip_input.is_publishing:
+    if not whip_input.try_claim():
         return Response(status_code=409, content="Publisher already connected")
 
-    sdp_offer = (await request.body()).decode("utf-8")
-    host_ip = get_host_ip(request)
-    resource_id = str(uuid.uuid4())
-    _resources[resource_id] = (input_uid, whip_input)
-
-    loop = asyncio.get_running_loop()
-    answer_future = loop.create_future()
-    whip_input.connect_publisher(sdp_offer, answer_future, loop, host_ip)
-
     try:
-        answer = await asyncio.wait_for(answer_future, timeout=10.0)
-    except asyncio.TimeoutError:
-        _resources.pop(resource_id, None)
-        return Response(status_code=500, content="WebRTC session setup timed out")
+        sdp_offer = (await request.body()).decode("utf-8")
+        host_ip = get_host_ip(request)
+        resource_id = str(uuid.uuid4())
+        _resources[resource_id] = (input_uid, whip_input)
 
-    if not answer:
-        _resources.pop(resource_id, None)
-        return Response(status_code=500, content="Failed to create WebRTC session")
+        loop = asyncio.get_running_loop()
+        answer_future = loop.create_future()
+        whip_input.connect_publisher(sdp_offer, answer_future, loop, host_ip)
 
-    return Response(
-        status_code=201, content=answer, media_type="application/sdp",
-        headers={
-            "Location": f"/whip/ingest/resource/{resource_id}",
-            "Access-Control-Expose-Headers": "Location",
-        },
-    )
+        try:
+            answer = await asyncio.wait_for(answer_future, timeout=10.0)
+        except asyncio.TimeoutError:
+            _resources.pop(resource_id, None)
+            # Full teardown via the GLib thread — clears _publisher_pipeline,
+            # _publisher_webrtcbin and _publisher_claimed via the tested
+            # READY → flush → remove → NULL → orphan sequence. Awaited so the
+            # claim is fully released before the 500 response goes out;
+            # disconnect_publisher early-returns safely if setup failed before
+            # _publisher_pipeline was assigned.
+            try:
+                await bridge.call_glib_async(whip_input.disconnect_publisher)
+            except Exception as e:
+                logger.log(f"WHIP cleanup error after failure: {e}", level='WARNING')
+            return Response(status_code=500, content="WebRTC session setup timed out")
+
+        if not answer:
+            _resources.pop(resource_id, None)
+            try:
+                await bridge.call_glib_async(whip_input.disconnect_publisher)
+            except Exception as e:
+                logger.log(f"WHIP cleanup error after failure: {e}", level='WARNING')
+            return Response(status_code=500, content="Failed to create WebRTC session")
+
+        return Response(
+            status_code=201, content=answer, media_type="application/sdp",
+            headers={
+                "Location": f"/whip/ingest/resource/{resource_id}",
+                "Access-Control-Expose-Headers": "Location",
+            },
+        )
+    except Exception as e:
+        logger.log(f"WHIP offer error: {e}", level='ERROR')
+        rid = locals().get('resource_id')
+        if rid:
+            _resources.pop(rid, None)
+        try:
+            await bridge.call_glib_async(whip_input.disconnect_publisher)
+        except Exception as e:
+            logger.log(f"WHIP cleanup error after failure: {e}", level='WARNING')
+        return Response(status_code=500, content="WHIP offer handler error")
 
 
 @router.patch("/whip/ingest/resource/{resource_id}")

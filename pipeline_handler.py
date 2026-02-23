@@ -446,6 +446,7 @@ class PipelineHandler(object):
                 type="audio", element=a.element,
                 options=a.options or "",
                 src=data.src,
+                audio_filters=getattr(a, 'audio_filters', None) or [],
             ))
             if self._add_pipeline_direct(entity):
                 output_pipeline._audio_encoder_uid = entity.data.uid
@@ -560,30 +561,41 @@ class PipelineHandler(object):
             if current != max_lat:
                 logger.log(f"Encoder {e.data.uid} video_delay_ms: {current} → {max_lat}", level='INFO')
                 e.data.video_delay_ms = max_lat
-                self._rebuild_encoder(e)
+                self._patch_encoder_video_delay(e)
                 safe_broadcast("UPDATE", e.data, type="encoder")
 
-    def _rebuild_encoder(self, encoder):
-        """Rebuild an encoder by removing and re-adding it with the new pipeline string.
-
-        Video encoders can't be patched live because the delay queue's min-threshold-time
-        is fixed at construction. Simpler to delete + re-add — briefly drops the encoder's
-        output which is acceptable since the live preview path is a separate branch.
-        """
+    def _patch_encoder_video_delay(self, encoder):
+        """Patch the enc_delay queue min-threshold-time and max-size-time
+        live on a non-preview video encoder. Runs on GLib main thread
+        (callers are via GLib.idle_add)."""
         uid = encoder.data.uid
-        category = self._get_category(encoder)
+        delay_ms = getattr(encoder.data, 'video_delay_ms', 0) or 0
 
-        # Preserve the existing DTO (with new video_delay_ms) so settings carry over
-        saved_data = encoder.data
+        elem = None
+        if getattr(encoder, '_bin', None):
+            elem = encoder._bin.get_by_name(f"enc_delay_{uid}")
+        if not elem and self.core_pipeline and self.core_pipeline.pipeline:
+            elem = self.core_pipeline.pipeline.get_by_name(f"enc_delay_{uid}")
 
-        # Delete on GLib thread (current call may be from an idle callback already)
-        self._delete_component(encoder, category)
+        if not elem:
+            logger.log(
+                f"Encoder {uid}: enc_delay element not found — cannot patch "
+                f"video_delay_ms (expected after fix)",
+                level='WARNING',
+            )
+            return
 
-        # Recreate with the updated DTO
-        from pipelines.encoders.encoder import Encoder as EncoderClass
-        new_encoder = EncoderClass(data=saved_data)
-        self.add_pipeline(new_encoder)
-        logger.log(f"Encoder {uid} rebuilt with video_delay_ms={saved_data.video_delay_ms}", level='INFO')
+        if delay_ms == 0:
+            elem.set_property('min-threshold-time', 0)
+            elem.set_property('max-size-time', 1_000_000_000)
+        else:
+            delay_ns = delay_ms * 1_000_000
+            elem.set_property('min-threshold-time', delay_ns)
+            elem.set_property('max-size-time', delay_ns + 500_000_000)
+        logger.log(
+            f"Encoder {uid} patched delay → {delay_ms}ms (live)",
+            level='INFO',
+        )
 
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)

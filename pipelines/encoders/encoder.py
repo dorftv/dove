@@ -76,17 +76,25 @@ class Encoder(GSTBase):
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
         ]
-        # Optional video delay — auto-set by pipeline_handler to match audio filter latency.
-        # `queue min-threshold-time` holds buffers until the threshold is met, then
-        # releases them maintaining a constant delay. No dedicated videodelay element needed.
-        delay_ms = getattr(self.data, 'video_delay_ms', 0) or 0
-        if delay_ms > 0 and not is_preview:
-            delay_ns = delay_ms * 1_000_000
-            max_ns = delay_ns + 500_000_000  # +500ms headroom
-            parts.append(
-                f"queue name=enc_delay_{uid} min-threshold-time={delay_ns} "
-                f"max-size-time={max_ns} max-size-buffers=0 max-size-bytes=0"
-            )
+        # Video delay queue — auto-synced to audio filter latency by pipeline_handler.
+        # Always emitted for non-preview encoders (even when delay_ms==0 it's a
+        # pass-through) so pipeline_handler._patch_encoder_video_delay can patch
+        # `min-threshold-time` / `max-size-time` live without rebuilding the encoder.
+        # Preview encoders omit the delay queue entirely — preview stays zero-latency.
+        if not is_preview:
+            delay_ms = getattr(self.data, 'video_delay_ms', 0) or 0
+            if delay_ms > 0:
+                delay_ns = delay_ms * 1_000_000
+                max_ns = delay_ns + 500_000_000  # +500ms headroom
+                parts.append(
+                    f"queue name=enc_delay_{uid} min-threshold-time={delay_ns} "
+                    f"max-size-time={max_ns} max-size-buffers=0 max-size-bytes=0"
+                )
+            else:
+                parts.append(
+                    f"queue name=enc_delay_{uid} min-threshold-time=0 "
+                    f"max-size-time=1000000000 max-size-buffers=0 max-size-bytes=0"
+                )
         parts.extend([
             "videoconvert", vscale, "videorate skip-to-first=true",
             caps_str,

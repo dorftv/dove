@@ -1,9 +1,11 @@
 from typing import Annotated, ClassVar, Optional, Literal, Union
 from pydantic import Field
 from .encoder import EncoderDTO
+from api.input_models import AudioFilterDTO
 
 class audioEncoderDTO(EncoderDTO):
     type: Literal["audio"] = "audio"
+    audio_filters: Optional[list[AudioFilterDTO]] = []
 
 class aacEncoderDTO(audioEncoderDTO):
     name: Literal["aac"] = "aac"

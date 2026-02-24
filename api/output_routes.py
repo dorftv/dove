@@ -35,6 +35,9 @@ async def get_all_outputs(request: Request):
 @router.delete("/outputs", tags=['Outputs'], response_model=SuccessDTO, dependencies=[require_role("outputs")])
 async def delete_output(request: Request, data: OutputDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    pipeline = handler.get_pipeline("outputs", data.uid)
+    if pipeline is not None and getattr(pipeline.data, 'locked', False):
+        raise HTTPException(status_code=403, detail="Output is locked")
     handler.delete_pipeline("outputs", data.uid)
     return SuccessDTO(uid=data.uid)
 

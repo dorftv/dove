@@ -69,6 +69,9 @@ async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
 @router.delete("/mixers", response_model=SuccessDTO, dependencies=[require_role("supervisor")])
 async def delete(request: Request, data: MixerDeleteDTO):
     handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    pipeline = handler.get_pipeline("mixers", data.uid)
+    if pipeline is not None and getattr(pipeline.data, 'locked', False):
+        raise HTTPException(status_code=403, detail="Mixer is locked")
     # delete_pipeline handles preview cleanup + DELETE broadcasts
     handler.delete_pipeline("mixers", data.uid)
     return SuccessDTO(code=200, details="OK")

@@ -34,6 +34,9 @@ class hlssink2Output(Output):
             f" {self.get_video_start(dynamic)} mux_{uid}.video "
         )
 
+        if self.data.audio_encoder is None:
+            return video_str
+
         audio_str = (
             f" {self.get_audio_start(dynamic)} mux_{uid}.audio "
         )

@@ -263,7 +263,12 @@ async def export_config(
     outputs: bool = Query(True, description="Include outputs and encoders"),
     settings: bool = Query(True, description="Include global settings"),
 ):
-    """Export current runtime config as TOML. Filters out auto-generated preview items."""
+    """Export current runtime config as TOML. Filters out auto-generated preview items.
+
+    **Security warning:** When called with settings=true as admin, the exported
+    TOML contains plaintext credentials (auth.cookie_secret, auth.api_tokens).
+    Treat the export file as a secret.
+    """
     handler = request.app.state._state.get("pipeline_handler")
     if not handler or not handler._pipelines:
         return Response(status_code=503, content="Pipeline not ready")

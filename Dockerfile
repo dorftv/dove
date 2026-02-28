@@ -17,6 +17,8 @@ RUN apk add --no-cache \
   libsrt-dev \
   vulkan-loader-dev vulkan-headers \
   libva-dev libvpx-dev \
+  ladspa-dev \
+  frei0r-plugins-dev \
   zlib-dev openssl-dev make
 
 WORKDIR /opt
@@ -56,6 +58,8 @@ RUN cd gstreamer && \
     -Dgood=enabled \
     -Dintrospection=enabled \
     -Dgst-plugins-bad:vulkan-video=enabled \
+    -Dgst-plugins-bad:ladspa=enabled \
+    -Dgst-plugins-bad:frei0r=enabled \
     -Dtests=disabled && \
   ninja -C builddir && \
   ninja -C builddir install
@@ -112,6 +116,15 @@ RUN apk add --no-cache \
     mesa-vulkan-swrast mesa-vulkan-ati mesa-vulkan-intel
 
 RUN apk add --no-cache openh264 x265 bash-completion curl libsoup
+
+# LADSPA runtime + broadcast audio plugin collections:
+#   zam-plugins-ladspa: Zam compressors, gate, multiband, tube
+#   lsp-plugins-ladspa: LSP pro audio suite — parametric EQ, de-esser,
+#     multiband comp, sidechain comp, ISP limiter, gate, stereo imager
+RUN apk add --no-cache ladspa zam-plugins-ladspa lsp-plugins-ladspa
+
+# frei0r video effects (100+ filters: pixelate, cartoon, distort, glow, etc.)
+RUN apk add --no-cache frei0r-plugins
 
 RUN apk add --no-cache     intel-media-driver      mesa-va-gallium
 COPY --from=builder /usr /usr

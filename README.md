@@ -69,9 +69,9 @@ Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan. Software fallback
 
 Per-input dynamic filter chains, applied at runtime without pipeline restart.
 
-**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor, expander, limiter, amplify, pan, invert, echo. See [`docs/audio-filters.md`](docs/audio-filters.md).
+**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor (LSP), expander (LSP), gate (LSP), limiter, amplify, pan, invert, echo, denoise, loudnorm. See [`docs/audio-filters.md`](docs/audio-filters.md).
 
-**Video:** color balance, flip/mirror, crop, blur, sharpen, effects. See [`docs/video-filters.md`](docs/video-filters.md).
+**Video:** color balance, flip/mirror, crop, color effects, blur, chroma key. **Experimental (requires `frei0r-plugins`):** pixelate, cartoon, glow, vignette, film grain, glitch, scanlines, sobel edge, color halftone. See [`docs/video-filters.md`](docs/video-filters.md).
 
 ### Previews
 

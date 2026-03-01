@@ -28,6 +28,53 @@ VIDEO_FILTER_MAP = {
         f" halignment={p.get('halignment', 'center')}"
         f" font-desc=\"{p.get('font', 'Sans 24')}\""
     ),
+    # frei0r video effects
+    'pixelate': lambda uid, i, p: (
+        f"frei0r-filter-pixeliz0r name=vf_{uid}_{i}"
+        f" block-width={p.get('block_width', 0.022)}"
+        f" block-height={p.get('block_height', 0.029)}"
+    ),
+    'cartoon': lambda uid, i, p: (
+        f"frei0r-filter-cartoon name=vf_{uid}_{i}"
+        f" triplevel={p.get('triplevel', 1.0)}"
+        f" diffspace={p.get('diffspace', 0.004)}"
+    ),
+    'glow': lambda uid, i, p: (
+        f"frei0r-filter-glow name=vf_{uid}_{i}"
+        f" blur={p.get('blur', 0.5)}"
+    ),
+    'vignette': lambda uid, i, p: (
+        f"frei0r-filter-vignette name=vf_{uid}_{i}"
+        f" aspect={p.get('aspect', 0.5)}"
+        f" clearcenter={p.get('clearcenter', 0.0)}"
+        f" soft={p.get('soft', 0.6)}"
+    ),
+    'grain': lambda uid, i, p: (
+        f"frei0r-filter-film-grain name=vf_{uid}_{i}"
+        f" grain-amount={p.get('grain_amount', 0.1)}"
+        f" red-grain={p.get('red_grain', 0.75)}"
+        f" green-grain={p.get('green_grain', 1.0)}"
+        f" blue-grain={p.get('blue_grain', 0.5)}"
+        f" blur-amount={p.get('blur_amount', 0.5)}"
+        f" dust-amount={p.get('dust_amount', 0.0)}"
+        f" flicker={p.get('flicker', 0.0)}"
+    ),
+    'glitch': lambda uid, i, p: (
+        f"frei0r-filter-glitch0r name=vf_{uid}_{i}"
+        f" glitch-frequency={p.get('glitch_frequency', 0.5)}"
+        f" block-height={p.get('block_height', 0.5)}"
+        f" shift-intensity={p.get('shift_intensity', 0.5)}"
+        f" color-glitching-intensity={p.get('color_glitching_intensity', 0.5)}"
+    ),
+    'scanlines': lambda uid, i, p: f"frei0r-filter-scanline0r name=vf_{uid}_{i}",
+    'sobel': lambda uid, i, p: f"frei0r-filter-sobel name=vf_{uid}_{i}",
+    'colorhalftone': lambda uid, i, p: (
+        f"frei0r-filter-colorhalftone name=vf_{uid}_{i}"
+        f" dot-radius={p.get('dot_radius', 0.4)}"
+        f" cyan-angle={p.get('cyan_angle', 0.3)}"
+        f" magenta-angle={p.get('magenta_angle', 0.45)}"
+        f" yellow-angle={p.get('yellow_angle', 0.25)}"
+    ),
 }
 
 # Filter type → (element_factory, property_dict) for dynamic creation
@@ -50,6 +97,46 @@ VIDEO_FILTER_ELEMENT_MAP = {
         'text': p.get('text', ''),
         'valignment': p.get('valignment', 2),  # 2 = bottom
         'halignment': p.get('halignment', 0),  # 0 = center
+    }),
+    # frei0r video effects
+    'pixelate': lambda p: ('frei0r-filter-pixeliz0r', {
+        'block-width': float(p.get('block_width', 0.022)),
+        'block-height': float(p.get('block_height', 0.029)),
+    }),
+    'cartoon': lambda p: ('frei0r-filter-cartoon', {
+        'triplevel': float(p.get('triplevel', 1.0)),
+        'diffspace': float(p.get('diffspace', 0.004)),
+    }),
+    'glow': lambda p: ('frei0r-filter-glow', {
+        'blur': float(p.get('blur', 0.5)),
+    }),
+    'vignette': lambda p: ('frei0r-filter-vignette', {
+        'aspect': float(p.get('aspect', 0.5)),
+        'clearcenter': float(p.get('clearcenter', 0.0)),
+        'soft': float(p.get('soft', 0.6)),
+    }),
+    'grain': lambda p: ('frei0r-filter-film-grain', {
+        'grain-amount': float(p.get('grain_amount', 0.1)),
+        'red-grain': float(p.get('red_grain', 0.75)),
+        'green-grain': float(p.get('green_grain', 1.0)),
+        'blue-grain': float(p.get('blue_grain', 0.5)),
+        'blur-amount': float(p.get('blur_amount', 0.5)),
+        'dust-amount': float(p.get('dust_amount', 0.0)),
+        'flicker': float(p.get('flicker', 0.0)),
+    }),
+    'glitch': lambda p: ('frei0r-filter-glitch0r', {
+        'glitch-frequency': float(p.get('glitch_frequency', 0.5)),
+        'block-height': float(p.get('block_height', 0.5)),
+        'shift-intensity': float(p.get('shift_intensity', 0.5)),
+        'color-glitching-intensity': float(p.get('color_glitching_intensity', 0.5)),
+    }),
+    'scanlines': lambda p: ('frei0r-filter-scanline0r', {}),
+    'sobel': lambda p: ('frei0r-filter-sobel', {}),
+    'colorhalftone': lambda p: ('frei0r-filter-colorhalftone', {
+        'dot-radius': float(p.get('dot_radius', 0.4)),
+        'cyan-angle': float(p.get('cyan_angle', 0.3)),
+        'magenta-angle': float(p.get('magenta_angle', 0.45)),
+        'yellow-angle': float(p.get('yellow_angle', 0.25)),
     }),
 }
 

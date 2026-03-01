@@ -28,6 +28,14 @@ _ELEMENTS_TO_PROBE = [
     # Rust plugins (gst-plugins-rs) — optional
     'ebur128level', 'audioloudnorm', 'audiornnoise',
     'livesync', 'fallbackswitch', 'fallbacksrc',
+    # LADSPA plugins — optional
+    'ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-compressor-stereo',
+    'ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-expander-stereo',
+    'ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-gate-stereo',
+    # frei0r video filters — optional
+    'frei0r-filter-pixeliz0r', 'frei0r-filter-cartoon', 'frei0r-filter-glow',
+    'frei0r-filter-vignette', 'frei0r-filter-film-grain', 'frei0r-filter-glitch0r',
+    'frei0r-filter-scanline0r', 'frei0r-filter-sobel', 'frei0r-filter-colorhalftone',
 ]
 
 # Map: filter type → required GStreamer element(s)
@@ -36,8 +44,9 @@ _AUDIO_FILTER_ELEMENTS = {
     'lowpass': ['audiocheblimit'],
     'eq3': ['equalizer-3bands'],
     'eq10': ['equalizer-10bands'],
-    'compressor': ['audiodynamic'],
-    'expander': ['audiodynamic'],
+    'compressor': ['ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-compressor-stereo'],
+    'expander': ['ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-expander-stereo'],
+    'gate': ['ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-gate-stereo'],
     'limiter': ['rglimiter'],
     'amplify': ['audioamplify'],
     'pan': ['audiopanorama'],
@@ -56,6 +65,15 @@ _VIDEO_FILTER_ELEMENTS = {
     'blur': ['gaussianblur'],
     'chromakey': ['alpha'],
     'text': ['textoverlay'],
+    'pixelate': ['frei0r-filter-pixeliz0r'],
+    'cartoon': ['frei0r-filter-cartoon'],
+    'glow': ['frei0r-filter-glow'],
+    'vignette': ['frei0r-filter-vignette'],
+    'grain': ['frei0r-filter-film-grain'],
+    'glitch': ['frei0r-filter-glitch0r'],
+    'scanlines': ['frei0r-filter-scanline0r'],
+    'sobel': ['frei0r-filter-sobel'],
+    'colorhalftone': ['frei0r-filter-colorhalftone'],
 }
 
 

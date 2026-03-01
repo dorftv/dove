@@ -6,6 +6,9 @@ from logger import logger
 
 _rebuild_counter = itertools.count()
 
+_LSP_COMPRESSOR = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-compressor-stereo"
+_LSP_EXPANDER = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-expander-stereo"
+_LSP_GATE = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-gate-stereo"
 
 # Known filter latencies in milliseconds — used by pipeline_handler to auto-sync
 # video delay on sibling video encoders when loudnorm (3s lookahead) is applied.
@@ -27,13 +30,52 @@ AUDIO_FILTER_MAP = {
         + ''.join(f" band{n}={p.get(f'band{n}', 0)}" for n in range(10))
     ),
     'compressor': lambda uid, i, p: (
-        f"audiodynamic mode=compressor name=af_{uid}_{i}"
-        f" threshold={p.get('threshold', 1.0)} ratio={p.get('ratio', 1.0)}"
-        f" characteristics={p.get('characteristics', 'soft-knee')}"
+        f"{_LSP_COMPRESSOR} name=af_{uid}_{i}"
+        f" attack-threshold={p.get('attack_threshold', 0.12589)}"
+        f" attack-time={p.get('attack_time', 20)}"
+        f" release-threshold={p.get('release_threshold', 0)}"
+        f" release-time={p.get('release_time', 150)}"
+        f" ratio={p.get('ratio', 2.5)}"
+        f" knee={p.get('knee', 0.5011957)}"
+        f" makeup-gain={p.get('makeup_gain', 1.2589)}"
+        f" compression-mode={p.get('compression_mode', 0)}"
+        f" sidechain-mode={p.get('sidechain_mode', 1)}"
+        f" sidechain-source={p.get('sidechain_source', 0)}"
+        f" sidechain-type={p.get('sidechain_type', 0)}"
+        f" sidechain-lookahead=0 sidechain-listen=false sidechain-preamp=1"
+        f" stereo-split={'true' if p.get('stereo_split', False) else 'false'}"
+        f" high-pass-filter-mode=0 low-pass-filter-mode=0"
     ),
     'expander': lambda uid, i, p: (
-        f"audiodynamic mode=expander name=af_{uid}_{i}"
-        f" threshold={p.get('threshold', 1.0)} ratio={p.get('ratio', 1.0)}"
+        f"{_LSP_EXPANDER} name=af_{uid}_{i}"
+        f" expander-mode={p.get('expander_mode', 0)}"
+        f" attack-threshold={p.get('attack_threshold', 0.01)}"
+        f" attack-time={p.get('attack_time', 5)}"
+        f" release-threshold={p.get('release_threshold', 0)}"
+        f" release-time={p.get('release_time', 100)}"
+        f" hold-time={p.get('hold_time', 0)}"
+        f" ratio={p.get('ratio', 2.0)}"
+        f" knee={p.get('knee', 0.5011957)}"
+        f" makeup-gain={p.get('makeup_gain', 1.0)}"
+        f" sidechain-mode={p.get('sidechain_mode', 0)}"
+        f" sidechain-source={p.get('sidechain_source', 0)}"
+        f" stereo-split={'true' if p.get('stereo_split', False) else 'false'}"
+        f" sidechain-lookahead=0 sidechain-listen=false sidechain-preamp=1"
+        f" high-pass-filter-mode=0 low-pass-filter-mode=0"
+    ),
+    'gate': lambda uid, i, p: (
+        f"{_LSP_GATE} name=af_{uid}_{i}"
+        f" curve-threshold={p.get('curve_threshold', 0.01)}"
+        f" attack={p.get('attack', 10)}"
+        f" release={p.get('release', 100)}"
+        f" hold-time={p.get('hold_time', 50)}"
+        f" reduction={p.get('reduction', 0)}"
+        f" makeup-gain={p.get('makeup_gain', 1.0)}"
+        f" sidechain-mode={p.get('sidechain_mode', 0)}"
+        f" sidechain-source={p.get('sidechain_source', 0)}"
+        f" stereo-split={'true' if p.get('stereo_split', False) else 'false'}"
+        f" sidechain-lookahead=0 sidechain-listen=false sidechain-preamp=1"
+        f" high-pass-filter-mode=0 low-pass-filter-mode=0"
     ),
     'limiter': lambda uid, i, p: f"rglimiter name=af_{uid}_{i}",
     'amplify': lambda uid, i, p: f"audioamplify name=af_{uid}_{i} amplification={p.get('amplification', 1.0)}",
@@ -58,8 +100,60 @@ FILTER_ELEMENT_MAP = {
     'lowpass': lambda p: ('audiocheblimit', {'mode': 0, 'cutoff': p.get('cutoff', 8000), 'poles': p.get('poles', 4)}),
     'eq3': lambda p: ('equalizer-3bands', {f'band{n}': p.get(f'band{n}', 0) for n in range(3)}),
     'eq10': lambda p: ('equalizer-10bands', {f'band{n}': p.get(f'band{n}', 0) for n in range(10)}),
-    'compressor': lambda p: ('audiodynamic', {'mode': 0, 'threshold': p.get('threshold', 1.0), 'ratio': p.get('ratio', 1.0)}),
-    'expander': lambda p: ('audiodynamic', {'mode': 1, 'threshold': p.get('threshold', 1.0), 'ratio': p.get('ratio', 1.0)}),
+    'compressor': lambda p: (_LSP_COMPRESSOR, {
+        'attack-threshold': p.get('attack_threshold', 0.12589),
+        'attack-time': float(p.get('attack_time', 20)),
+        'release-threshold': float(p.get('release_threshold', 0)),
+        'release-time': float(p.get('release_time', 150)),
+        'ratio': p.get('ratio', 2.5),
+        'knee': p.get('knee', 0.5011957),
+        'makeup-gain': p.get('makeup_gain', 1.2589),
+        'compression-mode': p.get('compression_mode', 0),
+        'sidechain-mode': p.get('sidechain_mode', 1),
+        'sidechain-source': p.get('sidechain_source', 0),
+        'sidechain-type': p.get('sidechain_type', 0),
+        'sidechain-lookahead': 0.0,
+        'sidechain-listen': False,
+        'sidechain-preamp': 1.0,
+        'stereo-split': p.get('stereo_split', False),
+        'high-pass-filter-mode': 0,
+        'low-pass-filter-mode': 0,
+    }),
+    'expander': lambda p: (_LSP_EXPANDER, {
+        'expander-mode': p.get('expander_mode', 0),
+        'attack-threshold': float(p.get('attack_threshold', 0.01)),
+        'attack-time': float(p.get('attack_time', 5)),
+        'release-threshold': float(p.get('release_threshold', 0)),
+        'release-time': float(p.get('release_time', 100)),
+        'hold-time': float(p.get('hold_time', 0)),
+        'ratio': float(p.get('ratio', 2.0)),
+        'knee': float(p.get('knee', 0.5011957)),
+        'makeup-gain': float(p.get('makeup_gain', 1.0)),
+        'sidechain-mode': p.get('sidechain_mode', 0),
+        'sidechain-source': p.get('sidechain_source', 0),
+        'stereo-split': p.get('stereo_split', False),
+        'sidechain-lookahead': 0.0,
+        'sidechain-listen': False,
+        'sidechain-preamp': 1.0,
+        'high-pass-filter-mode': 0,
+        'low-pass-filter-mode': 0,
+    }),
+    'gate': lambda p: (_LSP_GATE, {
+        'curve-threshold': float(p.get('curve_threshold', 0.01)),
+        'attack': float(p.get('attack', 10)),
+        'release': float(p.get('release', 100)),
+        'hold-time': float(p.get('hold_time', 50)),
+        'reduction': float(p.get('reduction', 0)),
+        'makeup-gain': float(p.get('makeup_gain', 1.0)),
+        'sidechain-mode': p.get('sidechain_mode', 0),
+        'sidechain-source': p.get('sidechain_source', 0),
+        'stereo-split': p.get('stereo_split', False),
+        'sidechain-lookahead': 0.0,
+        'sidechain-listen': False,
+        'sidechain-preamp': 1.0,
+        'high-pass-filter-mode': 0,
+        'low-pass-filter-mode': 0,
+    }),
     'limiter': lambda p: ('rglimiter', {}),
     'amplify': lambda p: ('audioamplify', {'amplification': p.get('amplification', 1.0)}),
     'pan': lambda p: ('audiopanorama', {'panorama': p.get('panorama', 0.0)}),
@@ -118,6 +212,10 @@ def transform_filter_param(filter_type, key, val):
     if filter_type == 'denoise':
         if key == 'vad_threshold':
             return 'voice-activity-threshold', val
+    if filter_type in ('compressor', 'expander', 'gate',
+                       'pixelate', 'cartoon', 'glow', 'vignette', 'grain',
+                       'glitch', 'scanlines', 'sobel', 'colorhalftone'):
+        return key.replace('_', '-'), val
     return key, val
 
 
@@ -150,11 +248,9 @@ def create_filter_elements(uid, prefix, enabled_filters, pipeline, element_map=N
             caps_elem.set_property("caps", Gst.Caps.from_string("audio/x-raw,format=F32LE"))
         post = Gst.ElementFactory.make("audioconvert", f"{prefix}_post_{uid}_{gen}")
     else:
-        pre = Gst.ElementFactory.make("identity", f"{prefix}_pre_{uid}_{gen}")
-        pre.set_property("silent", True)
+        pre = Gst.ElementFactory.make("videoconvert", f"{prefix}_pre_{uid}_{gen}")
         caps_elem = None
-        post = Gst.ElementFactory.make("identity", f"{prefix}_post_{uid}_{gen}")
-        post.set_property("silent", True)
+        post = Gst.ElementFactory.make("videoconvert", f"{prefix}_post_{uid}_{gen}")
 
     if not pre or not post:
         logger.log(f"Failed to create filter scaffolding for {prefix}_{uid}", level='ERROR')
@@ -288,7 +384,7 @@ def update_filter_params(filters, find_element_fn, uid, anchor_in=None, anchor_o
         if elem == af_out:
             break
         factory = elem.get_factory()
-        if factory and factory.get_name() not in ("audioconvert", "audioresample", "capsfilter", "identity", "queue"):
+        if factory and factory.get_name() not in ("audioconvert", "audioresample", "capsfilter", "identity", "queue", "videoconvert", "videoscale"):
             filter_elems.append(elem)
         src = elem.get_static_pad("src")
         current = src.get_peer() if src else None
@@ -323,6 +419,7 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
 
     def _do_rebuild(pad, info, user_data):
         try:
+            _tail_gen = next(_rebuild_counter)
             out_sink = af_out.get_static_pad("sink")
 
             # Walk from af_in to af_out, collect elements between
@@ -372,7 +469,33 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
                     ac_pre, caps_elem, filter_elems, ac_post = result
                     in_src.link(ac_pre.get_static_pad("sink"))
                     link_filter_chain(ac_pre, caps_elem, filter_elems, ac_post)
-                    link_result = ac_post.get_static_pad("src").link(out_sink)
+                    if not audio:
+                        # gaussianblur/alpha output AYUV, textoverlay emits GstVideoOverlayComposition;
+                        # videoscale + BGRA capsfilter re-normalize to pipeline resolution.
+                        caps_str = "video/x-raw,format=BGRA"
+                        try:
+                            current = pad.get_current_caps()
+                            if current:
+                                s = current.get_structure(0)
+                                ok_w, wv = s.get_int("width")
+                                ok_h, hv = s.get_int("height")
+                                if ok_w and ok_h:
+                                    caps_str += f",width={wv},height={hv}"
+                        except Exception:
+                            pass
+                        prefix = "vf"
+                        vscale = Gst.ElementFactory.make("videoscale", f"{prefix}_vscale_{uid}_{_tail_gen}")
+                        vcaps = Gst.ElementFactory.make("capsfilter", f"{prefix}_vcaps_{uid}_{_tail_gen}")
+                        vcaps.set_property("caps", Gst.Caps.from_string(caps_str))
+                        pipe.add(vscale)
+                        pipe.add(vcaps)
+                        vscale.set_state(Gst.State.PLAYING)
+                        vcaps.set_state(Gst.State.PLAYING)
+                        ac_post.get_static_pad("src").link(vscale.get_static_pad("sink"))
+                        vscale.get_static_pad("src").link(vcaps.get_static_pad("sink"))
+                        link_result = vcaps.get_static_pad("src").link(out_sink)
+                    else:
+                        link_result = ac_post.get_static_pad("src").link(out_sink)
                     logger.log(f"Filter chain rebuilt for {uid}: {len(filter_elems)} filters", level='INFO')
                 else:
                     in_src.link(out_sink)

@@ -23,9 +23,6 @@ class Encoder(GSTBase):
     Audio encoders support a per-encoder filter chain (between identity anchors
     af_enc_in_<uid> / af_enc_out_<uid>) so loudness normalization can be applied
     to the encoded output without affecting the live preview path.
-
-    Video encoders support an auto-synced delay (via queue min-threshold-time) to
-    match any audio filter latency on the same source.
     """
     data: EncoderEntityDTO
     tee: Optional[Gst.Element] = None
@@ -76,25 +73,6 @@ class Encoder(GSTBase):
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
         ]
-        # Video delay queue — auto-synced to audio filter latency by pipeline_handler.
-        # Always emitted for non-preview encoders (even when delay_ms==0 it's a
-        # pass-through) so pipeline_handler._patch_encoder_video_delay can patch
-        # `min-threshold-time` / `max-size-time` live without rebuilding the encoder.
-        # Preview encoders omit the delay queue entirely — preview stays zero-latency.
-        if not is_preview:
-            delay_ms = getattr(self.data, 'video_delay_ms', 0) or 0
-            if delay_ms > 0:
-                delay_ns = delay_ms * 1_000_000
-                max_ns = delay_ns + 500_000_000  # +500ms headroom
-                parts.append(
-                    f"queue name=enc_delay_{uid} min-threshold-time={delay_ns} "
-                    f"max-size-time={max_ns} max-size-buffers=0 max-size-bytes=0"
-                )
-            else:
-                parts.append(
-                    f"queue name=enc_delay_{uid} min-threshold-time=0 "
-                    f"max-size-time=1000000000 max-size-buffers=0 max-size-bytes=0"
-                )
         parts.extend([
             "videoconvert", vscale, "videorate skip-to-first=true",
             caps_str,
@@ -163,6 +141,21 @@ class Encoder(GSTBase):
 
         return " ! ".join(parts)
 
+    def _latency_query_probe(self, pad, info):
+        """Block latency queries from propagating upstream through encoder branches."""
+        query = info.get_query()
+        if query.type == Gst.QueryType.LATENCY:
+            return Gst.PadProbeReturn.HANDLED
+        return Gst.PadProbeReturn.OK
+
+    def install_latency_firewall(self):
+        """Prevent encoder-internal latency from affecting pipeline-wide latency."""
+        if not self._bin:
+            return
+        sink_pad = self._bin.get_static_pad("sink")
+        if sink_pad:
+            sink_pad.add_probe(Gst.PadProbeType.QUERY_UPSTREAM, self._latency_query_probe)
+
     def check_state(self):
         if not self._bin:
             return
@@ -190,8 +183,7 @@ class Encoder(GSTBase):
     async def update(self, data):
         """Handle runtime update — name changes, audio filter chain edits."""
         if not isinstance(data, EncoderUpdateDTO):
-            data = EncoderUpdateDTO.model_validate(data) if hasattr(EncoderUpdateDTO, 'model_validate') \
-                else EncoderUpdateDTO.parse_obj(data)
+            data = EncoderUpdateDTO.model_validate(data)
         if data.name is not None:
             self.data.name = data.name
         if data.audio_filters is not None:
@@ -227,18 +219,17 @@ class Encoder(GSTBase):
 
         self.data.audio_filters = new_filters
 
-        # Auto-sync video delay on sibling video encoders (same src) via the pipeline handler.
-        # Deferred to idle so we're not re-entering while the filter rebuild is still running.
-        def _sync_delays():
+        # Notify outputs using this audio encoder to update their video delay.
+        def _notify_output_delays():
             try:
-                from pipelines.encoders.encoder import _resolve_pipeline_handler
-                handler = _resolve_pipeline_handler()
-                if handler and self.data.src:
-                    handler._recompute_video_delays_for_src(self.data.src)
+                from pipeline_handler import HandlerSingleton
+                handler = HandlerSingleton()
+                if handler:
+                    handler._recompute_output_video_delays_for_audio_encoder(self.data.uid)
             except Exception as e:
-                logger.log(f"Encoder {uid}: video delay sync failed: {e}", level='ERROR')
+                logger.log(f"Encoder {uid}: output delay sync failed: {e}", level='ERROR')
             return False
-        GLib.idle_add(_sync_delays)
+        GLib.idle_add(_notify_output_delays)
 
     def _rebuild_audio_filter_chain(self, new_filters):
         """Replace audio filter elements between the encoder's af_enc_in/af_enc_out anchors."""
@@ -254,12 +245,3 @@ class Encoder(GSTBase):
             element_map=FILTER_ELEMENT_MAP, audio=True, allow_rate_conversion=True,
         )
         return False
-
-
-def _resolve_pipeline_handler():
-    """Locate the pipeline handler singleton. Avoids circular import at module level."""
-    try:
-        from pipeline_handler import HandlerSingleton
-        return HandlerSingleton()
-    except Exception:
-        return None

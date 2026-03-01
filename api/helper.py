@@ -167,7 +167,7 @@ def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> dict
                       else [])
 
     for model, model_name in get_models(models_path, exclude_models, enabled_models):
-        raw_fields = model.schema().get('properties', {})
+        raw_fields = model.model_json_schema().get('properties', {})
         model_type = raw_fields.get('type', {}).get('default')
         if model_type:
             model_fields[model_type] = {
@@ -183,17 +183,17 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
     if not issubclass(model_class, BaseModel):
         raise TypeError("Class must be a subclass of pydantic.BaseModel")
 
-    properties = model_class.schema().get('properties', {})
-    required_fields = model_class.schema().get('required', {})
+    properties = model_class.model_json_schema().get('properties', {})
+    required_fields = model_class.model_json_schema().get('required', {})
     parent_fields = {
-        "api.outputs": OutputDTO.schema().get('properties', {}),
-        "api.inputs": InputDTO.schema().get('properties', {})
+        "api.outputs": OutputDTO.model_json_schema().get('properties', {}),
+        "api.inputs": InputDTO.model_json_schema().get('properties', {})
     }.get(models_path, {})
 
     def get_option_name(option):
         if isinstance(option, str):
             return option
-        return option.schema().get('properties', {}).get('name', {}).get('default', option.__name__)
+        return option.model_json_schema().get('properties', {}).get('name', {}).get('default', option.__name__)
 
     def extract_union_types(field_type):
         if get_origin(field_type) is Annotated:
@@ -224,7 +224,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
             }
 
             if name in ["video_encoder", "audio_encoder", "mux"]:
-                field_type = model_class.__fields__[name].annotation
+                field_type = model_class.model_fields[name].annotation
                 allowed_options = []
 
                 if get_origin(field_type) is Union:
@@ -236,7 +236,7 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
                 options = list(dict.fromkeys([get_option_name(option) for option in allowed_options]))
 
                 default_value = None
-                default_factory = model_class.__fields__[name].default_factory
+                default_factory = model_class.model_fields[name].default_factory
                 if default_factory:
                     default_value = default_factory.__name__.replace('lambda:', '').strip().split('(')[0]
                 elif field.get('default') is not None:
@@ -262,7 +262,7 @@ def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_model
                 module = importlib.import_module(full_module_name)
                 for name, obj in module.__dict__.items():
                     if isinstance(obj, type) and (issubclass(obj, OutputDTO) or issubclass(obj, InputDTO)):
-                        model_type = obj.schema().get('properties', {}).get('type', {}).get('default')
+                        model_type = obj.model_json_schema().get('properties', {}).get('type', {}).get('default')
                         if not enabled_models or model_type in enabled_models:
                             yield obj, name
             except ModuleNotFoundError as e:

@@ -349,7 +349,7 @@ class Mixer(GSTBase, ABC):
             except Exception as e:
                 logger.log(f"Slot filter rebuild error for index {index}: {e}", level='ERROR')
                 import traceback
-                traceback.print_exc()
+                logger.log(traceback.format_exc(), level='ERROR')
 
             return Gst.PadProbeReturn.REMOVE
 

@@ -508,7 +508,7 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
         except Exception as e:
             logger.log(f"Filter rebuild error for {uid}: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
             try:
                 in_src.link(af_out.get_static_pad("sink"))
             except Exception:

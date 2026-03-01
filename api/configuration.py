@@ -72,7 +72,7 @@ def get_preview_enabled():
 
 @router.get("/config/mixers", dependencies=[require_role("user")])
 def get_mixers_config():
-    return config.get_mixers()
+    return config.get_scenes()
 
 @router.get("/config/resolutions", dependencies=[require_role("user")])
 def get_resolutions_config():

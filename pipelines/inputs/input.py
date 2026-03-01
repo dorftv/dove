@@ -193,7 +193,7 @@ class Input(GSTBase, ABC):
 
     async def update(self, data):
         if not isinstance(data, updateInputDTO):
-            data = updateInputDTO.parse_obj(data)
+            data = updateInputDTO.model_validate(data)
         if data.name is not None:
             self.data.name = data.name
         if data.loop is not None:

@@ -19,22 +19,28 @@ def is_subclass_str(cls, base_name):
 
 
 class PipelineHandler(object):
-    _pipelines: dict[str, List["GSTBase"]] = {"inputs": {}, "outputs": {}, "mixers": {}, "encoders": {}}
+    _pipelines: dict[str, List["GSTBase"]]
     mainloop: GObject.MainLoop
     core_pipeline: CorePipeline = None
     _defer_build: bool = True  # Defer building until initial setup complete
 
+    _QUERY_SLOW_THRESHOLD_MS = 500
+    _QUERY_MAX_SKIP = 3
+
     def __init__(self):
         Gst.init(sys.argv)
 
-        self._pipelines["inputs"] = []
-        self._pipelines["outputs"] = []
-        self._pipelines["mixers"] = []
-        self._pipelines["encoders"] = []
+        self._pipelines = {
+            "inputs": [],
+            "outputs": [],
+            "mixers": [],
+            "encoders": [],
+        }
         self.core_pipeline = CorePipeline()
         self._defer_build = True
         self.mainloop = None
         self._start_time = time.monotonic()
+        self._input_ticks = {}  # uid -> {"timer_id": int, "last_query_ms": float, "skip_count": int}
         self._tick()
 
     def _tick(self):
@@ -45,7 +51,7 @@ class PipelineHandler(object):
         return int(time.monotonic() - self._start_time)
 
     def _tick_callback(self):
-        """GLib callback - queries GStreamer, then schedules async broadcast."""
+        """GLib callback - system metrics, output stats, encoder state checks."""
         try:
             tick_data = {"uptime": self.get_uptime()}
             try:
@@ -65,64 +71,6 @@ class PipelineHandler(object):
             except Exception as e:
                 logger.log(f"tick metrics collection failed: {e}", level='WARNING')
             safe_broadcast("TICK", tick_data, type="tick")
-
-            inputs = self.get_pipelines('inputs')
-            if inputs is not None:
-                for input in inputs:
-                    try:
-                        # Skip inputs that have finished
-                        if input.data.state in ["EOS", "ERROR", "NULL"]:
-                            continue
-
-                        pipeline = input.get_pipeline()
-                        if not pipeline:
-                            continue
-
-                        # Query position/duration (we're already in GLib thread)
-                        _, state, _ = pipeline.get_state(0)
-                        state_name = Gst.Element.state_get_name(state)
-
-                        pos = -1
-                        dur = -1
-                        pos_success = False
-                        dur_success = False
-
-                        # 1. Query source element directly (avoids compositor returning its own timeline)
-                        try:
-                            pos_success, pos = pipeline.query_position(Gst.Format.TIME)
-                            dur_success, dur = pipeline.query_duration(Gst.Format.TIME)
-                        except Exception as e:
-                            logger.log(f"Pipeline query failed for {input.data.uid}: {e}", level='DEBUG')
-
-                        # 2. Fallback: query via video tee's sink pad (upstream to source)
-                        if not pos_success or not dur_success:
-                            if hasattr(input, 'video_tee') and input.video_tee:
-                                sink_pad = input.video_tee.get_static_pad("sink")
-                                if sink_pad:
-                                    try:
-                                        if not pos_success:
-                                            pos_success, pos = sink_pad.query_position(Gst.Format.TIME)
-                                        if not dur_success:
-                                            dur_success, dur = sink_pad.query_duration(Gst.Format.TIME)
-                                    except Exception as e:
-                                        logger.log(f"Tee sink query failed for {input.data.uid}: {e}", level='DEBUG')
-
-                        logger.log(f"Query {input.data.uid}: state={state_name}, pos={pos_success}/{pos}, dur={dur_success}/{dur}", level='DEBUG')
-
-                        # Update data and schedule broadcasts
-                        if pos_success and pos >= 0:
-                            input.data.position = pos // Gst.SECOND
-                            if hasattr(input, 'on_position_updated'):
-                                input.on_position_updated()
-                                safe_broadcast("UPDATE", input.data, type="input")
-                            else:
-                                safe_broadcast("UPDATE", PositionDTO(uid=input.data.uid, position=input.data.position), type="input")
-
-                        if dur_success and dur > 0 and input.data.duration in [None, 0, -1]:
-                            input.data.duration = dur // Gst.SECOND
-                            safe_broadcast("UPDATE", input.data, type="input")
-                    except Exception as e:
-                        logger.log(f"Tick failed for input {input.data.uid}: {e}", level='ERROR')
 
             # Check output stats
             outputs = self.get_pipelines('outputs')
@@ -150,9 +98,107 @@ class PipelineHandler(object):
             self._tick()
         return False
 
-    def start(self):
-        self.mainloop = GObject.MainLoop()
-        self.mainloop.run()
+    def _start_input_tick(self, input_obj):
+        uid = input_obj.data.uid
+        if uid in self._input_ticks:
+            return
+        timer_id = GLib.timeout_add_seconds(1, self._input_tick_callback, input_obj)
+        self._input_ticks[uid] = {"timer_id": timer_id, "last_query_ms": 0.0, "skip_count": 0}
+
+    def _stop_input_tick(self, uid):
+        entry = self._input_ticks.pop(uid, None)
+        if entry:
+            GLib.source_remove(entry["timer_id"])
+
+    def _input_tick_callback(self, input_obj):
+        """Per-input GLib timer callback for position/duration queries."""
+        try:
+            uid = input_obj.data.uid
+            # Input was deleted between timer fire and callback
+            if uid not in self._input_ticks:
+                return False
+
+            entry = self._input_ticks[uid]
+
+            # Verify input still exists in the pipeline list
+            inputs = self.get_pipelines('inputs')
+            if inputs is None or input_obj not in inputs:
+                self._input_ticks.pop(uid, None)
+                return False
+
+            # Skip inputs that have finished
+            if input_obj.data.state in ["EOS", "ERROR", "NULL"]:
+                return True
+
+            pipeline = input_obj.get_pipeline()
+            if not pipeline:
+                return True
+
+            # Circuit-breaker: skip query if previous was slow.
+            # on_position_updated() is intentionally not called here — the input is under
+            # stress and playlist prestart can tolerate 1-3s delay.
+            if entry["last_query_ms"] > self._QUERY_SLOW_THRESHOLD_MS and entry["skip_count"] < self._QUERY_MAX_SKIP:
+                entry["skip_count"] += 1
+                safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
+                return True
+
+            entry["skip_count"] = 0
+
+            t0 = time.monotonic()
+
+            # Query position/duration (we're already on the GLib main thread)
+            _, state, _ = pipeline.get_state(0)
+            state_name = Gst.Element.state_get_name(state)
+
+            pos = -1
+            dur = -1
+            pos_success = False
+            dur_success = False
+
+            try:
+                pos_success, pos = pipeline.query_position(Gst.Format.TIME)
+                dur_success, dur = pipeline.query_duration(Gst.Format.TIME)
+            except Exception as e:
+                logger.log(f"Pipeline query failed for {uid}: {e}", level='DEBUG')
+
+            # Fallback: query via video tee's sink pad (upstream to source)
+            if not pos_success or not dur_success:
+                if hasattr(input_obj, 'video_tee') and input_obj.video_tee:
+                    sink_pad = input_obj.video_tee.get_static_pad("sink")
+                    if sink_pad:
+                        try:
+                            if not pos_success:
+                                pos_success, pos = sink_pad.query_position(Gst.Format.TIME)
+                            if not dur_success:
+                                dur_success, dur = sink_pad.query_duration(Gst.Format.TIME)
+                        except Exception as e:
+                            logger.log(f"Tee sink query failed for {uid}: {e}", level='DEBUG')
+
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            entry["last_query_ms"] = elapsed_ms
+
+            logger.log(f"Query {uid}: state={state_name}, pos={pos_success}/{pos}, dur={dur_success}/{dur}, {elapsed_ms:.1f}ms", level='DEBUG')
+
+            # Update data and broadcast
+            if pos_success and pos >= 0:
+                input_obj.data.position = pos // Gst.SECOND
+                if hasattr(input_obj, 'on_position_updated'):
+                    try:
+                        input_obj.on_position_updated()
+                    except Exception as e:
+                        logger.log(f"on_position_updated failed for {uid}: {e}", level='ERROR')
+                    safe_broadcast("UPDATE", input_obj.data, type="input")
+                else:
+                    safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
+
+            if dur_success and dur > 0 and input_obj.data.duration in [None, 0, -1]:
+                input_obj.data.duration = dur // Gst.SECOND
+                safe_broadcast("UPDATE", input_obj.data, type="input")
+
+        except Exception as e:
+            uid = getattr(getattr(input_obj, 'data', None), 'uid', '?')
+            logger.log(f"Input tick error for {uid}: {e}", level='ERROR')
+        return True
 
     def _get_category(self, pipeline) -> str:
         """Determine pipeline category from class hierarchy."""
@@ -222,9 +268,11 @@ class PipelineHandler(object):
                     except Exception as e:
                         logger.log(f"Exception in mixer dynamic add: {e}", level='ERROR')
                         import traceback
-                        traceback.print_exc()
+                        logger.log(traceback.format_exc(), level='ERROR')
 
                 if success:
+                    if category == "inputs":
+                        self._start_input_tick(pipeline)
                     safe_broadcast("CREATE", pipeline.data)
                 else:
                     # Remove from list if dynamic add failed
@@ -371,7 +419,7 @@ class PipelineHandler(object):
                 except Exception as e:
                     logger.log(f"Failed to create WebRTC preview encoders for {pipeline.data.uid}: {e}", level='ERROR')
                     import traceback
-                    traceback.print_exc()
+                    logger.log(traceback.format_exc(), level='ERROR')
 
             elif ptype == "hlssink2":
                 from pipelines.outputs.hlssink2 import hlssink2Output
@@ -406,7 +454,7 @@ class PipelineHandler(object):
                 except Exception as e:
                     logger.log(f"Failed to create HLS preview for {pipeline.data.uid}: {e}", level='ERROR')
                     import traceback
-                    traceback.print_exc()
+                    logger.log(traceback.format_exc(), level='ERROR')
             else:
                 logger.log(f"Unsupported preview type: {ptype}", level='WARNING')
 
@@ -481,7 +529,7 @@ class PipelineHandler(object):
         except Exception as e:
             logger.log(f"Core pipeline build failed: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
 
 
 
@@ -527,75 +575,15 @@ class PipelineHandler(object):
 
         return None
 
-    def _recompute_video_delays_for_src(self, src_uid):
-        """Auto-sync video encoder delays to match the longest audio filter latency on this source.
-
-        When an audio encoder adds/removes loudnorm (3s lookahead), the sibling video encoders
-        on the same source need matching delay so A/V stays in sync on the encoded output.
-        Preview encoders are skipped — live preview stays at zero latency.
-        """
-        from pipelines.audio_filters import FILTER_LATENCY_MS
-        encoders = self.get_pipelines('encoders') or []
-
-        # Compute max latency across all non-preview audio encoders on this source
-        max_lat = 0
-        for e in encoders:
-            if e.data.type != 'audio' or getattr(e.data, 'is_preview', False):
+    def _recompute_output_video_delays_for_audio_encoder(self, audio_encoder_uid):
+        """Update video delay on all outputs using this audio encoder."""
+        outputs = self.get_pipelines('outputs') or []
+        for output in outputs:
+            if getattr(output.data, 'is_preview', False):
                 continue
-            if e.data.src != src_uid:
-                continue
-            for f in (getattr(e.data, 'audio_filters', None) or []):
-                if not f.enabled:
-                    continue
-                max_lat = max(max_lat, FILTER_LATENCY_MS.get(f.type, 0))
-
-        logger.log(f"Video delay sync for src={src_uid}: max latency = {max_lat}ms", level='INFO')
-
-        # Apply to every non-preview video encoder on this source
-        for e in encoders:
-            if e.data.type != 'video' or getattr(e.data, 'is_preview', False):
-                continue
-            if e.data.src != src_uid:
-                continue
-            current = getattr(e.data, 'video_delay_ms', 0) or 0
-            if current != max_lat:
-                logger.log(f"Encoder {e.data.uid} video_delay_ms: {current} → {max_lat}", level='INFO')
-                e.data.video_delay_ms = max_lat
-                self._patch_encoder_video_delay(e)
-                safe_broadcast("UPDATE", e.data, type="encoder")
-
-    def _patch_encoder_video_delay(self, encoder):
-        """Patch the enc_delay queue min-threshold-time and max-size-time
-        live on a non-preview video encoder. Runs on GLib main thread
-        (callers are via GLib.idle_add)."""
-        uid = encoder.data.uid
-        delay_ms = getattr(encoder.data, 'video_delay_ms', 0) or 0
-
-        elem = None
-        if getattr(encoder, '_bin', None):
-            elem = encoder._bin.get_by_name(f"enc_delay_{uid}")
-        if not elem and self.core_pipeline and self.core_pipeline.pipeline:
-            elem = self.core_pipeline.pipeline.get_by_name(f"enc_delay_{uid}")
-
-        if not elem:
-            logger.log(
-                f"Encoder {uid}: enc_delay element not found — cannot patch "
-                f"video_delay_ms (expected after fix)",
-                level='WARNING',
-            )
-            return
-
-        if delay_ms == 0:
-            elem.set_property('min-threshold-time', 0)
-            elem.set_property('max-size-time', 1_000_000_000)
-        else:
-            delay_ns = delay_ms * 1_000_000
-            elem.set_property('min-threshold-time', delay_ns)
-            elem.set_property('max-size-time', delay_ns + 500_000_000)
-        logger.log(
-            f"Encoder {uid} patched delay → {delay_ms}ms (live)",
-            level='INFO',
-        )
+            ae = getattr(output.data, 'audio_encoder', None)
+            if ae and ae == audio_encoder_uid:
+                output._update_video_delay()
 
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)
@@ -645,8 +633,9 @@ class PipelineHandler(object):
         uid = pipeline.data.uid
         core = self.core_pipeline.pipeline
 
-        # If deleting an input, unlink it from any mixers first
+        # If deleting an input, stop its tick timer and unlink from mixers
         if type == "inputs":
+            self._stop_input_tick(uid)
             for mixer in self._pipelines.get("mixers", []):
                 for i, source in enumerate(mixer.data.sources):
                     if source.src == str(uid):

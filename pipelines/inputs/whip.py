@@ -56,9 +56,6 @@ VIDEO_DECODER_CANDIDATES = {
 class WhipInput(Input):
     data: WhipInputDTO
 
-    class Config:
-        arbitrary_types_allowed = True
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._publisher_pipeline = None

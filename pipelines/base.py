@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from api.output_models import OutputDTO
 
 from config_handler import ConfigReader
@@ -38,5 +38,4 @@ class GSTBase(BaseModel):
         """Return queryable element for position/duration. Override in subclasses."""
         return None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

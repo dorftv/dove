@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 from gi.repository import Gst, GLib
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from logger import logger
 from event_loop_bridge import safe_broadcast
 
@@ -10,14 +10,13 @@ class CorePipeline(BaseModel):
     """Manages the single core pipeline containing all inputs, mixers, and outputs."""
 
     pipeline: Optional[Gst.Pipeline] = None
-    components: dict = {}  # uid -> component
-    _built: bool = False
-    _building: bool = False  # Prevent re-entry during build
-    _pending_levels: dict = {}  # uid -> {uid, left, right} — batched for broadcast
-    _level_timer_id: Optional[int] = None
+    components: dict = Field(default_factory=dict)  # uid -> component
+    _built: bool = PrivateAttr(default=False)
+    _building: bool = PrivateAttr(default=False)
+    _pending_levels: dict = PrivateAttr(default_factory=dict)
+    _level_timer_id: Optional[int] = PrivateAttr(default=None)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def build(self):
         """Concatenate all component strings and launch single pipeline."""
@@ -225,7 +224,7 @@ class CorePipeline(BaseModel):
                         except Exception as e:
                             logger.log(f"Preview callback error for {uid}: {e}", level='ERROR')
                             import traceback
-                            traceback.print_exc()
+                            logger.log(traceback.format_exc(), level='ERROR')
                         return False  # Don't repeat
                     GLib.timeout_add(500, delayed_preview_callback)
 
@@ -236,7 +235,7 @@ class CorePipeline(BaseModel):
             input_component.data.details = str(e)
             logger.log(f"Failed to add input dynamically: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
 
             # Rollback: clean up partial state
             try:
@@ -324,7 +323,7 @@ class CorePipeline(BaseModel):
             mixer_component.data.details = str(e)
             logger.log(f"Failed to add mixer dynamically: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
 
             # Rollback: clean up partial state
             try:
@@ -464,7 +463,7 @@ class CorePipeline(BaseModel):
 
             # Set up queues: small + leaky for isolation (prevent backpressure on shared tees)
             if has_video:
-                video_queue.set_property("leaky", 2)  # upstream: drop newest
+                video_queue.set_property("leaky", 2)  # downstream: drop oldest
                 video_queue.set_property("max-size-buffers", 5)
                 video_queue.set_property("max-size-time", 0)
                 video_queue.set_property("max-size-bytes", 0)
@@ -473,7 +472,7 @@ class CorePipeline(BaseModel):
                 output_bin.add_pad(video_ghost)
 
             if has_audio:
-                audio_queue.set_property("leaky", 2)  # upstream: drop newest
+                audio_queue.set_property("leaky", 2)  # downstream: drop oldest
                 audio_queue.set_property("max-size-buffers", 5)
                 audio_queue.set_property("max-size-time", 0)
                 audio_queue.set_property("max-size-bytes", 0)
@@ -529,8 +528,20 @@ class CorePipeline(BaseModel):
             if source_ghost_pads:
                 output_component._source_ghost_pads = source_ghost_pads
 
+            # Wire up video delay identity element
+            video_delay_identity = output_bin.get_by_name(f"video_delay_{uid}")
+            if video_delay_identity:
+                output_component._video_delay_identity = video_delay_identity
+
             output_component.data.state = "PENDING"
             safe_broadcast("UPDATE", output_component.data)
+
+            # Apply initial video delay if audio encoder has filters
+            if output_component._video_delay_identity:
+                delay_ns = output_component.get_video_delay_ns()
+                if delay_ns > 0:
+                    output_component._video_delay_identity.set_property('ts-offset', delay_ns)
+                    logger.log(f"Output {uid} initial video delay: {delay_ns // 1_000_000}ms", level='INFO')
 
             logger.log(f"Dynamically added output bin {uid}", level='DEBUG')
             return True
@@ -539,7 +550,7 @@ class CorePipeline(BaseModel):
             output_component.data.details = str(e)
             logger.log(f"Failed to add output dynamically: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
 
             try:
                 for key, (src_bin, ghost) in source_ghost_pads.items():
@@ -632,7 +643,7 @@ class CorePipeline(BaseModel):
             enc_tee = Gst.ElementFactory.make("tee", f"enc_tee_{uid}")
             enc_tee.set_property("allow-not-linked", True)
             enc_queue = Gst.ElementFactory.make("queue", f"enc_tee_q_{uid}")
-            enc_queue.set_property("leaky", 2)  # upstream
+            enc_queue.set_property("leaky", 2)  # downstream: drop oldest
             enc_fakesink = Gst.ElementFactory.make("fakesink", f"enc_tee_fs_{uid}")
             enc_fakesink.set_property("async", False)
 
@@ -674,6 +685,10 @@ class CorePipeline(BaseModel):
             encoder_component._source_tee_pad = tee_pad
             encoder_component.tee = enc_tee
 
+            # Block latency queries from encoder internals (e.g. audioloudnorm 3s)
+            # so they don't inflate pipeline-wide latency and delay previews.
+            encoder_component.install_latency_firewall()
+
             # Sync state: downstream first (sink → source)
             enc_fakesink.sync_state_with_parent()
             enc_queue.sync_state_with_parent()
@@ -683,6 +698,23 @@ class CorePipeline(BaseModel):
             from event_loop_bridge import safe_broadcast
             safe_broadcast("UPDATE", encoder_component.data, type="encoder")
 
+            # Apply initial audio filters if configured (e.g. from config.toml)
+            initial_filters = getattr(encoder_component.data, 'audio_filters', None)
+            if initial_filters and encoder_component.data.type == 'audio' and not getattr(encoder_component.data, 'is_preview', False):
+                GLib.idle_add(encoder_component._rebuild_audio_filter_chain, initial_filters)
+                # Recompute output video delays after filter rebuild completes.
+                # Uses timeout (not idle_add) because rebuild_between_anchors is pad-probe-async.
+                def _sync_initial_delays():
+                    try:
+                        from pipeline_handler import HandlerSingleton
+                        handler = HandlerSingleton()
+                        if handler:
+                            handler._recompute_output_video_delays_for_audio_encoder(uid)
+                    except Exception as e:
+                        logger.log(f"Encoder {uid}: initial output delay sync failed: {e}", level='ERROR')
+                    return False
+                GLib.timeout_add(500, _sync_initial_delays)
+
             logger.log(f"Dynamically added encoder {uid}", level='DEBUG')
             return True
 
@@ -690,7 +722,7 @@ class CorePipeline(BaseModel):
             encoder_component.data.details = str(e)
             logger.log(f"Failed to add encoder dynamically: {e}", level='ERROR')
             import traceback
-            traceback.print_exc()
+            logger.log(traceback.format_exc(), level='ERROR')
 
             try:
                 # Rollback: clean up tee elements

@@ -1,0 +1,24 @@
+# User config (mounted at runtime, not baked into image)
+config.toml
+docker-compose*.yml
+
+# Git
+.git
+.gitignore
+
+# Development
+__pycache__
+*.pyc
+*.pyo
+.vscode
+*.code-workspace
+tmp/
+crashes/
+Dockerfile*
+.dockerignore
+
+# IDE / OS
+.idea
+.DS_Store
+*.swp
+*.swo

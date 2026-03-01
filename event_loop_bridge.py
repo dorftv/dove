@@ -1,17 +1,4 @@
-"""
-Bridge between GLib MainLoop and asyncio event loop.
-
-This module provides thread-safe mechanisms for:
-1. Scheduling async coroutines from GLib callbacks
-2. Running sync functions in the GLib main loop from async context
-3. Managing a shared asyncio event loop reference
-
-The GStreamer application runs two event loops:
-- GLib MainLoop in the main thread (for GStreamer)
-- asyncio event loop in the API thread (for FastAPI/uvicorn)
-
-This bridge allows safe communication between them.
-"""
+"""Bridge between GLib MainLoop and asyncio event loop."""
 
 import asyncio
 import threading

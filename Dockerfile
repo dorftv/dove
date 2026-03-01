@@ -109,7 +109,7 @@ RUN apk add --no-cache \
     graphviz curl
 
 RUN apk add --no-cache \
-    bubblewrap dbus xdg-dbus-proxy \
+    bubblewrap xdg-dbus-proxy \
     wpewebkit libwpe libwpebackend-fdo wayland-libs-client libxkbcommon \
     fontconfig font-noto ca-certificates \
     mesa mesa-egl mesa-gl mesa-dri-gallium \
@@ -140,6 +140,7 @@ RUN apk upgrade --no-cache \
 
 COPY . /app
 WORKDIR /app
+RUN cp config-example.toml config.toml
 
 RUN pip install . --ignore-installed --break-system-packages
 
@@ -155,6 +156,11 @@ EXPOSE 5000
 ENV EGL_LOG_LEVEL=fatal
 ENV NO_AT_BRIDGE=1
 ENV JSC_SIGNAL_FOR_GC=14
+ENV DBUS_SESSION_BUS_ADDRESS=disabled:
+ENV WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+
+# Pre-scan GStreamer plugins at build time (baked registry = instant startup)
+RUN gst-inspect-1.0 > /dev/null 2>&1
 
 USER dove
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]

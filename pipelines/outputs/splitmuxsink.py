@@ -26,9 +26,28 @@ class splitmuxsinkOutput(Output):
     data: splitmuxsinkOutputDTO
     _full_duration_ns: int = 0
     _aligned: bool = False
+    _use_fallback_dir: bool = False
+    _fallback_dir: str = ""
 
     def _get_ext(self):
         return MUX_EXTENSIONS.get(self.data.mux.name, ".ts")
+
+    def _probe_location_writable(self, location_template: str) -> bool:
+        """Test whether the configured location directory is writable."""
+        try:
+            probe_name = datetime.now().strftime(location_template) + self._get_ext()
+            parent = Path(probe_name).parent
+            parent.mkdir(parents=True, exist_ok=True)
+            test_file = parent / f".dove_probe_{self.data.uid}"
+            test_file.write_text("")
+            test_file.unlink()
+            return True
+        except Exception as e:
+            logger.log(
+                f"splitmuxsink {self.data.uid}: location '{location_template}' not writable ({e}), falling back to /var/dove/recordings/{self.data.uid}/",
+                level='WARNING',
+            )
+            return False
 
     def _compute_initial_max_size_time(self):
         """Compute initial segment duration to align to clock boundary."""
@@ -60,10 +79,19 @@ class splitmuxsinkOutput(Output):
             self._aligned = True
 
         ext = self._get_ext()
-        filename = datetime.now().strftime(self.data.location) + ext
-
-        # Ensure directory exists
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if self._use_fallback_dir:
+                filename = str(Path(self._fallback_dir) / (datetime.now().strftime("recording_%Y-%m-%d_%H-%M-%S") + ext))
+            else:
+                filename = datetime.now().strftime(self.data.location) + ext
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.log(
+                f"splitmuxsink {self.data.uid}: failed to resolve location ({e}), using fallback",
+                level='WARNING',
+            )
+            Path(self._fallback_dir).mkdir(parents=True, exist_ok=True)
+            filename = str(Path(self._fallback_dir) / (datetime.now().strftime("recording_%Y-%m-%d_%H-%M-%S") + ext))
 
         logger.log(f"splitmuxsink {self.data.uid}: segment {fragment_id} → {filename}", level='DEBUG')
         return filename
@@ -74,8 +102,12 @@ class splitmuxsinkOutput(Output):
 
         # location is needed as fallback; format-location-full signal overrides it
         ext = self._get_ext()
-        fallback_location = f"/var/dove/recordings/{uid}/segment%05d{ext}"
-        Path(fallback_location).parent.mkdir(parents=True, exist_ok=True)
+        self._fallback_dir = f"/var/dove/recordings/{uid}"
+        fallback_location = f"{self._fallback_dir}/segment%05d{ext}"
+        Path(self._fallback_dir).mkdir(parents=True, exist_ok=True)
+
+        # Probe the user-configured location once; if not writable, fall back for the whole session
+        self._use_fallback_dir = not self._probe_location_writable(self.data.location)
 
         # Parse elements needed for caps negotiation with splitmuxsink
         # (splitmuxsink creates its internal muxer lazily, so caps must be

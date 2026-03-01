@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, Request, HTTPException
 from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
 from typing import Optional, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 from helpers import get_default_height, get_default_width
 from event_loop_bridge import safe_broadcast
@@ -29,8 +29,7 @@ class PlaylistItemDTO(BaseModel):
             raise ValueError(f"Invalid Playlist Item types, must be one of {', '.join(ALLOWED_TYPES)}")
         return value
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class PlaylistInputDTO(InputDTO):

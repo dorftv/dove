@@ -72,10 +72,6 @@ class mixerBaseDTO(BaseModel):
         for i, source in enumerate(self.sources):
             source.index = i
 
-    def addInput(self, src: mixerInputDTO):
-        if not any(source.sink == src.sink for source in self.sources):
-            self.sources.append(src)
-
     def getMixerInputDTO(self, index: int):
         for source in self.sources:
             if source.index ==  index:
@@ -119,23 +115,10 @@ class sceneMixerDTO(mixerBaseDTO):
 
 
 
-    def getMixerInputN(self, n):
-        return self.sources[n] if len(self.sources) > n else None
-
-    def countMixerInputs(self):
-        return len(self.sources) if self.sources else None
-
-
-
     def getMixerInputDTObySource(self, src: UUID):
         for source in self.sources:
             if str(source.src) == str(src):
                 return source
-
-
-
-    def removeInput(self, sink):
-        self.sources = [source for source in self.sources if source.sink != sink]
 
 
 
@@ -148,14 +131,6 @@ class sceneMixerDTO(mixerBaseDTO):
 
         return value
 
-    @field_validator("state")
-    @classmethod
-    def valid_state(cls, value: str, info: FieldValidationInfo):
-        ALLOWED_STATES = ["PLAYING", "READY"]
-        if value not in ALLOWED_STATES:
-            raise ValueError(f"Invalid state, must be one of {', '.join(ALLOWED_STATES)}")
-
-        return value
 
 
 class programMixerDTO(mixerBaseDTO):

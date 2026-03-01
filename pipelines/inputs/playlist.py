@@ -195,7 +195,7 @@ class PlaylistInput(Uridecodebin3Input):
     async def update(self, data):
         from api.input_models import updateInputDTO
         if not isinstance(data, updateInputDTO):
-            data = updateInputDTO.parse_obj(data)
+            data = updateInputDTO.model_validate(data)
         if data.skip == "next":
             GLib.idle_add(self._skip_next)
         elif data.skip == "previous":

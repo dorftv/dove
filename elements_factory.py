@@ -4,6 +4,7 @@ from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixer
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
 from api.helper import get_dtos
+from api.input_models import AudioFilterDTO
 from pipelines.helper import get_pipeline_classes
 
 from config_handler import ConfigReader
@@ -281,7 +282,10 @@ class ElementsFactory:
                 def create_encoder(e_name=e_name, e_conf=e_conf):
                     from pipelines.encoders.encoder import Encoder
                     from api.encoder_models import EncoderEntityDTO
+                    raw_filters = e_conf.get('audio_filters', [])
+                    audio_filters = [AudioFilterDTO(**f) for f in raw_filters] if raw_filters else []
                     entity = Encoder(data=EncoderEntityDTO(
+                        name=e_conf.get('name', e_name),
                         type=e_conf.get('type', 'video'),
                         element=e_conf.get('element', ''),
                         codec=e_conf.get('codec', ''),
@@ -291,6 +295,7 @@ class ElementsFactory:
                         height=e_conf.get('height'),
                         framerate=e_conf.get('framerate'),
                         src=state['program_uid'],
+                        audio_filters=audio_filters,
                     ))
                     self.handler.add_pipeline(entity)
                     encoder_map[e_name] = entity.data.uid

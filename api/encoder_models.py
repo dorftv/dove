@@ -28,9 +28,6 @@ class EncoderEntityDTO(BaseModel):
     # Per-encoder audio filter chain (audio encoders only). Lets production encoders
     # apply loudness normalization without affecting the live preview path.
     audio_filters: Optional[list[AudioFilterDTO]] = []
-    # Video encoders only — auto-synced to match the longest audio filter latency
-    # on the same source (so A/V stays in sync on the encoded output).
-    video_delay_ms: Optional[int] = 0
 
 
 class EncoderUpdateDTO(BaseModel):

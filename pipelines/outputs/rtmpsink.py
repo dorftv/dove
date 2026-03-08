@@ -34,7 +34,7 @@ class rtmpsinkOutput(Output):
         video_str = (
             f" {self.get_video_start(dynamic)} "
             f" {self.data.mux.element} {self.data.mux.options} name=mux_{uid} ! "
-            f" rtmpsink name=sink_{uid} location={self.data.uri} "
+            f" rtmpsink name=sink_{uid} location={self.data.uri} sync=false "
         )
 
         audio_str = (

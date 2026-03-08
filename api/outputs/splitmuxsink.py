@@ -45,7 +45,7 @@ class splitmuxsinkOutputDTO(OutputDTO):
     mux: Union[mp4MuxDTO, matroskaMuxDTO, mpegtsMuxDTO] = Field(
         default_factory=lambda: mp4MuxDTO(
             name="mp4mux",
-            options="fragment-duration=1000"
+            options="fragment-duration=1000 latency=4000000000"
         ),
     )
 

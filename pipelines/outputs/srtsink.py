@@ -54,7 +54,7 @@ class srtsinkOutput(Output):
         video_str = (
             f" {self.get_video_start(dynamic)} "
             f" {self.data.mux.element} {self.data.mux.options} name=mux_{uid} ! "
-            f" srtsink name=sink_{uid} uri={self.data.uri} latency={self.data.latency}{streamid_str} sync=true "
+            f" srtsink name=sink_{uid} uri={self.data.uri} latency={self.data.latency}{streamid_str} sync=false "
         )
 
         audio_str = (

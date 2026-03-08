@@ -102,7 +102,7 @@ class SrtserversinkOutput(Output):
         video_str = (
             f" {self.get_video_start(dynamic)} "
             f" {self.data.mux.element} {self.data.mux.options} name=mux_{uid} ! "
-            f" srtserversink name=sink_{uid} uri={self.data.uri} mode=2{localport_str}{latency_str}{streamid_str} "
+            f" srtserversink name=sink_{uid} uri={self.data.uri} mode=2{localport_str}{latency_str}{streamid_str} sync=false "
         )
 
         audio_str = (

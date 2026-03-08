@@ -13,7 +13,7 @@ class Shout2sendOutput(Output):
             f" shout2send name=sink_{uid} "
             f" mount={self.data.mount} port={self.data.port} "
             f" username={self.data.username} password={self.data.password} "
-            f" ip={self.data.ip} sync=true "
+            f" ip={self.data.ip} sync=false "
         )
 
         return audio_str

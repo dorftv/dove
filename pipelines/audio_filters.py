@@ -10,11 +10,7 @@ _LSP_COMPRESSOR = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladsp
 _LSP_EXPANDER = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-expander-stereo"
 _LSP_GATE = "ladspa-lsp-plugins-ladspa-so-http---lsp-plug-in-plugins-ladspa-gate-stereo"
 
-# Known filter latencies in milliseconds — used by pipeline_handler to auto-sync
-# video delay on sibling video encoders when loudnorm (3s lookahead) is applied.
-FILTER_LATENCY_MS = {
-    'loudnorm': 3000,   # audioloudnorm (gst-plugins-rs audiofx) has a 3-second lookahead buffer
-}
+
 
 
 # Filter type → GStreamer pipeline string builder (for Gst.parse_bin_from_description)

@@ -475,8 +475,9 @@ class PipelineHandler(object):
                 codec=getattr(v, 'codec', ''),
                 profile=getattr(v, 'profile', None),
                 src=data.src,
-                width=data.width, height=data.height,
-                framerate=data.framerate,
+                width=getattr(v, 'width', None) or data.width,
+                height=getattr(v, 'height', None) or data.height,
+                framerate=getattr(v, 'framerate', None) or data.framerate,
             ))
             if self._add_pipeline_direct(entity):
                 output_pipeline._video_encoder_uid = entity.data.uid
@@ -587,16 +588,6 @@ class PipelineHandler(object):
                 return pipeline
 
         return None
-
-    def _recompute_output_video_delays_for_audio_encoder(self, audio_encoder_uid):
-        """Update video delay on all outputs using this audio encoder."""
-        outputs = self.get_pipelines('outputs') or []
-        for output in outputs:
-            if getattr(output.data, 'is_preview', False):
-                continue
-            ae = getattr(output.data, 'audio_encoder', None)
-            if ae and ae == audio_encoder_uid:
-                output._update_video_delay()
 
     def delete_pipeline(self, type, uid):
         pipeline = self.get_pipeline(type, uid)

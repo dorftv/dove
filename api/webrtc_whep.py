@@ -42,6 +42,13 @@ _resources: dict[str, tuple[str, str]] = {}  # resource_id -> (source_uid, peer_
 _orphaned_webrtcbins: list = []
 
 
+def _drop_latency_event(pad, info):
+    """Prevent main-pipeline latency from inflating WHEP preview delay."""
+    event = info.get_event()
+    if event.type == Gst.EventType.LATENCY:
+        return Gst.PadProbeReturn.DROP
+    return Gst.PadProbeReturn.OK
+
 
 def _extract_offer_pts(sdp_text: str) -> tuple[int | None, int | None]:
     """Extract H264 (packetization-mode=1) and Opus PTs from browser offer."""
@@ -124,6 +131,8 @@ class WebrtcPreviewManager:
                 # --- Create proxysinks in main pipeline ---
                 v_psink = Gst.ElementFactory.make("proxysink", f"psink_v_{pid}")
                 pipeline.add(v_psink)
+                v_psink.get_static_pad("sink").add_probe(
+                    Gst.PadProbeType.EVENT_DOWNSTREAM, _drop_latency_event)
                 v_psink.sync_state_with_parent()
                 video_tee_pad = video_tee.request_pad_simple("src_%u")
                 video_tee_pad.link(v_psink.get_static_pad("sink"))
@@ -133,6 +142,8 @@ class WebrtcPreviewManager:
                 if has_audio:
                     a_psink = Gst.ElementFactory.make("proxysink", f"psink_a_{pid}")
                     pipeline.add(a_psink)
+                    a_psink.get_static_pad("sink").add_probe(
+                        Gst.PadProbeType.EVENT_DOWNSTREAM, _drop_latency_event)
                     a_psink.sync_state_with_parent()
                     audio_tee_pad = audio_tee.request_pad_simple("src_%u")
                     audio_tee_pad.link(a_psink.get_static_pad("sink"))

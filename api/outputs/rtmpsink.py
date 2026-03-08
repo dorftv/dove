@@ -41,7 +41,7 @@ class rtmpsinkOutputDTO(OutputDTO):
         default_factory=lambda: flvMuxDTO(
             name = "flvmux",
             element = "flvmux",
-            options=""
+            options="latency=4000000000"
         )
     )
 

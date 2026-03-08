@@ -528,20 +528,8 @@ class CorePipeline(BaseModel):
             if source_ghost_pads:
                 output_component._source_ghost_pads = source_ghost_pads
 
-            # Wire up video delay identity element
-            video_delay_identity = output_bin.get_by_name(f"video_delay_{uid}")
-            if video_delay_identity:
-                output_component._video_delay_identity = video_delay_identity
-
             output_component.data.state = "PENDING"
             safe_broadcast("UPDATE", output_component.data)
-
-            # Apply initial video delay if audio encoder has filters
-            if output_component._video_delay_identity:
-                delay_ns = output_component.get_video_delay_ns()
-                if delay_ns > 0:
-                    output_component._video_delay_identity.set_property('ts-offset', delay_ns)
-                    logger.log(f"Output {uid} initial video delay: {delay_ns // 1_000_000}ms", level='INFO')
 
             logger.log(f"Dynamically added output bin {uid}", level='DEBUG')
             return True
@@ -702,18 +690,6 @@ class CorePipeline(BaseModel):
             initial_filters = getattr(encoder_component.data, 'audio_filters', None)
             if initial_filters and encoder_component.data.type == 'audio' and not getattr(encoder_component.data, 'is_preview', False):
                 GLib.idle_add(encoder_component._rebuild_audio_filter_chain, initial_filters)
-                # Recompute output video delays after filter rebuild completes.
-                # Uses timeout (not idle_add) because rebuild_between_anchors is pad-probe-async.
-                def _sync_initial_delays():
-                    try:
-                        from pipeline_handler import HandlerSingleton
-                        handler = HandlerSingleton()
-                        if handler:
-                            handler._recompute_output_video_delays_for_audio_encoder(uid)
-                    except Exception as e:
-                        logger.log(f"Encoder {uid}: initial output delay sync failed: {e}", level='ERROR')
-                    return False
-                GLib.timeout_add(500, _sync_initial_delays)
 
             logger.log(f"Dynamically added encoder {uid}", level='DEBUG')
             return True

@@ -51,7 +51,7 @@ class SrtserversinkOutputDTO(OutputDTO):
     mux: mpegtsMuxDTO = Field(
         default_factory=lambda: mpegtsMuxDTO(
             name = "mpegtsmux",
-            options="alignment=7"
+            options="alignment=7 latency=4000000000"
         ),
     )
 

@@ -82,15 +82,15 @@ class APIThread(Thread):
 
         # websockets handler
         fastapi.include_router(websockets.router)
-        preview_deps = [auth_module.require_role("user")]
+        preview_deps = []
+        whip_deps = [auth_module.require_role("user")]
         fastapi.include_router(hls_preview.router, tags=['Preview'], dependencies=preview_deps)
         fastapi.include_router(webrtc_whep.router, tags=['WebRTC Preview'], dependencies=preview_deps)
-        fastapi.include_router(webrtc_whip.router, tags=['WebRTC Ingest'], dependencies=preview_deps)
-
+        fastapi.include_router(webrtc_whip.router, tags=['WebRTC Ingest'], dependencies=whip_deps)
         fastapi.include_router(docs.router, tags=['Docs'])
 
         # Proxies — only mount when configured
-        proxy_deps = [auth_module.require_role("user")]
+        proxy_deps = [auth_module.require_read()]
         proxy_types = config.get_proxy_types()
 
         if 'v4l2' in proxy_types or 'alsa' in proxy_types:

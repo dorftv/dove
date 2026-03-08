@@ -145,16 +145,21 @@ class Encoder(GSTBase):
         """Block latency queries from propagating upstream through encoder branches."""
         query = info.get_query()
         if query.type == Gst.QueryType.LATENCY:
+            logger.log(f"Latency firewall BLOCKED query on encoder {self.data.uid}", level='DEBUG')
             return Gst.PadProbeReturn.HANDLED
         return Gst.PadProbeReturn.OK
 
     def install_latency_firewall(self):
         """Prevent encoder-internal latency from affecting pipeline-wide latency."""
         if not self._bin:
+            logger.log(f"Latency firewall: no _bin for {self.data.uid}", level='WARNING')
             return
         sink_pad = self._bin.get_static_pad("sink")
         if sink_pad:
             sink_pad.add_probe(Gst.PadProbeType.QUERY_UPSTREAM, self._latency_query_probe)
+            logger.log(f"Latency firewall installed on encoder {self.data.uid} ({self.data.name})", level='INFO')
+        else:
+            logger.log(f"Latency firewall: no sink pad on {self.data.uid}", level='WARNING')
 
     def check_state(self):
         if not self._bin:

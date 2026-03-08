@@ -545,6 +545,19 @@ class PipelineHandler(object):
                 if pipeline.data.uid == uid:
                     return pipeline
 
+    def get_pipeline_by_uid(self, uid_str: str):
+        """Find a pipeline entity by UID string across all categories."""
+        from uuid import UUID
+        try:
+            uid = UUID(uid_str) if isinstance(uid_str, str) else uid_str
+        except (ValueError, AttributeError):
+            return None
+        for category in ('inputs', 'mixers', 'outputs', 'encoders'):
+            result = self.get_pipeline(category, uid)
+            if result:
+                return result
+        return None
+
     def get_program(self):
         if self._pipelines is not None:
             for pipeline in self._pipelines.get("mixers", []):

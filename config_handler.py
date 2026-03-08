@@ -255,6 +255,10 @@ class ConfigReader:
     def get_enable_audio(self):
         return self.config.get('main', {}).get('enable_audio', True)
 
+    def is_public_preview(self, entity_name: str) -> bool:
+        """Check if entity name is in the public_previews config list."""
+        return entity_name in self.config.get('auth', {}).get('public_previews', [])
+
     def get_webrtc_config(self):
         defaults = {
             'stun_server': None,

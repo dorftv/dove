@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from api.helper import get_encoder_types
-from api.auth import require_role
+from api.auth import require_role, require_read
 from gi.repository import Gst, GLib
 
 from config_handler import ConfigReader
@@ -42,7 +42,7 @@ def healthz(request: Request):
     }, status_code=200 if healthy else 503)
 
 
-@router.get("/config", dependencies=[require_role("user")])
+@router.get("/config", dependencies=[require_read()])
 def get_safe_config():
     """Return config without sensitive fields (secrets, credentials)."""
     full = config.get_config()
@@ -66,32 +66,32 @@ def get_safe_config():
             safe[section] = values
     return safe
 
-@router.get("/config/preview_enabled", dependencies=[require_role("user")])
+@router.get("/config/preview_enabled", dependencies=[require_read()])
 def get_preview_enabled():
     return config.get_preview_enabled()
 
-@router.get("/config/mixers", dependencies=[require_role("user")])
+@router.get("/config/mixers", dependencies=[require_read()])
 def get_mixers_config():
     return config.get_scenes()
 
-@router.get("/config/resolutions", dependencies=[require_role("user")])
+@router.get("/config/resolutions", dependencies=[require_read()])
 def get_resolutions_config():
     return config.get_resolutions()
 
-@router.get("/config/default_resolution", dependencies=[require_role("user")])
+@router.get("/config/default_resolution", dependencies=[require_read()])
 def get_default_resolution_config():
     return config.get_default_resolution()
 
-@router.get("/config/proxy_types", dependencies=[require_role("user")])
+@router.get("/config/proxy_types", dependencies=[require_read()])
 def get_proxy_types_config():
     return config.get_proxy_types()
 
 
-@router.get("/config/encoder", dependencies=[require_role("user")])
+@router.get("/config/encoder", dependencies=[require_read()])
 def get_encoder_config():
     return get_encoder_types()
 
-@router.get("/config/elements", dependencies=[require_role("user")])
+@router.get("/config/elements", dependencies=[require_read()])
 def get_available_elements():
     from pipelines.element_registry import get_available_audio_filters, get_available_video_filters
     return {
@@ -105,7 +105,7 @@ def _get_viewer_count():
     return len(manager.active_connections)
 
 
-@router.get("/load", dependencies=[require_role("user")])
+@router.get("/load", dependencies=[require_read()])
 def get_load(request: Request):
     load1, load5, load15 = os.getloadavg()
     cpu_count = os.cpu_count() or 1

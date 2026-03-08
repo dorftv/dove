@@ -3,7 +3,7 @@ from pipeline_handler import PipelineHandler
 
 from pipelines.base import GSTBase
 from api.output_models import OutputDTO, SuccessDTO, OutputDeleteDTO
-from api.auth import require_role
+from api.auth import require_role, require_read
 
 from api.helper import get_routers
 from api.helper import get_model_fields
@@ -16,12 +16,12 @@ for router_module, module_name in get_routers('api.outputs'):
                           dependencies=[require_role("outputs")])
 
 # List avalable Output Types
-@router.get("/outputs/types", tags=['Outputs', 'Config'], dependencies=[require_role("user")])
+@router.get("/outputs/types", tags=['Outputs', 'Config'], dependencies=[require_read()])
 async def get_output_models():
     return get_model_fields('api.outputs',{'OutputDTO'})
 
 # List all Outputs
-@router.get("/outputs", tags=['Outputs'], dependencies=[require_role("user")])
+@router.get("/outputs", tags=['Outputs'], dependencies=[require_read()])
 async def get_all_outputs(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     outputs: list[Output] = handler._pipelines["outputs"] if handler._pipelines is not None else []

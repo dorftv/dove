@@ -17,6 +17,7 @@ from authlib.jose import jwt, JoseError
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from itsdangerous import URLSafeTimedSerializer, BadSignature
+from starlette.requests import HTTPConnection
 
 from config_handler import ConfigReader
 from logger import logger
@@ -136,7 +137,7 @@ def _create_cookie(response: Response, data: dict):
     )
 
 
-def _read_cookie(request: Request) -> Optional[dict]:
+def _read_cookie(request: HTTPConnection) -> Optional[dict]:
     raw = request.cookies.get(COOKIE_NAME)
     if not raw:
         return None
@@ -206,7 +207,7 @@ def _check_api_token(token: str) -> Optional[UserInfo]:
     return None
 
 
-async def get_current_user(request: Request, response: Response = None) -> Optional[UserInfo]:
+async def get_current_user(request: HTTPConnection, response: Response = None) -> Optional[UserInfo]:
     """Extract and validate user from session cookie or Bearer token.
     Returns None when auth is disabled (all access allowed).
     Auth order: cookie → static API token → OIDC JWT."""
@@ -273,12 +274,32 @@ async def get_current_user(request: Request, response: Response = None) -> Optio
     raise HTTPException(status_code=401, detail="Not authenticated")
 
 
+async def get_current_user_optional(request: HTTPConnection) -> Optional[UserInfo]:
+    """Like get_current_user but returns None for unauthenticated instead of 401."""
+    if not is_auth_enabled():
+        return None
+    try:
+        return await get_current_user(request)
+    except HTTPException:
+        return None
+
+
+def require_read():
+    """Any authenticated role can read. No-op when auth disabled."""
+    async def check(
+        request: HTTPConnection,
+        user: Optional[UserInfo] = Depends(get_current_user),
+    ):
+        pass  # get_current_user already raised 401 if not authenticated
+    return Depends(check)
+
+
 def require_role(*roles):
     """FastAPI dependency: check user has at least one of the required roles.
     Roles are DOVE role names (user/supervisor/outputs/admin), mapped to
     OIDC group names via config."""
     async def check(
-        request: Request,
+        request: HTTPConnection,
         response: Response = None,
         user: Optional[UserInfo] = Depends(get_current_user),
     ):

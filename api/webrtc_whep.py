@@ -13,7 +13,7 @@ webrtcbin element (~52KB) is kept alive to prevent GC finalize segfault in libni
 import asyncio
 import re
 import uuid
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, HTTPException
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -27,10 +27,13 @@ from api.webrtc_utils import (
     patch_offer_h264_profile, inject_ice_candidates, get_pipeline,
     configure_webrtcbin,
 )
+from api.auth import get_current_user_optional, is_auth_enabled
+from config_handler import ConfigReader
 from event_loop_bridge import bridge
 from logger import logger
 
 router = APIRouter()
+config = ConfigReader()
 
 _managers: dict[str, "WebrtcPreviewManager"] = {}  # source_uid -> manager
 _resources: dict[str, tuple[str, str]] = {}  # resource_id -> (source_uid, peer_id)
@@ -444,6 +447,15 @@ def _get_or_create_manager(source_uid: str) -> WebrtcPreviewManager:
 
 @router.post("/whep/{source_uid}")
 async def whep_offer(source_uid: str, request: Request):
+    # Auth: allow if auth disabled, user authenticated, or entity is in public_previews config
+    if is_auth_enabled():
+        user = await get_current_user_optional(request)
+        if user is None:
+            handler = request.app.state._state["pipeline_handler"]
+            entity = handler.get_pipeline_by_uid(source_uid)
+            if not entity or not config.is_public_preview(entity.data.name):
+                raise HTTPException(status_code=401, detail="Not authenticated")
+
     content_type = request.headers.get("content-type", "")
     if "application/sdp" not in content_type:
         return Response(status_code=400, content="Content-Type must be application/sdp")
@@ -487,6 +499,15 @@ async def whep_ice_candidate(resource_id: str, request: Request):
         body = await request.json()
         new_source = body.get('source')
         if new_source:
+            if is_auth_enabled():
+                user = await get_current_user_optional(request)
+                if user is None:
+                    from pipeline_handler import HandlerSingleton
+                    handler = HandlerSingleton()
+                    new_entity = handler.get_pipeline_by_uid(new_source)
+                    if not new_entity or not config.is_public_preview(new_entity.data.name):
+                        return Response(status_code=401)
+
             loop = asyncio.get_running_loop()
             result_future = loop.create_future()
 

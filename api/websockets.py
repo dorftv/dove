@@ -7,10 +7,10 @@ from api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from api.input_models import InputDTO, InputDeleteDTO
 from api.output_models import OutputDTO, OutputDeleteDTO
 from api.encoder_models import EncoderEntityDTO, EncoderEntityDeleteDTO
-from api.auth import is_auth_enabled, _read_cookie, _decode_access_token, _parse_groups, _get_config, _check_api_token
-from authlib.jose import JoseError
+from api.auth import is_auth_enabled, get_current_user
+from config_handler import ConfigReader
 
-from fastapi import WebSocketDisconnect, HTTPException
+from fastapi import WebSocketDisconnect
 
 from logger import logger
 
@@ -102,8 +102,7 @@ async def update_pipe(data, websocket: WebSocket):
     # Role check: determine required role from the pipeline's category, not client data
     if is_auth_enabled():
         user_groups = getattr(websocket.state, 'user_groups', [])
-        from api.auth import _get_config as _get_auth_config
-        auth_cfg = _get_auth_config()
+        auth_cfg = ConfigReader().get_auth_config()
         groups_map = auth_cfg.get('groups', {})
         admin_group = groups_map.get('admin', 'dove-admin')
         if admin_group not in user_groups:
@@ -111,7 +110,7 @@ async def update_pipe(data, websocket: WebSocket):
             entity_category = handler._get_category(pipeline)
             required_role = 'user'
             if entity_category == 'mixers':
-                required_role = 'supervisor'
+                required_role = 'user'  # slot property updates (volume, alpha, position)
             elif entity_category in ('outputs', 'encoders'):
                 required_role = 'outputs'
             required_group = groups_map.get(required_role, required_role)
@@ -119,43 +118,23 @@ async def update_pipe(data, websocket: WebSocket):
                 logger.log(f"WS update denied: {entity_category} requires {required_role}", level='WARNING')
                 return
 
+            # Lock check: supervisor and admin can bypass
+            if hasattr(pipeline.data, 'locked') and pipeline.data.locked:
+                supervisor_group = groups_map.get('supervisor', 'dove-supervisor')
+                if admin_group not in user_groups and supervisor_group not in user_groups:
+                    logger.log(f"WS update denied: entity is locked", level='WARNING')
+                    return
+
     await pipeline.update(data['data'])
 
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    # Authenticate WebSocket upgrade via session cookie or Bearer header
     if is_auth_enabled():
-        authenticated = False
-
-        # Try session cookie first
-        cookie_data = _read_cookie(websocket)
-        if cookie_data and cookie_data.get('access_token'):
-            try:
-                token_data = await _decode_access_token(cookie_data['access_token'])
-                websocket.state.user_groups = _parse_groups(token_data)
-                authenticated = True
-            except (JoseError, HTTPException):
-                pass
-
-        # Try Bearer header (for API clients that can't set cookies)
-        if not authenticated:
-            auth_header = websocket.headers.get('authorization', '')
-            if auth_header.startswith('Bearer '):
-                token = auth_header[7:]
-                api_user = _check_api_token(token)
-                if api_user:
-                    websocket.state.user_groups = api_user.groups
-                    authenticated = True
-                else:
-                    try:
-                        token_data = await _decode_access_token(token)
-                        websocket.state.user_groups = _parse_groups(token_data)
-                        authenticated = True
-                    except (JoseError, HTTPException):
-                        pass
-
-        if not authenticated:
+        try:
+            user = await get_current_user(websocket)
+            websocket.state.user_groups = user.groups
+        except Exception:
             await websocket.close(code=4001, reason="Not authenticated")
             return
 

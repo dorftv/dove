@@ -4,7 +4,7 @@ from pipeline_handler import PipelineHandler
 from pipelines.base import GSTBase
 from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
 from api.mixers_dtos import mixerRemoveDTO
-from api.auth import require_role
+from api.auth import require_role, require_read
 
 from api.helper import get_routers
 from api.helper import get_model_fields
@@ -17,12 +17,12 @@ for router_module, module_name in get_routers('api.inputs'):
                           dependencies=[require_role("user")])
 
 # List avalable Input Types
-@router.get("/inputs/types", tags=['Inputs', 'Config'], dependencies=[require_role("user")])
+@router.get("/inputs/types", tags=['Inputs', 'Config'], dependencies=[require_read()])
 async def get_input_models():
     return get_model_fields('api.inputs',{'InputDTO'})
 
 # List all Inputs
-@router.get("/inputs", tags=['Inputs'], dependencies=[require_role("user")])
+@router.get("/inputs", tags=['Inputs'], dependencies=[require_read()])
 async def get_all_inputs(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     inputs: list[Input] = handler._pipelines["inputs"] if handler._pipelines is not None else []

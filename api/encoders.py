@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from uuid import UUID
 
 from api.encoder_models import EncoderEntityDTO
-from api.auth import require_role
+from api.auth import require_role, require_read
 from api.helper import get_auto_encoder, _is_encoder_available, create_or_raise
 from event_loop_bridge import safe_broadcast
 from pipelines.encoders.encoder import Encoder
@@ -36,7 +36,7 @@ async def create_encoder(request: Request, data: EncoderEntityDTO):
     return {"uid": data.uid}
 
 
-@router.get("/encoders", dependencies=[require_role("user")])
+@router.get("/encoders", dependencies=[require_read()])
 async def list_encoders(request: Request):
     handler = request.app.state._state["pipeline_handler"]
     encoders = handler.get_pipelines("encoders")
@@ -45,7 +45,7 @@ async def list_encoders(request: Request):
     return [e.describe() for e in encoders]
 
 
-@router.get("/encoders/{uid}", dependencies=[require_role("user")])
+@router.get("/encoders/{uid}", dependencies=[require_read()])
 async def get_encoder(uid: UUID, request: Request):
     handler = request.app.state._state["pipeline_handler"]
     encoder = handler.get_pipeline("encoders", uid)

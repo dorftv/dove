@@ -122,6 +122,9 @@ enabled = false
 # name = "admin-scripts"
 # role = "admin"
 
+# Entity names whose previews are accessible without authentication
+public_previews = []
+
 [auth.groups]
 user = "dove-user"
 supervisor = "dove-supervisor"

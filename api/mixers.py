@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 
 from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
-from api.auth import require_role
+from api.auth import require_role, require_read
 from event_loop_bridge import safe_broadcast
 from api.helper import create_or_raise
 from pipeline_handler import PipelineHandler
@@ -49,7 +49,7 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
         raise HTTPException(status_code=422, detail=e.errors())
 
 
-@router.get("/mixers", dependencies=[require_role("user")])
+@router.get("/mixers", dependencies=[require_read()])
 async def all(request: Request):
     handler: GSTBase = request.app.state._state["pipeline_handler"]
     mixers: list[Mixer] = handler._pipelines["mixers"] if handler._pipelines is not None else []

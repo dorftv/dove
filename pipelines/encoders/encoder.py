@@ -145,7 +145,7 @@ class Encoder(GSTBase):
         """Block latency queries from propagating upstream through encoder branches."""
         query = info.get_query()
         if query.type == Gst.QueryType.LATENCY:
-            logger.log(f"Encoder {self.data.uid}: blocked latency query", level='WARNING')
+            logger.log(f"Encoder {self.data.uid}: blocked latency query", level='DEBUG')
             return Gst.PadProbeReturn.HANDLED
         return Gst.PadProbeReturn.OK
 

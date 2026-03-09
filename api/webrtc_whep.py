@@ -445,7 +445,7 @@ class WebrtcPreviewManager:
         if webrtcbin:
             _orphaned_webrtcbins.append(webrtcbin)
 
-        logger.log(f"WHEP: {name} disposed (orphaned webrtcbins: {len(_orphaned_webrtcbins)})", level='WARNING')
+        logger.log(f"WHEP: {name} disposed (orphaned webrtcbins: {len(_orphaned_webrtcbins)})", level='INFO')
 
 
 def _get_or_create_manager(source_uid: str) -> WebrtcPreviewManager:
@@ -581,6 +581,15 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                             Gst.CLOCK_TIME_NONE, True, 0)
                         vpay.send_event(key_event)
 
+                    # Disconnect old signal handlers (they reference old_mgr via bound methods)
+                    webrtcbin = peer.get('webrtcbin')
+                    for sig_id in peer.get('signal_ids', []):
+                        try:
+                            if webrtcbin:
+                                webrtcbin.handler_disconnect(sig_id)
+                        except Exception:
+                            pass
+
                     # Move peer from old manager to new/existing manager
                     old_mgr.peers.pop(peer_id, None)
                     if not old_mgr.peers:
@@ -588,7 +597,15 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
                     if new_source not in _managers:
                         _managers[new_source] = WebrtcPreviewManager(new_source)
-                    _managers[new_source].peers[peer_id] = peer
+                    target_mgr = _managers[new_source]
+                    target_mgr.peers[peer_id] = peer
+
+                    # Reconnect signal handlers to new manager
+                    if webrtcbin:
+                        peer['signal_ids'] = [
+                            webrtcbin.connect('on-ice-candidate', target_mgr._on_ice_candidate, peer_id),
+                            webrtcbin.connect('notify::ice-connection-state', target_mgr._on_ice_state, peer_id),
+                        ]
 
                     # Update resource mapping
                     _resources[resource_id] = (new_source, peer_id)
@@ -612,8 +629,8 @@ async def whep_ice_candidate(resource_id: str, request: Request):
             if line.startswith("a=mid:"):
                 try:
                     sdp_mline_index = int(line[6:])
-                except ValueError:
-                    pass
+                except (ValueError, TypeError):
+                    sdp_mline_index = 0
         for line in body.strip().split("\n"):
             line = line.strip()
             if line.startswith("a=ice-candidate:"):

@@ -41,6 +41,7 @@ class PipelineHandler(object):
         self.mainloop = None
         self._start_time = time.monotonic()
         self._input_ticks = {}  # uid -> {"timer_id": int, "last_query_ms": float, "skip_count": int}
+        self._tick_count = 0
         self._tick()
 
     def _tick(self):
@@ -53,6 +54,7 @@ class PipelineHandler(object):
     def _tick_callback(self):
         """GLib callback - system metrics, output stats, encoder state checks."""
         try:
+            self._tick_count += 1
             tick_data = {"uptime": self.get_uptime()}
             try:
                 import os
@@ -60,7 +62,8 @@ class PipelineHandler(object):
                 cpu_count = os.cpu_count() or 1
                 tick_data['load1'] = round(load1, 2)
                 tick_data['load_percent'] = round(load1 / cpu_count * 100, 1)
-                tick_data['fds'] = len(os.listdir('/proc/self/fd'))
+                if self._tick_count % 10 == 0:
+                    tick_data['fds'] = len(os.listdir('/proc/self/fd'))
                 with open('/proc/self/status') as f:
                     for line in f:
                         if line.startswith('VmRSS:'):

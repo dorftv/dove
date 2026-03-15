@@ -384,6 +384,7 @@ class Uridecodebin3Input(Input):
             if success and duration > 0:
                 self.data.duration = duration // Gst.SECOND
             safe_broadcast("UPDATE", self.data)
+            GLib.idle_add(self._relink_to_mixers)
 
             # Set initial pad offset to align timestamps with pipeline clock.
             # This is approximate (stale by decode startup time) but sufficient for clip 1.
@@ -438,6 +439,8 @@ class Uridecodebin3Input(Input):
                         logger.log(f"[OFFSET] Audio pad offset set to {pipeline_rt // Gst.MSECOND}ms (link-time)", level='DEBUG')
             elif real_audio_pad:
                 self._real_audio_pad = real_audio_pad
+            safe_broadcast("UPDATE", self.data)
+            GLib.idle_add(self._relink_to_mixers)
         except Exception as e:
             logger.log(f"uridecodebin3 {uid} audio link failed: {e}", level='ERROR')
         return False
@@ -532,6 +535,25 @@ class Uridecodebin3Input(Input):
             if pad:
                 pad.set_offset(pipeline_rt)
                 logger.log(f"Loop: {pad_name} pad offset updated to {pipeline_rt // Gst.MSECOND}ms", level='DEBUG')
+
+    def _relink_to_mixers(self):
+        """Re-trigger link_source on all mixers that have this input assigned."""
+        try:
+            from pipeline_handler import HandlerSingleton
+            handler = HandlerSingleton()
+            mixers = handler.get_pipelines('mixers')
+            if not mixers:
+                return False
+            for mixer in mixers:
+                if not hasattr(mixer, 'data') or not hasattr(mixer.data, 'sources'):
+                    continue
+                for source in mixer.data.sources:
+                    if source.src == str(self.data.uid):
+                        mixer.link_source(source.index, self.data.uid)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to relink to mixers: %s", e)
+        return False
 
     def _on_video_pad_linked(self):
         """Called when uridecodebin3 video pad links. Override in subclasses."""

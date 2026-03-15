@@ -96,14 +96,11 @@ async def _get_oidc_metadata() -> dict:
     except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, OSError) as e:
         logger.log(f"OIDC discovery failed: {e}", level='WARNING')
         raise HTTPException(status_code=503, detail="Auth service temporarily unavailable")
-    # Metadata URLs use the public hostname.
-    # Replace with internal_issuer for backend-to-IdP calls (token exchange, JWKS).
-    # Keep authorization_endpoint and end_session_endpoint public (browser navigates there).
     public = cfg['issuer'].rstrip('/')
     if internal != public:
-        for key in ('token_endpoint', 'jwks_uri', 'userinfo_endpoint', 'introspection_endpoint'):
+        for key in ('authorization_endpoint', 'end_session_endpoint'):
             if key in _oidc_metadata and _oidc_metadata[key]:
-                _oidc_metadata[key] = _oidc_metadata[key].replace(public, internal)
+                _oidc_metadata[key] = _oidc_metadata[key].replace(internal, public)
     return _oidc_metadata
 
 
@@ -249,17 +246,20 @@ async def get_current_user(request: HTTPConnection, response: Response = None) -
             expires_at=expires_at,
         )
 
-    # 2. Try Authorization: Bearer header
+    query_token = request.query_params.get('token')
+    if query_token:
+        api_user = _check_api_token(query_token)
+        if api_user:
+            return api_user
+
     auth_header = request.headers.get('authorization', '')
     if auth_header.startswith('Bearer '):
         token = auth_header[7:]
 
-        # 2a. Check static API tokens first (cheap compare)
         api_user = _check_api_token(token)
         if api_user:
             return api_user
 
-        # 2b. Try as OIDC JWT
         token_data = await _decode_access_token(token)
         return UserInfo(
             sub=token_data.get('sub', ''),
@@ -413,25 +413,18 @@ async def me(request: Request, response: Response):
     Does not require auth — returns unauthenticated status if no valid session."""
     if not is_auth_enabled():
         return {"authenticated": False, "auth_enabled": False}
-
-    cookie = _read_cookie(request)
-    if not cookie or not cookie.get('access_token'):
-        return {"authenticated": False, "auth_enabled": True}
-
     try:
-        token_data = await _decode_access_token(cookie['access_token'])
+        user = await get_current_user(request, response)
+        cfg = _get_config()
+        groups_map = cfg.get('groups', {})
+        dove_roles = [r for r, g in groups_map.items() if g in user.groups]
+        return {
+            "authenticated": True,
+            "auth_enabled": True,
+            "username": user.username,
+            "email": user.email,
+            "groups": user.groups,
+            "roles": dove_roles,
+        }
     except HTTPException:
         return {"authenticated": False, "auth_enabled": True}
-
-    groups = _parse_groups(token_data)
-    cfg = _get_config()
-    groups_map = cfg.get('groups', {})
-    dove_roles = [r for r, g in groups_map.items() if g in groups]
-    return {
-        "authenticated": True,
-        "auth_enabled": True,
-        "username": token_data.get('preferred_username', ''),
-        "email": token_data.get('email', ''),
-        "groups": groups,
-        "roles": dove_roles,
-    }

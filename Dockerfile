@@ -128,6 +128,9 @@ RUN apk add --no-cache frei0r-plugins
 
 RUN apk add --no-cache     intel-media-driver      mesa-va-gallium
 COPY --from=builder /usr /usr
+# Remove Alpine GStreamer 1.24 plugin leftovers (pulled by wpewebkit) that
+# conflict with the source-built 1.28 plugins copied above.
+RUN rm -f /usr/lib/gstreamer-1.0/libgsty4mdec.so
 # Rust gst-plugins-rs (audiofx + optional livesync/fallbackswitch)
 COPY --from=rust-builder /install/gst-plugins-rs/ /usr/lib/gstreamer-1.0/
 

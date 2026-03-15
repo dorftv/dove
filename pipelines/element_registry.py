@@ -20,7 +20,7 @@ _ELEMENTS_TO_PROBE = [
     'alpha', 'gaussianblur', 'textoverlay',
     # Core pipeline
     'compositor', 'audiomixer', 'audioconvert', 'videoconvert',
-    'videoscale', 'videorate', 'audiorate', 'audioresample',
+    'videoscale', 'videorate', 'audiorate', 'audioresample', 'vapostproc',
     'uridecodebin3', 'wpesrc', 'tee', 'queue',  # cefsrc: deprecated, re-add if needed
     'identity', 'capsfilter', 'level', 'volume',
     # Outputs

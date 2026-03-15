@@ -68,17 +68,25 @@ class Encoder(GSTBase):
             profile_str = f"capsfilter caps=\"video/x-{self.data.codec},profile={self.data.profile}\""
 
         # Build pipeline
-        # videoscale add-borders defaults to true in GStreamer 1.28 — preserves aspect ratio
-        vscale = "videoscale"
+        use_vapostproc = pre.startswith("vapostproc") if pre else False
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
         ]
-        parts.extend([
-            "videoconvert", vscale, "videorate skip-to-first=true",
-            caps_str,
-        ])
-        if pre:
-            parts.append(pre)
+        if use_vapostproc:
+            # GPU path: vapostproc handles format conversion + scaling
+            parts.extend([
+                pre,
+                "videorate skip-to-first=true",
+                caps_str,
+            ])
+        else:
+            # CPU path: standard videoconvert + videoscale
+            parts.extend([
+                "videoconvert", "videoscale", "videorate skip-to-first=true",
+                caps_str,
+            ])
+            if pre:
+                parts.append(pre)
         parts.append(enc_str)
         if mid:
             parts.append(mid)

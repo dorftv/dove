@@ -45,7 +45,7 @@ class openh264EncoderDTO(h264EncoderDTO):
 class vah264encEncoderDTO(h264EncoderDTO):
     name: Literal["vah264enc"] = "vah264enc"
     element: Literal["vah264enc"] = "vah264enc"
-    format: ClassVar[str] = "I420"
+    format: ClassVar[str] = "NV12"
     pre_elements: ClassVar[str] = "vapostproc"
     post_elements: ClassVar[str] = "h264parse"
     options: Optional[str] = Field(
@@ -58,7 +58,7 @@ class vah264encEncoderDTO(h264EncoderDTO):
 class vah264lpencEncoderDTO(h264EncoderDTO):
     name: Literal["vah264lpenc"] = "vah264lpenc"
     element: Literal["vah264lpenc"] = "vah264lpenc"
-    format: ClassVar[str] = "I420"
+    format: ClassVar[str] = "NV12"
     pre_elements: ClassVar[str] = "vapostproc"
     post_elements: ClassVar[str] = "h264parse"
     options: Optional[str] = Field(
@@ -71,7 +71,7 @@ class vah264lpencEncoderDTO(h264EncoderDTO):
 class vaapih264encEncoderDTO(h264EncoderDTO):
     name: Literal["vaapih264enc"] = "vaapih264enc"
     element: Literal["vaapih264enc"] = "vaapih264enc"
-    format: ClassVar[str] = "I420"
+    format: ClassVar[str] = "NV12"
     pre_elements: ClassVar[str] = "vapostproc"
     post_elements: ClassVar[str] = "h264parse"
     options: Optional[str] = Field(
@@ -127,7 +127,7 @@ class x265EncoderDTO(h265EncoderDTO):
 class vah265encEncoderDTO(h265EncoderDTO):
     name: Literal["vah265enc"] = "vah265enc"
     element: Literal["vah265enc"] = "vah265enc"
-    format: ClassVar[str] = "I420"
+    format: ClassVar[str] = "NV12"
     pre_elements: ClassVar[str] = "vapostproc"
     post_elements: ClassVar[str] = "h265parse"
     options: Optional[str] = Field(
@@ -140,7 +140,7 @@ class vah265encEncoderDTO(h265EncoderDTO):
 class vaapih265encEncoderDTO(h265EncoderDTO):
     name: Literal["vaapih265enc"] = "vaapih265enc"
     element: Literal["vaapih265enc"] = "vaapih265enc"
-    format: ClassVar[str] = "I420"
+    format: ClassVar[str] = "NV12"
     pre_elements: ClassVar[str] = "vapostproc"
     post_elements: ClassVar[str] = "h265parse"
     options: Optional[str] = Field(

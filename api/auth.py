@@ -98,9 +98,9 @@ async def _get_oidc_metadata() -> dict:
         raise HTTPException(status_code=503, detail="Auth service temporarily unavailable")
     public = cfg['issuer'].rstrip('/')
     if internal != public:
-        for key in ('authorization_endpoint', 'end_session_endpoint'):
-            if key in _oidc_metadata and _oidc_metadata[key]:
-                _oidc_metadata[key] = _oidc_metadata[key].replace(internal, public)
+        # server-to-server calls need internal hostname (token exchange + JWKS fetch)
+        _oidc_metadata['token_endpoint'] = _oidc_metadata['token_endpoint'].replace(public, internal)
+        _oidc_metadata['jwks_uri'] = _oidc_metadata['jwks_uri'].replace(public, internal)
     return _oidc_metadata
 
 

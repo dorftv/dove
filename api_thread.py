@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import threading
 from contextlib import asynccontextmanager
 from threading import Thread
@@ -13,6 +14,18 @@ class SuppressHLSAccessFilter(logging.Filter):
     def filter(self, record):
         msg = record.getMessage()
         return '/preview/hls/' not in msg
+
+
+class RedactTokenAccessFilter(logging.Filter):
+    """Redact ?token=… / &token=… from uvicorn access log URLs."""
+    _TOKEN_RE = re.compile(r'([?&])token=[^&\s"]*')
+
+    def filter(self, record):
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str) and 'token=' in args[2]:
+            redacted = self._TOKEN_RE.sub(r'\1token=REDACTED', args[2])
+            record.args = args[:2] + (redacted,) + args[3:]
+        return True
 
 from event_loop_bridge import bridge
 
@@ -124,7 +137,9 @@ class APIThread(Thread):
 
 
 
-        logging.getLogger("uvicorn.access").addFilter(SuppressHLSAccessFilter())
+        access_logger = logging.getLogger("uvicorn.access")
+        access_logger.addFilter(SuppressHLSAccessFilter())
+        access_logger.addFilter(RedactTokenAccessFilter())
 
         uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10)
         server = uvicorn.Server(uvicorn_config)

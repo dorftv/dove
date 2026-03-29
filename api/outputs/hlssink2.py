@@ -20,7 +20,7 @@ class hlssink2OutputDTO(OutputDTO):
 @router.put("/hlssink2", response_model=SuccessDTO)
 async def create_hlssink2_output(request: Request, data: hlssink2OutputDTO):
     from pipelines.outputs.hlssink2 import hlssink2Output
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

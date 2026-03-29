@@ -45,7 +45,7 @@ from pipelines.inputs.testsrc import TestsrcInput
 
 @router.put("/testsrc", response_model=SuccessDTO)
 async def create_testsrc_input(request: Request, data: TestsrcInputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:

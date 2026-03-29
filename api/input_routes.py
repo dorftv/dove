@@ -24,7 +24,7 @@ async def get_input_models():
 # List all Inputs
 @router.get("/inputs", tags=['Inputs'], dependencies=[require_read()])
 async def get_all_inputs(request: Request):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     inputs: list[Input] = handler._pipelines["inputs"] if handler._pipelines is not None else []
     descriptions = []
 
@@ -35,7 +35,7 @@ async def get_all_inputs(request: Request):
 # Delete an Input
 @router.delete("/inputs", response_model=SuccessDTO, dependencies=[require_role("user")])
 async def delete(request: Request, data: InputDeleteDTO):
-    handler: "PipelineHandler" = request.app.state._state["pipeline_handler"]
+    handler: "PipelineHandler" = request.app.state.pipeline_handler
     pipeline = handler.get_pipeline("inputs", data.uid)
     if pipeline is not None:
         if getattr(pipeline.data, 'locked', False):
@@ -56,7 +56,7 @@ async def delete(request: Request, data: InputDeleteDTO):
 
 @router.put("/inputs", response_model=SuccessDTO, dependencies=[require_role("user")])
 async def update_input(request: Request,data: updateInputDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     existing_input = handler.get_pipeline("inputs", data.uid)
 
     if existing_input:

@@ -59,7 +59,7 @@ from pipelines.outputs.srtserversink import SrtserversinkOutput
 
 @router.put("/srtserversink", response_model=SuccessDTO)
 async def create_srtserversink_output(request: Request, data: SrtserversinkOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

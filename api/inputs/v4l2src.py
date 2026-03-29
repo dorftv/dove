@@ -36,7 +36,7 @@ from pipelines.inputs.v4l2src import V4l2srcInput
 
 @router.put("/v4l2src", response_model=SuccessDTO)
 async def create_v4l2src_input(request: Request, data: V4l2srcInputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:

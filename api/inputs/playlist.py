@@ -96,7 +96,7 @@ async def create_playlist_input(request: Request, data: PlaylistInputDTO):
                 if isinstance(result, str):
                     raise HTTPException(422, f"Clip '{clip.uri}': {result}")
 
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:

@@ -64,7 +64,7 @@ from pipelines.outputs.srtsink import srtsinkOutput
 
 @router.put("/srtsink", response_model=SuccessDTO)
 async def create_srtsink_output(request: Request, data: srtsinkOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

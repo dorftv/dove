@@ -53,7 +53,7 @@ from pipelines.outputs.splitmuxsink import splitmuxsinkOutput
 
 @router.put("/splitmuxsink", response_model=SuccessDTO)
 async def create_splitmuxsink_output(request: Request, data: splitmuxsinkOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

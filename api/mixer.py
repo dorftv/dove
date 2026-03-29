@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api")
 
 @router.post("/mixer/cut_program", dependencies=[require_role("user")])
 async def action_cut_program(request: Request, data: mixerCutProgramDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     program = handler.get_program()
     if not program:
         raise HTTPException(status_code=404, detail="No program mixer")
@@ -20,7 +20,7 @@ async def action_cut_program(request: Request, data: mixerCutProgramDTO):
 
 @router.post("/mixer/add_source", dependencies=[require_role("user")])
 async def action_add_source(request: Request, data: mixerCutDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer = handler.get_pipeline("mixers", data.target)
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.target} not found")
@@ -29,7 +29,7 @@ async def action_add_source(request: Request, data: mixerCutDTO):
 
 @router.post("/mixer/remove_source", dependencies=[require_role("user")])
 async def action_remove_source(request: Request, data: mixerCutDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer = handler.get_pipeline("mixers", data.target)
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.target} not found")
@@ -38,7 +38,7 @@ async def action_remove_source(request: Request, data: mixerCutDTO):
 
 @router.post("/mixer/add_slot", dependencies=[require_role("supervisor")])
 async def action_add_slot(request: Request, data: mixerSlotDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer = handler.get_pipeline("mixers", data.uid)
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.uid} not found")
@@ -47,7 +47,7 @@ async def action_add_slot(request: Request, data: mixerSlotDTO):
 
 @router.post("/mixer/remove_slot", dependencies=[require_role("supervisor")])
 async def action_remove_slot(request: Request, data: mixerRemoveSlotDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer = handler.get_pipeline("mixers", data.uid)
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.uid} not found")
@@ -62,7 +62,7 @@ async def update_mixer(request: Request):
     uid = raw.get('uid')
     if not uid:
         raise HTTPException(status_code=422, detail="uid required")
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer = handler.get_pipeline("mixers", UUID(uid))
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {uid} not found")

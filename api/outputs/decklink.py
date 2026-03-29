@@ -39,7 +39,7 @@ from pipelines.outputs.decklink import DecklinkOutput
 
 @router.put("/decklink", response_model=SuccessDTO)
 async def create_decklink_output(request: Request, data: DecklinkOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

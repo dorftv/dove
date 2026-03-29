@@ -22,7 +22,7 @@ MIXER_TYPE_MAPPING = {
 unionMixerDTO = Union[sceneMixerDTO]
 
 async def handle_mixer(request: Request, data: unionMixerDTO):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixer_class = MIXER_TYPE_MAPPING[data.type][1]
     mixer = mixer_class(data=data)
 
@@ -51,7 +51,7 @@ async def getMixerDTO(request: Request) -> unionMixerDTO:
 
 @router.get("/mixers", dependencies=[require_read()])
 async def all(request: Request):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     mixers: list[Mixer] = handler._pipelines["mixers"] if handler._pipelines is not None else []
     descriptions = []
 
@@ -68,7 +68,7 @@ async def create(request: Request, data: unionMixerDTO = Depends(getMixerDTO)):
 
 @router.delete("/mixers", response_model=SuccessDTO, dependencies=[require_role("supervisor")])
 async def delete(request: Request, data: MixerDeleteDTO):
-    handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    handler: PipelineHandler = request.app.state.pipeline_handler
     pipeline = handler.get_pipeline("mixers", data.uid)
     if pipeline is not None and getattr(pipeline.data, 'locked', False):
         raise HTTPException(status_code=403, detail="Mixer is locked")

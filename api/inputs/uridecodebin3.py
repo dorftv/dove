@@ -58,7 +58,7 @@ async def create_uridecodebin3_input(request: Request, data: Uridecodebin3InputD
     if reason:
         raise HTTPException(status_code=422, detail=reason)
 
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:

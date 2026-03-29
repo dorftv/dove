@@ -90,9 +90,9 @@ manager = ConnectionManager()
 
 
 async def update_pipe(data, websocket: WebSocket):
-    handler = websocket.app.state._state["pipeline_handler"]
+    handler = websocket.app.state.pipeline_handler
     uid = data['data']['uid']
-    pipeline = handler.getpipeline(UUID(uid))
+    pipeline = handler.get_pipeline_by_uid(UUID(uid))
     if 'audio_filters' in data.get('data', {}) or 'video_filters' in data.get('data', {}):
         logger.log(f"WS filters: uid={uid[:8]}, keys={list(data['data'].keys())}", level='DEBUG')
     if not pipeline:

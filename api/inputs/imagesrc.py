@@ -37,7 +37,7 @@ async def create_imagesrc_input(request: Request, data: ImagesrcInputDTO):
     if not any(data.location.lower().endswith(ext) for ext in _ALLOWED_EXTENSIONS):
         raise HTTPException(422, f"Unsupported file type. Allowed: {', '.join(_ALLOWED_EXTENSIONS)}")
 
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     input = handler.get_pipeline("inputs", data.uid)
 
     if input:

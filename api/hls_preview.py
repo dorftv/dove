@@ -19,7 +19,7 @@ async def serve_media(file_path: str, request: Request):
         if user is None:
             # HLS path convention: {source_uid}/{playlist_or_segment}
             source_uid = file_path.split('/')[0]
-            handler = request.app.state._state["pipeline_handler"]
+            handler = request.app.state.pipeline_handler
             entity = handler.get_pipeline_by_uid(source_uid)
             if not entity or not config.is_public_preview(entity.data.name):
                 raise HTTPException(status_code=401, detail="Not authenticated")

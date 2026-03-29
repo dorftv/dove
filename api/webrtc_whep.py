@@ -462,7 +462,7 @@ async def whep_offer(source_uid: str, request: Request):
     if is_auth_enabled():
         user = await get_current_user_optional(request)
         if user is None:
-            handler = request.app.state._state["pipeline_handler"]
+            handler = request.app.state.pipeline_handler
             entity = handler.get_pipeline_by_uid(source_uid)
             if not entity or not config.is_public_preview(entity.data.name):
                 raise HTTPException(status_code=401, detail="Not authenticated")

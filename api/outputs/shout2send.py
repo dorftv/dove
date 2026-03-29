@@ -55,7 +55,7 @@ from pipelines.outputs.shout2send import Shout2sendOutput
 
 @router.put("/shout2send", response_model=SuccessDTO)
 async def create_shout2send_output(request: Request, data: Shout2sendOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

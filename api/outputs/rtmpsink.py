@@ -49,7 +49,7 @@ from pipelines.outputs.rtmpsink import rtmpsinkOutput
 
 @router.put("/rtmpsink", response_model=SuccessDTO)
 async def create_rtmpsink_output(request: Request, data: rtmpsinkOutputDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     output = handler.get_pipeline("outputs", data.uid)
 
     if output:

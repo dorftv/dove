@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api")
 
 @router.get("/healthz")
 def healthz(request: Request):
-    handler = request.app.state._state.get("pipeline_handler")
+    handler = request.app.state.pipeline_handler
     if not handler or not handler.core_pipeline or not handler.core_pipeline.pipeline:
         return JSONResponse({"status": "starting"}, status_code=200)
 
@@ -110,7 +110,7 @@ def get_load(request: Request):
     load1, load5, load15 = os.getloadavg()
     cpu_count = os.cpu_count() or 1
 
-    handler = request.app.state._state.get("pipeline_handler")
+    handler = request.app.state.pipeline_handler
     inputs = len(handler._pipelines.get("inputs", [])) if handler and handler._pipelines else 0
     outputs = len(handler._pipelines.get("outputs", [])) if handler and handler._pipelines else 0
     mixers = len(handler._pipelines.get("mixers", [])) if handler and handler._pipelines else 0
@@ -210,7 +210,7 @@ class PreviewFpsDTO(BaseModel):
 
 @router.put("/load/preview_fps", dependencies=[require_role("admin")])
 def set_preview_fps(request: Request, data: PreviewFpsDTO):
-    handler = request.app.state._state.get("pipeline_handler")
+    handler = request.app.state.pipeline_handler
     if not handler or not handler._pipelines:
         return {"error": "no pipeline handler"}
 
@@ -269,7 +269,7 @@ async def export_config(
     TOML contains plaintext credentials (auth.cookie_secret, auth.api_tokens).
     Treat the export file as a secret.
     """
-    handler = request.app.state._state.get("pipeline_handler")
+    handler = request.app.state.pipeline_handler
     if not handler or not handler._pipelines:
         return Response(status_code=503, content="Pipeline not ready")
 

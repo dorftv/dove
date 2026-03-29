@@ -23,7 +23,7 @@ async def get_output_models():
 # List all Outputs
 @router.get("/outputs", tags=['Outputs'], dependencies=[require_read()])
 async def get_all_outputs(request: Request):
-    handler: GSTBase = request.app.state._state["pipeline_handler"]
+    handler: GSTBase = request.app.state.pipeline_handler
     outputs: list[Output] = handler._pipelines["outputs"] if handler._pipelines is not None else []
     descriptions = []
 
@@ -34,7 +34,7 @@ async def get_all_outputs(request: Request):
 # Delete an Output
 @router.delete("/outputs", tags=['Outputs'], response_model=SuccessDTO, dependencies=[require_role("outputs")])
 async def delete_output(request: Request, data: OutputDeleteDTO):
-    handler: PipelineHandler = request.app.state._state["pipeline_handler"]
+    handler: PipelineHandler = request.app.state.pipeline_handler
     pipeline = handler.get_pipeline("outputs", data.uid)
     if pipeline is not None and getattr(pipeline.data, 'locked', False):
         raise HTTPException(status_code=403, detail="Output is locked")

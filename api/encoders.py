@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.put("/encoders", dependencies=[require_role("outputs")])
 async def create_encoder(request: Request, data: EncoderEntityDTO):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
 
     # Resolve "auto" element
     if data.element == "auto":
@@ -38,7 +38,7 @@ async def create_encoder(request: Request, data: EncoderEntityDTO):
 
 @router.get("/encoders", dependencies=[require_read()])
 async def list_encoders(request: Request):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     encoders = handler.get_pipelines("encoders")
     if not encoders:
         return []
@@ -47,7 +47,7 @@ async def list_encoders(request: Request):
 
 @router.get("/encoders/{uid}", dependencies=[require_read()])
 async def get_encoder(uid: UUID, request: Request):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     encoder = handler.get_pipeline("encoders", uid)
     if not encoder:
         raise HTTPException(status_code=404, detail="Encoder not found")
@@ -56,7 +56,7 @@ async def get_encoder(uid: UUID, request: Request):
 
 @router.delete("/encoders/{uid}", dependencies=[require_role("outputs")])
 async def delete_encoder(uid: UUID, request: Request):
-    handler = request.app.state._state["pipeline_handler"]
+    handler = request.app.state.pipeline_handler
     encoder = handler.get_pipeline("encoders", uid)
     if not encoder:
         raise HTTPException(status_code=404, detail="Encoder not found")

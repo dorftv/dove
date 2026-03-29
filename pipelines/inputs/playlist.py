@@ -57,6 +57,7 @@ class PlaylistInput(Uridecodebin3Input):
         self._suppress_teardown_error = False
         self._watchdog_timer_id = None
         self._watchdog_probe_id = None
+        self._pending_advance = False
 
     def cleanup(self):
         """Cancel all active timers and probes — call before deletion."""
@@ -196,6 +197,9 @@ class PlaylistInput(Uridecodebin3Input):
         from api.input_models import updateInputDTO
         if not isinstance(data, updateInputDTO):
             data = updateInputDTO.model_validate(data)
+        if data.skip and self.data.state != 'PLAYING':
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Skip requires playlist to be PLAYING. Resume first.")
         if data.skip == "next":
             GLib.idle_add(self._skip_next)
         elif data.skip == "previous":
@@ -220,6 +224,9 @@ class PlaylistInput(Uridecodebin3Input):
     def _resume_html_timers(self):
         """Resume HTML duration timer with remaining time after unpause."""
         if not self._html_active or not hasattr(self, '_html_paused_elapsed'):
+            if self._pending_advance:
+                self._pending_advance = False
+                GLib.idle_add(self._change_clip)
             return False
         elapsed = self._html_paused_elapsed
         del self._html_paused_elapsed
@@ -231,6 +238,9 @@ class PlaylistInput(Uridecodebin3Input):
         self._html_stop_timer_id = GLib.timeout_add(
             int(remaining * 1000), self._on_html_duration_complete)
         self._html_position_timer_id = GLib.timeout_add(1000, self._update_html_position)
+        if self._pending_advance:
+            self._pending_advance = False
+            GLib.idle_add(self._change_clip)
         return False
 
     def _skip_next(self):
@@ -252,6 +262,9 @@ class PlaylistInput(Uridecodebin3Input):
 
     def handle_eos(self) -> bool:
         """Handle EOS — advance to next clip. Always returns True."""
+        if self.data.state == 'PAUSED':
+            self._pending_advance = True
+            return True
         if self._changing_clip:
             return True
         self._changing_clip = True
@@ -293,6 +306,8 @@ class PlaylistInput(Uridecodebin3Input):
         """Skip to next clip when current clip fails to produce pads."""
         try:
             self._clip_error_timer_id = None
+            if self.data.state == 'PAUSED':
+                return False
             if self._video_linked[0]:
                 return False  # Pads appeared, no error
             uri = self.uridecodebin.get_property("uri") if self.uridecodebin else "?"
@@ -347,6 +362,8 @@ class PlaylistInput(Uridecodebin3Input):
         """No video buffer for BUFFER_WATCHDOG_MS — skip to next clip."""
         try:
             self._watchdog_timer_id = None
+            if self.data.state == 'PAUSED':
+                return False
             if self._html_active or self._changing_clip:
                 return False
             uri = self.uridecodebin.get_property("uri") if self.uridecodebin else "?"
@@ -361,6 +378,9 @@ class PlaylistInput(Uridecodebin3Input):
 
     def handle_error(self, err_message):
         """Called by core_pipeline on bus error. Skip to next clip."""
+        if self.data.state == 'PAUSED':
+            self._pending_advance = True
+            return
         if self._changing_clip:
             return
         logger.log(f"Playlist {self.data.uid} clip error, skipping: {err_message}", level='WARNING')

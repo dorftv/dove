@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from api.helper import get_encoder_types
-from api.auth import require_role, require_read
+from api.auth import require_role, require_read, is_auth_enabled, get_current_user
 from gi.repository import Gst, GLib
 
 from config_handler import ConfigReader
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/healthz")
-def healthz(request: Request):
+async def healthz(request: Request):
     handler = request.app.state.pipeline_handler
     if not handler or not handler.core_pipeline or not handler.core_pipeline.pipeline:
         return JSONResponse({"status": "starting"}, status_code=200)
@@ -32,14 +32,31 @@ def healthz(request: Request):
 
     healthy = pipeline_state == "PLAYING" and mainloop_ok
     status = "ok" if healthy and not errors else "degraded" if healthy else "error"
+    status_code = 200 if healthy else 503
+
+    # anonymous callers get stripped payload (no infra detail / error list)
+    is_authenticated = True
+    if is_auth_enabled():
+        try:
+            is_authenticated = bool(await get_current_user(request))
+        except Exception:
+            is_authenticated = False
+
+    if is_authenticated:
+        return JSONResponse({
+            "status": status,
+            "pipeline": pipeline_state,
+            "glib_mainloop": mainloop_ok,
+            "uptime": uptime,
+            "errors": errors,
+        }, status_code=status_code)
 
     return JSONResponse({
         "status": status,
-        "pipeline": pipeline_state,
-        "glib_mainloop": mainloop_ok,
         "uptime": uptime,
-        "errors": errors,
-    }, status_code=200 if healthy else 503)
+        "pipeline": pipeline_state,
+        "error_count": len(errors),
+    }, status_code=status_code)
 
 
 @router.get("/config", dependencies=[require_read()])

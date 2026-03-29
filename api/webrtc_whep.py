@@ -622,6 +622,14 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
     # ICE trickle candidates
     if "application/trickle-ice-sdpfrag" in content_type:
+        # auth gate (matches POST)
+        if is_auth_enabled():
+            user = await get_current_user_optional(request)
+            if user is None:
+                handler = request.app.state.pipeline_handler
+                entity = handler.get_pipeline_by_uid(source_uid)
+                if not entity or not config.is_public_preview(entity.data.name):
+                    return Response(status_code=401)
         body = (await request.body()).decode("utf-8")
         sdp_mline_index = 0
         for line in body.strip().split("\n"):
@@ -647,12 +655,22 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
 
 @router.delete("/whep/resource/{resource_id}")
-async def whep_delete(resource_id: str):
-    mapping = _resources.pop(resource_id, None)
+async def whep_delete(resource_id: str, request: Request):
+    mapping = _resources.get(resource_id)
     if not mapping:
         return Response(status_code=404)
 
     source_uid, peer_id = mapping
+    # auth gate (matches POST)
+    if is_auth_enabled():
+        user = await get_current_user_optional(request)
+        if user is None:
+            handler = request.app.state.pipeline_handler
+            entity = handler.get_pipeline_by_uid(source_uid)
+            if not entity or not config.is_public_preview(entity.data.name):
+                return Response(status_code=401)
+
+    _resources.pop(resource_id, None)
     loop = asyncio.get_running_loop()
     done = loop.create_future()
 

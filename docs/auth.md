@@ -146,6 +146,7 @@ These paths work without authentication even when auth is enabled:
 - `/` (static SPA files)
 - `/auth/*` (login flow)
 - `/api/docs/*` (help pages)
+- `/api/healthz` (Docker healthcheck — anonymous callers get a stripped response: status, uptime, pipeline state, error count; full error detail requires authentication)
 
 ## Protecting External Services with nginx
 

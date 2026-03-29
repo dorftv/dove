@@ -351,11 +351,15 @@ async def auth_callback(request: Request):
     # Must match the redirect_uri used in /login exactly
     redirect_base = request.cookies.get(
         'oauth_redirect_base', str(request.base_url).rstrip('/'))
+    stored_state = request.cookies.get('oauth_state')
+    if not stored_state:
+        raise HTTPException(status_code=400, detail="Missing oauth_state cookie — restart login flow")
     callback_url = f"{redirect_base}/auth/callback"
     client = AsyncOAuth2Client(
         client_id=cfg['client_id'],
         client_secret=cfg['client_secret'],
         redirect_uri=callback_url,
+        state=stored_state,
     )
     token = await client.fetch_token(
         meta['token_endpoint'],
@@ -367,6 +371,7 @@ async def auth_callback(request: Request):
         'refresh_token': token.get('refresh_token', ''),
         'expires_at': time.time() + token.get('expires_in', 300),
     })
+    response.delete_cookie("oauth_state", path="/")
     return response
 
 

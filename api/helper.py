@@ -154,12 +154,6 @@ def get_encoder_dto_class(element_name: str) -> Optional[type]:
     return _encoder_dto_map.get(element_name)
 
 
-def get_encoder_names(encoder_type: str) -> List[str]:
-    encoder_types = get_encoder_types()
-
-    return [encoder["name"] for encoder in encoder_types.get(encoder_type, [])]
-
-
 def get_model_fields(models_path: str, exclude_models: Set[str] = set()) -> dict:
     model_fields = {}
     enabled_models = (config.get_enabled_outputs() if models_path == "api.outputs"

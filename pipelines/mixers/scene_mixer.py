@@ -68,8 +68,6 @@ class sceneMixer(Mixer):
                 except Exception as e:
                     logger.log(f"Failed to link initial source at index {i}: {e}", level='ERROR')
 
-    pass
-
     async def update(self, data):
         """Handle slot updates - link/unlink sources, update properties."""
         from event_loop_bridge import bridge

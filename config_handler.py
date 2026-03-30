@@ -61,12 +61,6 @@ class ConfigReader:
                 return self.config['ui']['enabled_inputs']
         return []
 
-    def get_proxies(self):
-        if 'srtrelay' in self.config:
-            return True
-        else:
-            return False
-
     def get_proxy_types(self):
         if 'proxy' in self.config:
             items = []
@@ -109,13 +103,6 @@ class ConfigReader:
                         inputs[key] = value
         return inputs
 
-    def get_input_details(self, scene_name, input_name):
-        scene_inputs = self.get_scene_inputs(scene_name)
-        if scene_inputs and input_name in scene_inputs:
-            return scene_inputs[input_name]
-        else:
-            return None
-
     def get_inputs(self):
         if 'inputs' in self.config:
             return self.config['inputs']
@@ -154,11 +141,6 @@ class ConfigReader:
 
     def get_default_width(self) -> int:
         return self.get_default_resolution()['width']
-
-    def get_preview_resolution(self):
-        preview_resolution = self.config['main']['preview_resolution']
-        resolutions = self.get_resolutions()
-        return resolutions[preview_resolution]
 
     def get_default_framerate(self):
         default_framerate = self.config['main']['default_framerate']

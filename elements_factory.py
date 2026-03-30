@@ -62,105 +62,12 @@ class ElementsFactory:
         self.handler.add_pipeline(mixer)
         return mixer
 
-    def _resolve_input_ref(self, input_ref, name, scope_key, inputs_map):
-        """Resolve an input reference (string ref or inline dict) to a pipeline."""
-        if isinstance(input_ref, str):
-            uid = inputs_map.get(str(input_ref))
-            if uid:
-                return self.handler.get_pipeline("inputs", uid)
-            logger.log(f"Input ref '{input_ref}' not found", level='ERROR')
-            return None
-        if isinstance(input_ref, dict) and input_ref.get('type'):
-            pipeline = self.create_pipeline('input', name, input_ref)
-            if pipeline:
-                inputs_map[scope_key] = pipeline.data.uid
-            return pipeline
-        return None
-
     def _create_program_mixer(self):
         program_uid = uuid4()
         dto = programMixerDTO(uid=program_uid, name="program", type="program")
         mixer = programMixer(data=dto)
         self.handler.add_pipeline(mixer)
         return mixer, program_uid
-
-    def _setup_scene_slots(self, scene, scene_name, scene_slots, inputs_map):
-        for index, (name, details) in enumerate(scene_slots.items()):
-            if details.get("name") is None:
-                details["name"] = name
-
-            for prop in SLOT_PROPERTIES:
-                value = details.get(prop)
-                if value is not None:
-                    scene.data.update_mixer_input(index, **{prop: value})
-
-            input_ref = details.get('input')
-            if input_ref:
-                pipeline = self._resolve_input_ref(
-                    input_ref, name, f"{scene_name}.{name}", inputs_map
-                )
-                if pipeline:
-                    uid = pipeline.data.uid
-                    scene.data.update_mixer_input(index, src=uid)
-                    scene.link_source(index, uid)
-
-    def _create_scenes(self, inputs_map):
-        if not self.scene_list:
-            return
-
-        for scene_name in self.scene_list:
-            scene_details = config.get_scene_details(scene_name)
-            scene_slots = config.get_scene_inputs(scene_name)
-
-            n = scene_details.get('n', 0)
-            if scene_slots and len(scene_slots) > n:
-                scene_details["n"] = len(scene_slots)
-
-            scene = self.create_mixer(scene_details.get('name', scene_name), scene_details)
-
-            if scene_details.get('program', False):
-                self.cutProgram = mixerCutProgramDTO(src=scene.data.uid)
-
-            if scene_slots:
-                self._setup_scene_slots(scene, scene_name, scene_slots, inputs_map)
-
-    def _create_program_overlays(self, program_mixer, inputs_map):
-        if not self.program_overlays_list:
-            return
-
-        program_index = 1
-        for name, overlays in self.program_overlays_list.items():
-            program_index += 1
-            input_ref = overlays.get('input')
-            if input_ref:
-                pipeline = self._resolve_input_ref(
-                    input_ref, name, f"program.{name}", inputs_map
-                )
-            elif overlays.get('type') is not None:
-                pipeline = self.create_pipeline('input', name, overlays)
-            else:
-                pipeline = None
-
-            if pipeline:
-                uid = pipeline.data.uid
-                program_mixer.data.update_mixer_input(program_index, src=uid)
-                program_mixer.link_source(program_index, uid)
-
-    def _create_standalone_inputs(self):
-        if not self.input_list:
-            return
-        for name, input_details in self.input_list.items():
-            self.create_pipeline('input', name, input_details)
-
-    def _create_outputs(self, program_uid):
-        if not self.output_list:
-            return
-        for name, output_conf in self.output_list.items():
-            output_type = output_conf.get('type')
-            if output_type:
-                output_conf['name'] = output_conf.get('name', name)
-                output_conf['src'] = program_uid
-                self.create_pipeline('output', name, output_conf)
 
     def _build_steps(self):
         """Build an ordered list of (description, callable) steps for pipeline creation.
@@ -227,7 +134,6 @@ class ElementsFactory:
                             scope_key = f"{sn_}.{sl_name}"
                             input_ref = sl_details.get('input')
 
-                            # Look up pre-created input (don't re-create via _resolve_input_ref)
                             uid = None
                             if isinstance(input_ref, dict):
                                 uid = inputs_map.get(scope_key)

@@ -7,7 +7,19 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/dorftv/dove"
 repository = "https://github.com/dorftv/dove"
-packages = []
+packages = [
+    {include = "api"},
+    {include = "pipelines"},
+    {include = "proxy"},
+    {include = "main.py"},
+    {include = "pipeline_handler.py"},
+    {include = "elements_factory.py"},
+    {include = "api_thread.py"},
+    {include = "event_loop_bridge.py"},
+    {include = "config_handler.py"},
+    {include = "logger.py"},
+    {include = "helpers.py"},
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"

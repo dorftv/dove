@@ -120,7 +120,7 @@ class WebrtcPreviewManager:
                 video_tee = video_enc.tee
                 audio_tee = audio_enc.tee if audio_enc else None
                 if not video_tee:
-                    logger.log(f"WHEP: video encoder tee not available", level='ERROR')
+                    logger.log("WHEP: video encoder tee not available", level='ERROR')
                     loop.call_soon_threadsafe(answer_future.set_result, None)
                     return False
 

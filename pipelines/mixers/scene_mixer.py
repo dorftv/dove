@@ -1,5 +1,3 @@
-from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from logger import logger
@@ -8,9 +6,9 @@ from event_loop_bridge import safe_broadcast
 from pipelines.mixers.mixer import Mixer
 from pipelines.audio_filters import build_audio_filter_str
 from pipelines.video_filters import build_video_filter_str
-from api.mixers_dtos import sceneMixerDTO, mixerInputDTO, mixerCutDTO, mixerSlotDTO
+from api.mixers_dtos import sceneMixerDTO
 from config_handler import ConfigReader
-from gi.repository import Gst, GLib
+from gi.repository import Gst
 
 
 class sceneMixer(Mixer):

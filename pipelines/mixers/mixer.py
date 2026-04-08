@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from logger import logger
-from api.mixers_dtos import mixerCutDTO, mixerSlotDTO, mixerInputsDTO, mixerInputDTO, mixerDTO
+from api.mixers_dtos import mixerInputDTO, mixerDTO
 from api.input_models import AudioFilterDTO, VideoFilterDTO
 from pipelines.base import GSTBase
 from pipelines.audio_filters import (

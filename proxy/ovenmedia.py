@@ -1,7 +1,6 @@
 import base64
 from datetime import datetime, timezone
 from fastapi import APIRouter
-from logger import logger
 from proxy.helper import fetch_proxy_items
 
 router = APIRouter()

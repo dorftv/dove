@@ -146,6 +146,7 @@ WORKDIR /app
 RUN cp config-example.toml config.toml
 
 RUN pip install . --ignore-installed --break-system-packages
+RUN pip install ruff --break-system-packages
 
 # Non-root user with video group (GPU access via /dev/dri)
 RUN addgroup -S dove && adduser -S -G dove dove \

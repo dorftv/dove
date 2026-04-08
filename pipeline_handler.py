@@ -2,7 +2,7 @@ import asyncio
 import sys
 import time
 from pathlib import Path
-from typing import List, ClassVar, Any, Optional
+from typing import List, ClassVar, Optional
 from uuid import UUID
 import gi
 gi.require_version('Gst', '1.0')
@@ -267,7 +267,7 @@ class PipelineHandler(object):
                         success = self.core_pipeline.add_mixer_dynamic(pipeline, create_preview_callback=create_preview)
                         logger.log(f"add_mixer_dynamic returned: {success}", level='DEBUG')
                         if not success:
-                            logger.log(f"Dynamic mixer add failed", level='ERROR')
+                            logger.log("Dynamic mixer add failed", level='ERROR')
                     except Exception as e:
                         logger.log(f"Exception in mixer dynamic add: {e}", level='ERROR')
                         import traceback

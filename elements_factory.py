@@ -1,6 +1,6 @@
 from uuid import uuid4
 from logger import logger
-from api.mixers_dtos import mixerDTO, sceneMixerDTO, mixerInputDTO, programMixerDTO, mixerCutProgramDTO
+from api.mixers_dtos import sceneMixerDTO, programMixerDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
 from pipelines.mixers.program_mixer import programMixer
 from api.helper import get_dtos

@@ -18,7 +18,6 @@ _fault_out = _crash_file or sys.stderr
 faulthandler.enable(file=_fault_out, all_threads=True)
 faulthandler.register(signal.SIGUSR2, file=_fault_out, all_threads=True)
 
-from uuid import uuid4
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib

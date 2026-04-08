@@ -122,7 +122,7 @@ async def update_pipe(data, websocket: WebSocket):
             if hasattr(pipeline.data, 'locked') and pipeline.data.locked:
                 supervisor_group = groups_map.get('supervisor', 'dove-supervisor')
                 if admin_group not in user_groups and supervisor_group not in user_groups:
-                    logger.log(f"WS update denied: entity is locked", level='WARNING')
+                    logger.log("WS update denied: entity is locked", level='WARNING')
                     return
 
     await pipeline.update(data['data'])

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from config_handler import ConfigReader
 
-from helpers import generateId, get_default_height, get_default_width, get_default_volume
+from helpers import generateId, get_default_height, get_default_width
 
 uniqueId = generateId("Input ")
 

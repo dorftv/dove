@@ -1,7 +1,6 @@
-import os
 import pkgutil
 import importlib
-from typing import Type, Generator, Tuple, Set
+from typing import Type, Generator, Tuple
 
 from pipelines.base import GSTBase
 

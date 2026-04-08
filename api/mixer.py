@@ -1,7 +1,6 @@
 from fastapi import Request, APIRouter, HTTPException
-from pydantic import BaseModel
 from uuid import UUID
-from api.mixers_dtos import mixerDTO, mixerCutDTO, mixerInputDTO, mixerInputsDTO, mixerSlotDTO, mixerCutProgramDTO, mixerRemoveSlotDTO
+from api.mixers_dtos import mixerCutDTO, mixerInputDTO, mixerSlotDTO, mixerCutProgramDTO, mixerRemoveSlotDTO
 from api.auth import require_role
 from pipelines.base import GSTBase
 

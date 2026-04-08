@@ -14,7 +14,7 @@ from uuid import UUID
 from fastapi import APIRouter, Request, Response
 
 from api.webrtc_utils import get_host_ip
-from event_loop_bridge import bridge, safe_broadcast
+from event_loop_bridge import bridge
 from logger import logger
 
 router = APIRouter()

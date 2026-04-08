@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Request
 from pydantic import Field
-from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
+from api.input_models import InputDTO, SuccessDTO
 from typing import Optional
 
 from event_loop_bridge import safe_broadcast

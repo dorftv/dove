@@ -1,11 +1,10 @@
 
 from fastapi import APIRouter, Request
 from pydantic import Field
-from api.input_models import InputDeleteDTO, SuccessDTO
+from api.input_models import SuccessDTO
 from api.inputs.wpesrc import WpesrcInputDTO
 
 from typing import Optional, Union
-from helpers import get_default_height, get_default_width
 
 from event_loop_bridge import safe_broadcast
 from api.helper import create_or_raise

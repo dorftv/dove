@@ -1,5 +1,5 @@
 from typing import Annotated, ClassVar, Optional, Literal, Union
-from pydantic import BaseModel, Field
+from pydantic import Field
 from .encoder import EncoderDTO
 
 

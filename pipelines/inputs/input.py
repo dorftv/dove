@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
-from uuid import UUID, uuid4
-from typing import Union, Optional
+from typing import Optional
 
 from pipelines.base import GSTBase
-from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO, AudioFilterDTO, VideoFilterDTO
+from api.input_models import InputDTO, updateInputDTO, AudioFilterDTO, VideoFilterDTO
 from pipelines.audio_filters import build_audio_filter_str, update_filter_params, rebuild_between_anchors
 from pipelines.video_filters import build_video_filter_str, VIDEO_FILTER_ELEMENT_MAP
 from gi.repository import Gst, GLib
 
-from event_loop_bridge import bridge, safe_broadcast
+from event_loop_bridge import safe_broadcast
 from logger import logger
 
 

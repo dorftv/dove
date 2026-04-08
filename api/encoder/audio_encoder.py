@@ -1,4 +1,4 @@
-from typing import Annotated, ClassVar, Optional, Literal, Union
+from typing import ClassVar, Optional, Literal
 from pydantic import Field
 from .encoder import EncoderDTO
 from api.input_models import AudioFilterDTO

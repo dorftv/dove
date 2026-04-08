@@ -3,9 +3,8 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 
-from config_handler import ConfigReader
 
-from helpers import generateId, get_default_height, get_default_width, get_default_volume, get_default_framerate
+from helpers import generateId, get_default_height, get_default_width, get_default_framerate
 
 uniqueId = generateId("Output ")
 

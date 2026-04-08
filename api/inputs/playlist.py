@@ -1,7 +1,7 @@
 
 import asyncio
 from fastapi import APIRouter, Request, HTTPException
-from api.input_models import InputDTO, InputDeleteDTO, SuccessDTO
+from api.input_models import InputDTO, SuccessDTO
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field, validator
 

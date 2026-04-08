@@ -1,6 +1,5 @@
 """Playlist input for sequences of video/HTML clips. Extends Uridecodebin3Input with a wpesrc HTML path into the compositor."""
 
-import os
 import httpx
 import threading
 import time
@@ -8,7 +7,7 @@ from typing import Optional
 
 from api.inputs.playlist import PlaylistInputDTO, PlaylistItemDTO
 from pipelines.inputs.uridecodebin3 import Uridecodebin3Input
-from gi.repository import Gst, GLib, GObject
+from gi.repository import Gst, GLib
 from logger import logger
 from event_loop_bridge import safe_broadcast
 

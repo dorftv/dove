@@ -33,7 +33,6 @@ class Output(GSTBase, ABC):
     def _get_source_tee_name(self, audio_or_video):
         """Determine tee name based on source type (input vs mixer)."""
         from pipeline_handler import HandlerSingleton
-        from logger import logger
         handler = HandlerSingleton()
 
         # Check if source is a mixer

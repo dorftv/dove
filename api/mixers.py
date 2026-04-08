@@ -1,9 +1,8 @@
-from uuid import UUID
 from typing import Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 
-from api.mixers_dtos import mixerDTO, SuccessDTO, MixerDeleteDTO, sceneMixerDTO,  programMixerDTO
+from api.mixers_dtos import SuccessDTO, MixerDeleteDTO, sceneMixerDTO
 from api.auth import require_role, require_read
 from event_loop_bridge import safe_broadcast
 from api.helper import create_or_raise

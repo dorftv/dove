@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 from pipeline_handler import PipelineHandler
 
 from pipelines.base import GSTBase
-from api.input_models import InputDTO, SuccessDTO, InputDeleteDTO, updateInputDTO
+from api.input_models import SuccessDTO, InputDeleteDTO, updateInputDTO
 from api.mixers_dtos import mixerRemoveDTO
 from api.auth import require_role, require_read
 

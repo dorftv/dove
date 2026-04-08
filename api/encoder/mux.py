@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, Literal, Union
+from typing import Optional, Literal
 from pydantic import  Field
 
 from .encoder import EncoderDTO

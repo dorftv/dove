@@ -1,6 +1,5 @@
 from api.inputs.testsrc import TestsrcInputDTO
 from .input import Input
-from gi.repository import Gst
 
 
 class TestsrcInput(Input):

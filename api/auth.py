@@ -5,7 +5,6 @@ When enabled, uses Authorization Code flow with PKCE via authlib.
 Tokens stored in signed httpOnly cookies — frontend is auth-transparent.
 """
 
-import os
 import time
 import secrets
 from dataclasses import dataclass

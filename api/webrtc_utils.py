@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GstWebRTC', '1.0')
-from gi.repository import Gst, GstWebRTC
+from gi.repository import GstWebRTC
 
 from config_handler import ConfigReader
 

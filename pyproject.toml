@@ -37,6 +37,12 @@ charset-normalizer = "^3.4.4"
 authlib = "^1.4.1"
 itsdangerous = "^2.2.0"
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F"]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

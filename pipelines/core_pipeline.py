@@ -356,7 +356,6 @@ class CorePipeline(BaseModel):
         from pipelines.inputs.input import Input
         from pipelines.mixers.mixer import Mixer
         from pipelines.encoders.encoder import Encoder
-        from uuid import UUID
 
         uid = output_component.data.uid
 
@@ -603,7 +602,7 @@ class CorePipeline(BaseModel):
             else:
                 source_tee = self.pipeline.get_by_name(f"{tee_prefix}_{src_uid}")
         else:
-            logger.log(f"Unknown source type for encoder", level='ERROR')
+            logger.log("Unknown source type for encoder", level='ERROR')
             return False
 
         if not source_tee:

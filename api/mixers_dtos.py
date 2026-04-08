@@ -1,6 +1,6 @@
 from typing import Annotated, Optional, List
 from uuid import UUID, uuid4
-from typing import Union, Literal
+from typing import Union
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import FieldValidationInfo

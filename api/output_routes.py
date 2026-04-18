@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Request, HTTPException
 from pipeline_handler import PipelineHandler
 
@@ -7,6 +9,9 @@ from api.auth import require_role, require_read
 
 from api.helper import get_routers
 from api.helper import get_model_fields
+
+if TYPE_CHECKING:
+    from pipelines.outputs.output import Output
 
 router = APIRouter()
 

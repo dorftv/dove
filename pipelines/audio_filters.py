@@ -489,16 +489,16 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
                         vcaps.set_state(Gst.State.PLAYING)
                         ac_post.get_static_pad("src").link(vscale.get_static_pad("sink"))
                         vscale.get_static_pad("src").link(vcaps.get_static_pad("sink"))
-                        link_result = vcaps.get_static_pad("src").link(out_sink)
+                        vcaps.get_static_pad("src").link(out_sink)
                     else:
-                        link_result = ac_post.get_static_pad("src").link(out_sink)
+                        ac_post.get_static_pad("src").link(out_sink)
                     logger.log(f"Filter chain rebuilt for {uid}: {len(filter_elems)} filters", level='INFO')
                 else:
                     in_src.link(out_sink)
                     logger.log(f"Filter chain creation failed for {uid}, bypassed", level='WARNING')
             else:
                 # No enabled filters — direct link
-                link_result = in_src.link(out_sink)
+                in_src.link(out_sink)
                 logger.log(f"Filter chain cleared for {uid}", level='INFO')
 
         except Exception as e:

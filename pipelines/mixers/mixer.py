@@ -216,7 +216,7 @@ class Mixer(GSTBase, ABC):
 
     def _update_slot_filters(self, index, new_filters, av='audio'):
         """Update per-slot filters at runtime. Param-only: set_property; structural: pad-block + swap."""
-        uid = self.data.uid
+        _uid = self.data.uid
         mixerInput = self.data.getMixerInputDTO(index)
         if not mixerInput:
             return
@@ -252,13 +252,13 @@ class Mixer(GSTBase, ABC):
 
     def _rebuild_slot_filter_chain(self, index, new_filters, av='audio'):
         """Replace per-slot filter elements in the running pipeline via pad blocking on the queue src."""
-        uid = self.data.uid
+        _uid = self.data.uid
         queue = self._slot_queues.get(index, {}).get(av)
         if not queue:
             logger.log(f"No {av} queue for slot {index} — cannot rebuild slot filters", level='WARNING')
             return
 
-        is_audio = av == 'audio'
+        _is_audio = av == 'audio'
         enabled_new = [f for f in new_filters if f.enabled]
         has_existing = index in self._slot_filters and av in self._slot_filters.get(index, {})
 
@@ -523,7 +523,7 @@ class Mixer(GSTBase, ABC):
                 slot_audio_filters = getattr(mixerInput, 'audio_filters', None) or []
                 enabled_filters = [f for f in slot_audio_filters if f.enabled]
                 if enabled_filters:
-                    uid = self.data.uid
+                    _uid = self.data.uid
                     filter_elems = self._create_slot_filter_elements(index, enabled_filters)
                     if filter_elems:
                         af_pre, af_caps, filters_list, af_post = filter_elems

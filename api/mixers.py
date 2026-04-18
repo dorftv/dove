@@ -1,4 +1,4 @@
-from typing import Union
+from typing import TYPE_CHECKING, Union
 from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import ValidationError
 
@@ -10,6 +10,9 @@ from pipeline_handler import PipelineHandler
 
 from pipelines.base import GSTBase
 from pipelines.mixers.scene_mixer import sceneMixer
+
+if TYPE_CHECKING:
+    from pipelines.mixers.mixer import Mixer
 
 router = APIRouter(prefix="/api")
 

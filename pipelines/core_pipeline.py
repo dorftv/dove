@@ -828,7 +828,6 @@ class CorePipeline(BaseModel):
             pending_name = Gst.Element.state_get_name(pending)
 
             src_name = message.src.get_name() if message.src else "unknown"
-            src_type = type(message.src).__name__
 
             # Only log top-level bin state changes (skip internal sub-elements)
             if src_name.startswith(("input_bin_", "mixer_bin_", "encoder_bin_", "output_bin_")):

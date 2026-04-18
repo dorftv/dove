@@ -1,5 +1,4 @@
 from api.inputs.uridecodebin3 import Uridecodebin3InputDTO
-from .input import Input
 from gi.repository import Gst, GLib, GObject
 from logger import logger
 from event_loop_bridge import safe_broadcast

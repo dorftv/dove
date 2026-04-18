@@ -2,7 +2,7 @@ import asyncio
 import sys
 import time
 from pathlib import Path
-from typing import List, ClassVar, Optional
+from typing import TYPE_CHECKING, List, ClassVar, Optional
 from uuid import UUID
 import gi
 gi.require_version('Gst', '1.0')
@@ -12,6 +12,9 @@ from api.input_models import PositionDTO
 from event_loop_bridge import bridge, safe_broadcast
 from logger import logger
 from pipelines.core_pipeline import CorePipeline
+
+if TYPE_CHECKING:
+    from pipelines.base import GSTBase
 
 
 def is_subclass_str(cls, base_name):

@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Request, HTTPException
 from pipeline_handler import PipelineHandler
 
@@ -8,6 +10,9 @@ from api.auth import require_role, require_read
 
 from api.helper import get_routers
 from api.helper import get_model_fields
+
+if TYPE_CHECKING:
+    from pipelines.inputs.input import Input
 
 router = APIRouter()
 
@@ -60,7 +65,7 @@ async def update_input(request: Request,data: updateInputDTO):
     existing_input = handler.get_pipeline("inputs", data.uid)
 
     if existing_input:
-        updated_input = await existing_input.update(data)
+        await existing_input.update(data)
         return SuccessDTO(uid=data.uid)
     else:
         raise HTTPException(status_code=404, detail="Input not found")

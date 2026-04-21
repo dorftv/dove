@@ -12,7 +12,9 @@ from typing import Optional
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from authlib.jose import jwt, JoseError
+from joserfc import jwt
+from joserfc.jwk import KeySet
+from joserfc.errors import JoseError
 from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from itsdangerous import URLSafeTimedSerializer, BadSignature
@@ -169,15 +171,19 @@ async def _refresh_tokens(refresh_token: str) -> Optional[dict]:
         return None
 
 
+_claims_registry = jwt.JWTClaimsRegistry()
+
+
 async def _decode_access_token(access_token: str) -> dict:
     """Decode and validate JWT access token."""
     jwks = await _get_jwks()  # may raise 503 on transient failure
     try:
-        claims = jwt.decode(access_token, jwks)
-        claims.validate()
-        return dict(claims)
+        key_set = KeySet.import_key_set(jwks)
+        token = jwt.decode(access_token, key_set, algorithms=["RS256"])
+        _claims_registry.validate(token.claims)
+        return dict(token.claims)
     except JoseError as e:
-        logger.log(f"JWT decode failed: {e}", level='WARNING')
+        logger.log(f"JWT decode failed: {type(e).__name__}", level='WARNING')
         raise HTTPException(status_code=401, detail="Invalid token")
 
 

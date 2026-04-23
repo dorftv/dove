@@ -57,9 +57,17 @@ class PlaylistInput(Uridecodebin3Input):
         self._watchdog_timer_id = None
         self._watchdog_probe_id = None
         self._pending_advance = False
+        self._flush_drop_probe_ids = {}
 
     def cleanup(self):
         """Cancel all active timers and probes — call before deletion."""
+        # Remove any residual flush-drop probes (leaks permanently if exception aborted _flush_chain)
+        for pad, pid in list(self._flush_drop_probe_ids.items()):
+            try:
+                pad.remove_probe(pid)
+            except Exception:
+                pass
+        self._flush_drop_probe_ids.clear()
         for attr in ('_html_stop_timer_id', '_html_position_timer_id',
                      '_changing_flag_timer_id', '_error_suppress_timer_id',
                      '_swap_timer_id', '_clip_error_timer_id', '_watchdog_timer_id'):
@@ -278,13 +286,22 @@ class PlaylistInput(Uridecodebin3Input):
         for (q, cs) in [(self._vqueue, self._vclocksync),
                         (self._aqueue, self._aclocksync)]:
             src = cs.get_static_pad("src")
+            # Clear any stale probe from a prior aborted flush before re-adding
+            stale = self._flush_drop_probe_ids.pop(src, None)
+            if stale is not None:
+                src.remove_probe(stale)
             probe_id = src.add_probe(
                 Gst.PadProbeType.EVENT_DOWNSTREAM | Gst.PadProbeType.EVENT_FLUSH,
                 lambda p, i, d: Gst.PadProbeReturn.DROP, None)
-            sink = q.get_static_pad("sink")
-            sink.send_event(Gst.Event.new_flush_start())
-            sink.send_event(Gst.Event.new_flush_stop(True))
-            src.remove_probe(probe_id)
+            self._flush_drop_probe_ids[src] = probe_id
+            try:
+                sink = q.get_static_pad("sink")
+                sink.send_event(Gst.Event.new_flush_start())
+                sink.send_event(Gst.Event.new_flush_stop(True))
+            finally:
+                pid = self._flush_drop_probe_ids.pop(src, None)
+                if pid is not None:
+                    src.remove_probe(pid)
 
     def _reset_changing_flag(self):
         self._changing_flag_timer_id = None

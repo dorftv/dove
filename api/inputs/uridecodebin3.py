@@ -5,6 +5,7 @@ from api.input_models import InputDTO, SuccessDTO
 from typing import Optional
 from event_loop_bridge import safe_broadcast
 from api.helper import create_or_raise
+from urllib.parse import urlparse
 import httpx
 
 router = APIRouter()
@@ -12,11 +13,18 @@ router = APIRouter()
 _REJECTED_TYPES = ("text/html", "application/xhtml+xml")
 _ALLOWED_MEDIA_TYPES = ("application/vnd.apple.mpegurl", "application/x-mpegurl",
                         "application/dash+xml", "audio/mpegurl")
+_MEDIA_EXTENSIONS = (
+    '.mp3', '.mp4', '.aac', '.ogg', '.opus', '.m4a', '.flac',
+    '.wav', '.mpd', '.m3u8', '.ts', '.mkv', '.webm', '.mov',
+)
 
 async def check_uri_content_type(uri: str, timeout: float = 3.0) -> str | None:
     """Return rejection reason if HTTP URI serves HTML, or None if acceptable."""
     if not uri or not uri.lower().startswith(("http://", "https://")):
         return None
+    path = urlparse(uri).path.lower().rstrip('/')
+    if any(path.endswith(ext) for ext in _MEDIA_EXTENSIONS):
+        return None  # trust explicit media extension
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
             resp = await client.head(uri)

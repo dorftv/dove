@@ -371,6 +371,11 @@ class WebrtcPreviewManager:
     def remove_peer(self, peer_id: str):
         self._cleanup_peer(peer_id)
 
+    def cleanup(self):
+        """Tear down all peers — called when the upstream preview encoder is deleted."""
+        for peer_id in list(self.peers.keys()):
+            self._cleanup_peer(peer_id)
+
     def _cleanup_peer(self, peer_id: str):
         """Remove per-viewer pipeline and proxysinks.
 

@@ -671,6 +671,21 @@ class PipelineHandler(object):
                 except Exception as e:
                     logger.log(f"Mixer cleanup error for {uid}: {e}", level='WARNING')
 
+        # Preview encoders feed WHEP — tear down any viewers before releasing tee pads.
+        if type == "encoders" and getattr(pipeline.data, 'is_preview', False):
+            from api import webrtc_whep
+            src_uid = str(getattr(pipeline.data, 'src', '') or '')
+            for key in list(webrtc_whep._managers.keys()):
+                if key != src_uid:
+                    continue
+                mgr = webrtc_whep._managers.get(key)
+                if mgr:
+                    try:
+                        mgr.cleanup()
+                    except Exception as e:
+                        logger.log(f"WHEP cleanup error for encoder {uid}: {e}", level='WARNING')
+                webrtc_whep._managers.pop(key, None)
+
         # Encoder cleanup: release source tee pad, source ghost pad, tee elements
         if type == "encoders" and core:
             source_tee_pad = getattr(pipeline, '_source_tee_pad', None)
@@ -713,16 +728,6 @@ class PipelineHandler(object):
                             src_bin.remove_pad(ghost)
             except Exception as e:
                 logger.log(f"Output cleanup error for {uid}: {e}", level='ERROR')
-
-        # Cascade: delete auto-created encoder entities for this output
-        if type == "outputs":
-            auto_enc_uids = getattr(pipeline, '_auto_encoder_uids', None)
-            if auto_enc_uids:
-                for enc_uid in auto_enc_uids:
-                    enc = self.get_pipeline("encoders", enc_uid)
-                    if enc:
-                        logger.log(f"Cascade deleting auto-encoder {enc_uid} for output {uid}", level='DEBUG')
-                        self._delete_component(enc, "encoders")
 
         # Lock state and remove from pipeline first (fast since locked).
         # Then NULL via GLib.idle_add (never use threading.Thread for set_state).

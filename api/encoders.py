@@ -61,11 +61,15 @@ async def delete_encoder(uid: UUID, request: Request):
     if not encoder:
         raise HTTPException(status_code=404, detail="Encoder not found")
 
-    # Check if any output uses this encoder
-    for output in (handler.get_pipelines("outputs") or []):
-        if getattr(output, '_video_encoder_uid', None) == uid or \
-           getattr(output, '_audio_encoder_uid', None) == uid:
-            raise HTTPException(status_code=409, detail=f"Encoder is used by output \"{output.data.name}\". Remove the output first.")
+    # Preview encoders are cascade-deleted via their upstream input/scene/mixer.
+    if getattr(encoder.data, 'is_preview', False):
+        raise HTTPException(status_code=403, detail="Preview encoders are removed only via their upstream input/scene/mixer.")
+
+    # Reject if any output still references this encoder.
+    refs = [o for o in (handler.get_pipelines("outputs") or [])
+            if getattr(o.data, 'video_encoder', None) == uid or getattr(o.data, 'audio_encoder', None) == uid]
+    if refs:
+        raise HTTPException(status_code=409, detail=f"Encoder in use by {len(refs)} output(s)")
 
     handler.delete_pipeline("encoders", uid)
     return {"uid": uid}

@@ -31,6 +31,7 @@ class Mixer(GSTBase, ABC):
         self._drop_probes = {}
         self._slot_filters = {}
         self._ghost_pad_counter = 0
+        self._slot_busy: dict[int, bool] = {}
     _ghost_pad_counter: int = 0  # Counter for unique ghost pad names
 
     def get_video_end(self) -> str:
@@ -60,6 +61,7 @@ class Mixer(GSTBase, ABC):
         self._drop_probes = {}
         self._slot_filters = {}
         self._ghost_pad_counter = 0
+        self._slot_busy = {}
 
     def getMixer(self, audio_or_video):
         if audio_or_video == "video":
@@ -74,6 +76,18 @@ class Mixer(GSTBase, ABC):
         if not elem and self.core_pipeline:
             elem = self.core_pipeline.get_by_name(name)
         return elem
+
+    # Serialize concurrent slot mutations on the single GLib thread — concurrent
+    # add_slot / link_source / _rebuild_slot_filter_chain re-enter via idle_add
+    # and corrupt aggregator pads ("data flow before segment event" SIGABRT).
+    def _try_acquire_slot(self, index: int) -> bool:
+        if self._slot_busy.get(index):
+            return False
+        self._slot_busy[index] = True
+        return True
+
+    def _release_slot(self, index: int):
+        self._slot_busy.pop(index, None)
 
     def _update_mixer_audio_filter_params(self, new_filters: list[AudioFilterDTO]):
         """Update mixer-level audio filter chain at runtime."""
@@ -252,10 +266,14 @@ class Mixer(GSTBase, ABC):
 
     def _rebuild_slot_filter_chain(self, index, new_filters, av='audio'):
         """Replace per-slot filter elements in the running pipeline via pad blocking on the queue src."""
+        if not self._try_acquire_slot(index):
+            GLib.idle_add(lambda: (self._rebuild_slot_filter_chain(index, new_filters, av), False)[1])
+            return
         _uid = self.data.uid
         queue = self._slot_queues.get(index, {}).get(av)
         if not queue:
             logger.log(f"No {av} queue for slot {index} — cannot rebuild slot filters", level='WARNING')
+            self._release_slot(index)
             return
 
         _is_audio = av == 'audio'
@@ -264,9 +282,11 @@ class Mixer(GSTBase, ABC):
 
         queue_src = queue.get_static_pad("src")
         if not queue_src:
+            self._release_slot(index)
             return
 
         def _do_rebuild(pad, info, user_data):
+            release_deferred = False
             try:
                 logger.log(f"Slot {index} filter rebuild: existing={has_existing}, new={len(enabled_new)}", level='DEBUG')
                 # Find what's currently after queue src
@@ -312,8 +332,10 @@ class Mixer(GSTBase, ABC):
                             elem.set_state(Gst.State.NULL)
                             if pipeline_ref and elem.get_parent() == pipeline_ref:
                                 pipeline_ref.remove(elem)
+                        self._release_slot(index)
                         return False
                     GLib.idle_add(_deferred_cleanup)
+                    release_deferred = True
 
                     self._slot_filters[index].pop(av, None)
                 else:
@@ -350,6 +372,10 @@ class Mixer(GSTBase, ABC):
                 logger.log(f"Slot filter rebuild error for index {index}: {e}", level='ERROR')
                 import traceback
                 logger.log(traceback.format_exc(), level='ERROR')
+            finally:
+                # Release on probe exit unless a _deferred_cleanup took ownership
+                if not release_deferred:
+                    self._release_slot(index)
 
             return Gst.PadProbeReturn.REMOVE
 
@@ -361,246 +387,281 @@ class Mixer(GSTBase, ABC):
             mixerSource = mixerInputDTO()
 
         index = len(self.data.sources)
-        mixerSource.index = index
+        if not self._try_acquire_slot(index):
+            GLib.idle_add(lambda: (self.add_slot(mixerSource), False)[1])
+            return mixerSource
+        try:
+            mixerSource.index = index
 
-        for av in ["video", "audio"]:
-            mixer = self.getMixer(av)
-            if mixer is None:
-                continue
-            pad = mixer.request_pad_simple("sink_%u")
-            if pad is None:
-                continue
+            for av in ["video", "audio"]:
+                mixer = self.getMixer(av)
+                if mixer is None:
+                    continue
+                pad = mixer.request_pad_simple("sink_%u")
+                if pad is None:
+                    continue
 
-            # Initialize pad properties
-            if av == "video":
-                pad.set_property("alpha", 0)
-                pad.set_property("width", self.data.width)
-                pad.set_property("height", self.data.height)
-            else:
-                pad.set_property("volume", 0)
-                pad.set_property("mute", True)
+                # Initialize pad properties
+                if av == "video":
+                    pad.set_property("alpha", 0)
+                    pad.set_property("width", self.data.width)
+                    pad.set_property("height", self.data.height)
+                else:
+                    pad.set_property("volume", 0)
+                    pad.set_property("mute", True)
 
-            mixerSource.sink = pad.get_name()
+                mixerSource.sink = pad.get_name()
 
-        self.data.sources.append(mixerSource)
-        self.data.update_source_with_defaults(index)
-        safe_broadcast("UPDATE", self.data)
-        return mixerSource
+            self.data.sources.append(mixerSource)
+            self.data.update_source_with_defaults(index)
+            safe_broadcast("UPDATE", self.data)
+            return mixerSource
+        finally:
+            self._release_slot(index)
 
     def remove_slot(self, mixerSource: mixerInputDTO = None):
         """Remove a slot (release mixer pad)."""
         if mixerSource is None:
             return
 
-        # Unlink first
-        if mixerSource.index is not None:
-            self.unlink_source(mixerSource.index)
+        index = mixerSource.index
+        if index is not None and not self._try_acquire_slot(index):
+            GLib.idle_add(lambda: (self.remove_slot(mixerSource), False)[1])
+            return
+        try:
+            # Unlink first (use inner — we already hold the slot guard)
+            if mixerSource.index is not None:
+                self._unlink_source_inner(mixerSource.index)
 
-        # Release pads
-        for av in ["video", "audio"]:
-            mixer = self.getMixer(av)
-            if mixer and mixerSource.sink:
-                pad = mixer.get_static_pad(mixerSource.sink)
-                if pad:
-                    mixer.release_request_pad(pad)
+            # Release pads
+            for av in ["video", "audio"]:
+                mixer = self.getMixer(av)
+                if mixer and mixerSource.sink:
+                    pad = mixer.get_static_pad(mixerSource.sink)
+                    if pad:
+                        mixer.release_request_pad(pad)
 
-        self.data.remove_slot(mixerSource)
-        safe_broadcast("UPDATE", self.data)
+            self.data.remove_slot(mixerSource)
+            safe_broadcast("UPDATE", self.data)
+        finally:
+            if index is not None:
+                self._release_slot(index)
 
     def link_source(self, index: int, source_uid: UUID):
         """Link an input or mixer's tee to a mixer slot."""
         from pipeline_handler import HandlerSingleton
 
-        mixerInput = self.data.getMixerInputDTO(index)
-        if not mixerInput:
-            logger.log(f"Mixer slot {index} not found", level='ERROR')
+        if not self._try_acquire_slot(index):
+            GLib.idle_add(lambda: (self.link_source(index, source_uid), False)[1])
             return
+        try:
+            mixerInput = self.data.getMixerInputDTO(index)
+            if not mixerInput:
+                logger.log(f"Mixer slot {index} not found", level='ERROR')
+                return
 
-        # Mute mixer pads before cleanup (no DROP probes — those corrupt pipeline under rapid re-linking)
-        if mixerInput.src and mixerInput.src != "None":
+            # Idempotent skip — if already correctly linked for this src, no-op
+            # (prevents relink flurries from input loop / _relink_to_mixers).
+            # Only applies to input sources — mixer sources fall through to full re-link.
+            current_src = str(mixerInput.src) if mixerInput.src else "None"
+            if current_src == str(source_uid):
+                handler = HandlerSingleton()
+                input_component = handler.get_pipeline("inputs", source_uid)
+                if input_component:
+                    have_video_q = "video" in self._slot_queues.get(index, {})
+                    have_audio_q = "audio" in self._slot_queues.get(index, {})
+                    expected_video = getattr(input_component.data, 'has_video', True)
+                    expected_audio = getattr(input_component.data, 'has_audio', True)
+                    if have_video_q == expected_video and have_audio_q == expected_audio:
+                        return
+
+            # Mute mixer pads before cleanup (no DROP probes — those corrupt pipeline under rapid re-linking)
+            if mixerInput.src and mixerInput.src != "None":
+                for av in ["video", "audio"]:
+                    mixer = self.getMixer(av)
+                    if mixer and mixerInput.sink:
+                        pad = mixer.get_static_pad(mixerInput.sink)
+                        if pad:
+                            if av == "video":
+                                pad.set_property("alpha", 0)
+                            else:
+                                pad.set_property("volume", 0)
+                                pad.set_property("mute", True)
+
+            # Always hard-cleanup old queues/ghost pads before creating new ones.
+            # Previous soft-unlink may have left connections in place.
             for av in ["video", "audio"]:
+                self._cleanup_slot_connections(index, av)
                 mixer = self.getMixer(av)
                 if mixer and mixerInput.sink:
-                    pad = mixer.get_static_pad(mixerInput.sink)
-                    if pad:
-                        if av == "video":
-                            pad.set_property("alpha", 0)
-                        else:
-                            pad.set_property("volume", 0)
-                            pad.set_property("mute", True)
+                    sink_pad = mixer.get_static_pad(mixerInput.sink)
+                    if sink_pad:
+                        sink_pad.send_event(Gst.Event.new_flush_start())
+                        sink_pad.send_event(Gst.Event.new_flush_stop(True))
 
-        # Always hard-cleanup old queues/ghost pads before creating new ones.
-        # Previous soft-unlink may have left connections in place.
-        for av in ["video", "audio"]:
-            self._cleanup_slot_connections(index, av)
-            mixer = self.getMixer(av)
-            if mixer and mixerInput.sink:
+            # Get source component - could be input or mixer
+            handler = HandlerSingleton()
+            input_component = handler.get_pipeline("inputs", source_uid)
+            mixer_component = handler.get_pipeline("mixers", source_uid) if not input_component else None
+
+            for av in ["video", "audio"]:
+                # Skip if source input has this stream disabled
+                if input_component:
+                    if av == "video" and not getattr(input_component.data, 'has_video', True):
+                        continue
+                    if av == "audio" and not getattr(input_component.data, 'has_audio', True):
+                        continue
+
+                # Get source's tee - prefer stored reference, fallback to pipeline search
+                source_tee = None
+                source_bin = None
+
+                if input_component:
+                    # Source is an input
+                    source_tee = input_component.video_tee if av == "video" else input_component.audio_tee
+                    source_bin = getattr(input_component, '_bin', None)
+                    tee_name = f"{av}_tee_{source_uid}"
+                    logger.log(f"link_source {av}: component={type(input_component).__name__}, tee={source_tee}, bin={source_bin}", level='DEBUG')
+                elif mixer_component:
+                    # Source is a mixer/scene - use scene_video_tee / scene_audio_tee naming
+                    source_bin = getattr(mixer_component, '_bin', None)
+                    tee_name = f"scene_{av}_tee_{source_uid}"
+                    # Try to get from bin first
+                    if source_bin:
+                        source_tee = source_bin.get_by_name(tee_name)
+                else:
+                    tee_name = f"{av}_tee_{source_uid}"
+
+                if not source_tee:
+                    source_tee = self.core_pipeline.get_by_name(tee_name)
+
+                if not source_tee:
+                    logger.log(f"Source tee not found: {tee_name}", level='ERROR')
+                    continue
+
+                # Get mixer sink pad
+                mixer = self.getMixer(av)
+                if not mixer:
+                    logger.log(f"link_source: {av} mixer is None for {self.data.uid}!", level='ERROR')
+                    continue
                 sink_pad = mixer.get_static_pad(mixerInput.sink)
-                if sink_pad:
+                if not sink_pad:
+                    # List all pads on the mixer for debugging
+                    pads = [p.get_name() for p in mixer.pads]
+                    logger.log(f"link_source: {av} available pads: {pads}", level='ERROR')
+                    logger.log(f"Mixer pad not found: {mixerInput.sink}", level='ERROR')
+                    continue
+
+                # Create queue and add to main pipeline (use counter for unique name)
+                self._ghost_pad_counter += 1
+                queue_name = f"queue_{av}_{self.data.uid}_{index}_{self._ghost_pad_counter}"
+                queue = Gst.ElementFactory.make("queue", queue_name)
+                queue.set_property("leaky", 2)  # downstream: drop old buffers when full
+                queue.set_property("max-size-time", 500000000)  # 500ms
+                queue.set_property("max-size-buffers", 5)
+                queue.set_property("max-size-bytes", 0)
+                self.core_pipeline.add(queue)
+                queue.sync_state_with_parent()
+
+                # Store for later cleanup
+                if index not in self._slot_queues:
+                    self._slot_queues[index] = {}
+                self._slot_queues[index][av] = queue
+
+                # Request tee src pad
+                tee_pad = source_tee.request_pad_simple("src_%u")
+                if index not in self._tee_pads:
+                    self._tee_pads[index] = {}
+                self._tee_pads[index][av] = tee_pad
+
+                queue_sink = queue.get_static_pad("sink")
+                final_src_pad = queue.get_static_pad("src")
+
+                # Insert per-slot audio filter chain: queue → af_pre → caps(F32LE) → [filters] → af_post → mixer
+                if av == "audio":
+                    slot_audio_filters = getattr(mixerInput, 'audio_filters', None) or []
+                    enabled_filters = [f for f in slot_audio_filters if f.enabled]
+                    if enabled_filters:
+                        _uid = self.data.uid
+                        filter_elems = self._create_slot_filter_elements(index, enabled_filters)
+                        if filter_elems:
+                            af_pre, af_caps, filters_list, af_post = filter_elems
+                            queue.get_static_pad("src").link(af_pre.get_static_pad("sink"))
+                            link_filter_chain(af_pre, af_caps, filters_list, af_post)
+                            final_src_pad = af_post.get_static_pad("src")
+
+                # Eat EOS events so they never reach the mixer.
+                # Without this, one input's EOS stalls the compositor/audiomixer,
+                # freezing all other inputs feeding the same mixer.
+                def eos_event_probe(pad, info, user_data):
+                    event = info.get_event()
+                    if event.type == Gst.EventType.EOS:
+                        return Gst.PadProbeReturn.DROP
+                    return Gst.PadProbeReturn.OK
+                eos_probe_id = final_src_pad.add_probe(Gst.PadProbeType.EVENT_DOWNSTREAM, eos_event_probe, None)
+
+                # Initialize ghost pad tracking for this slot
+                if index not in self._ghost_pads:
+                    self._ghost_pads[index] = {}
+                if av not in self._ghost_pads[index]:
+                    self._ghost_pads[index][av] = {}
+                self._ghost_pads[index][av]['eos_probe'] = (final_src_pad, eos_probe_id)
+
+                # Link tee → queue (handle bin boundary if source is in bin)
+                if source_bin:
+                    # Create ghost pad on source bin to expose tee src
+                    # Use counter for unique names since we don't remove ghost pads from input bins
+                    self._ghost_pad_counter += 1
+                    ghost_name = f"mixer_{self.data.uid}_{av}_out_{index}_{self._ghost_pad_counter}"
+                    source_ghost = Gst.GhostPad.new(ghost_name, tee_pad)
+                    source_ghost.set_active(True)
+                    source_bin.add_pad(source_ghost)
+                    self._ghost_pads[index][av]['input'] = (source_bin, source_ghost)
+                    link_result_tee = source_ghost.link(queue_sink)
+                else:
+                    link_result_tee = tee_pad.link(queue_sink)
+
+                # Link final element → mixer (handle bin boundary if mixer is in bin)
+                if self._bin:
+                    # Create ghost pad on mixer bin to expose mixer sink
+                    self._ghost_pad_counter += 1
+                    ghost_name = f"mixer_{self.data.uid}_{av}_in_{index}_{self._ghost_pad_counter}"
+                    mixer_ghost = Gst.GhostPad.new(ghost_name, sink_pad)
+                    mixer_ghost.set_active(True)
+                    self._bin.add_pad(mixer_ghost)
+                    self._ghost_pads[index][av]['mixer'] = (self._bin, mixer_ghost)
+                    link_result_mixer = final_src_pad.link(mixer_ghost)
+                else:
+                    link_result_mixer = final_src_pad.link(sink_pad)
+
+                logger.log(f"Link results for slot {index} {av}: tee→queue={link_result_tee}, queue→mixer={link_result_mixer}", level='DEBUG')
+
+                # Make visible/audible
+                if av == "video":
+                    sink_pad.set_property("alpha", 1.0)
+                    logger.log(f"Set video alpha=1.0 on {sink_pad.get_name()}", level='DEBUG')
+                else:
+                    # For audio, send flush events to reset the pad state before enabling
                     sink_pad.send_event(Gst.Event.new_flush_start())
                     sink_pad.send_event(Gst.Event.new_flush_stop(True))
+                    sink_pad.set_property("volume", 1.0)
+                    sink_pad.set_property("mute", False)
 
-        # Get source component - could be input or mixer
-        handler = HandlerSingleton()
-        input_component = handler.get_pipeline("inputs", source_uid)
-        mixer_component = handler.get_pipeline("mixers", source_uid) if not input_component else None
+                logger.log(f"Linked {tee_name} to mixer slot {index}", level='DEBUG')
 
-        for av in ["video", "audio"]:
-            # Skip if source input has this stream disabled
-            if input_component:
-                if av == "video" and not getattr(input_component.data, 'has_video', True):
-                    continue
-                if av == "audio" and not getattr(input_component.data, 'has_audio', True):
-                    continue
+            # Update DTO src BEFORE applying pad properties (fit path needs src)
+            self.data.update_mixer_input(index, src=str(source_uid))
 
-            # Get source's tee - prefer stored reference, fallback to pipeline search
-            source_tee = None
-            source_bin = None
+            # Apply pad properties from DTO
+            for av in ["video", "audio"]:
+                self.update_pad_from_sources(av, index)
 
-            if input_component:
-                # Source is an input
-                source_tee = input_component.video_tee if av == "video" else input_component.audio_tee
-                source_bin = getattr(input_component, '_bin', None)
-                tee_name = f"{av}_tee_{source_uid}"
-                logger.log(f"link_source {av}: component={type(input_component).__name__}, tee={source_tee}, bin={source_bin}", level='DEBUG')
-            elif mixer_component:
-                # Source is a mixer/scene - use scene_video_tee / scene_audio_tee naming
-                source_bin = getattr(mixer_component, '_bin', None)
-                tee_name = f"scene_{av}_tee_{source_uid}"
-                # Try to get from bin first
-                if source_bin:
-                    source_tee = source_bin.get_by_name(tee_name)
-            else:
-                tee_name = f"{av}_tee_{source_uid}"
+            # Force keyframe on scene's preview encoder so it updates immediately
+            self._force_preview_keyframe()
 
-            if not source_tee:
-                source_tee = self.core_pipeline.get_by_name(tee_name)
-
-            if not source_tee:
-                logger.log(f"Source tee not found: {tee_name}", level='ERROR')
-                continue
-
-            # Get mixer sink pad
-            mixer = self.getMixer(av)
-            if not mixer:
-                logger.log(f"link_source: {av} mixer is None for {self.data.uid}!", level='ERROR')
-                continue
-            sink_pad = mixer.get_static_pad(mixerInput.sink)
-            if not sink_pad:
-                # List all pads on the mixer for debugging
-                pads = [p.get_name() for p in mixer.pads]
-                logger.log(f"link_source: {av} available pads: {pads}", level='ERROR')
-                logger.log(f"Mixer pad not found: {mixerInput.sink}", level='ERROR')
-                continue
-
-            # Create queue and add to main pipeline (use counter for unique name)
-            self._ghost_pad_counter += 1
-            queue_name = f"queue_{av}_{self.data.uid}_{index}_{self._ghost_pad_counter}"
-            queue = Gst.ElementFactory.make("queue", queue_name)
-            queue.set_property("leaky", 2)  # downstream: drop old buffers when full
-            queue.set_property("max-size-time", 500000000)  # 500ms
-            queue.set_property("max-size-buffers", 5)
-            queue.set_property("max-size-bytes", 0)
-            self.core_pipeline.add(queue)
-            queue.sync_state_with_parent()
-
-            # Store for later cleanup
-            if index not in self._slot_queues:
-                self._slot_queues[index] = {}
-            self._slot_queues[index][av] = queue
-
-            # Request tee src pad
-            tee_pad = source_tee.request_pad_simple("src_%u")
-            if index not in self._tee_pads:
-                self._tee_pads[index] = {}
-            self._tee_pads[index][av] = tee_pad
-
-            queue_sink = queue.get_static_pad("sink")
-            final_src_pad = queue.get_static_pad("src")
-
-            # Insert per-slot audio filter chain: queue → af_pre → caps(F32LE) → [filters] → af_post → mixer
-            if av == "audio":
-                slot_audio_filters = getattr(mixerInput, 'audio_filters', None) or []
-                enabled_filters = [f for f in slot_audio_filters if f.enabled]
-                if enabled_filters:
-                    _uid = self.data.uid
-                    filter_elems = self._create_slot_filter_elements(index, enabled_filters)
-                    if filter_elems:
-                        af_pre, af_caps, filters_list, af_post = filter_elems
-                        queue.get_static_pad("src").link(af_pre.get_static_pad("sink"))
-                        link_filter_chain(af_pre, af_caps, filters_list, af_post)
-                        final_src_pad = af_post.get_static_pad("src")
-
-            # Eat EOS events so they never reach the mixer.
-            # Without this, one input's EOS stalls the compositor/audiomixer,
-            # freezing all other inputs feeding the same mixer.
-            def eos_event_probe(pad, info, user_data):
-                event = info.get_event()
-                if event.type == Gst.EventType.EOS:
-                    return Gst.PadProbeReturn.DROP
-                return Gst.PadProbeReturn.OK
-            eos_probe_id = final_src_pad.add_probe(Gst.PadProbeType.EVENT_DOWNSTREAM, eos_event_probe, None)
-
-            # Initialize ghost pad tracking for this slot
-            if index not in self._ghost_pads:
-                self._ghost_pads[index] = {}
-            if av not in self._ghost_pads[index]:
-                self._ghost_pads[index][av] = {}
-            self._ghost_pads[index][av]['eos_probe'] = (final_src_pad, eos_probe_id)
-
-            # Link tee → queue (handle bin boundary if source is in bin)
-            if source_bin:
-                # Create ghost pad on source bin to expose tee src
-                # Use counter for unique names since we don't remove ghost pads from input bins
-                self._ghost_pad_counter += 1
-                ghost_name = f"mixer_{self.data.uid}_{av}_out_{index}_{self._ghost_pad_counter}"
-                source_ghost = Gst.GhostPad.new(ghost_name, tee_pad)
-                source_ghost.set_active(True)
-                source_bin.add_pad(source_ghost)
-                self._ghost_pads[index][av]['input'] = (source_bin, source_ghost)
-                link_result_tee = source_ghost.link(queue_sink)
-            else:
-                link_result_tee = tee_pad.link(queue_sink)
-
-            # Link final element → mixer (handle bin boundary if mixer is in bin)
-            if self._bin:
-                # Create ghost pad on mixer bin to expose mixer sink
-                self._ghost_pad_counter += 1
-                ghost_name = f"mixer_{self.data.uid}_{av}_in_{index}_{self._ghost_pad_counter}"
-                mixer_ghost = Gst.GhostPad.new(ghost_name, sink_pad)
-                mixer_ghost.set_active(True)
-                self._bin.add_pad(mixer_ghost)
-                self._ghost_pads[index][av]['mixer'] = (self._bin, mixer_ghost)
-                link_result_mixer = final_src_pad.link(mixer_ghost)
-            else:
-                link_result_mixer = final_src_pad.link(sink_pad)
-
-            logger.log(f"Link results for slot {index} {av}: tee→queue={link_result_tee}, queue→mixer={link_result_mixer}", level='DEBUG')
-
-            # Make visible/audible
-            if av == "video":
-                sink_pad.set_property("alpha", 1.0)
-                logger.log(f"Set video alpha=1.0 on {sink_pad.get_name()}", level='DEBUG')
-            else:
-                # For audio, send flush events to reset the pad state before enabling
-                sink_pad.send_event(Gst.Event.new_flush_start())
-                sink_pad.send_event(Gst.Event.new_flush_stop(True))
-                sink_pad.set_property("volume", 1.0)
-                sink_pad.set_property("mute", False)
-
-            logger.log(f"Linked {tee_name} to mixer slot {index}", level='DEBUG')
-
-        # Update DTO src BEFORE applying pad properties (fit path needs src)
-        self.data.update_mixer_input(index, src=str(source_uid))
-
-        # Apply pad properties from DTO
-        for av in ["video", "audio"]:
-            self.update_pad_from_sources(av, index)
-
-        # Force keyframe on scene's preview encoder so it updates immediately
-        self._force_preview_keyframe()
-
-        safe_broadcast("UPDATE", self.data)
+            safe_broadcast("UPDATE", self.data)
+        finally:
+            self._release_slot(index)
 
     def _cleanup_slot_connections(self, index, av):
         """Hard cleanup of old queue/ghost pads for a slot. Only called from
@@ -685,6 +746,16 @@ class Mixer(GSTBase, ABC):
         Hard cleanup (actual pad unlinks) only happens in link_source() when
         re-linking, where a brief glitch is acceptable.
         """
+        if not self._try_acquire_slot(index):
+            GLib.idle_add(lambda: (self.unlink_source(index), False)[1])
+            return
+        try:
+            self._unlink_source_inner(index)
+        finally:
+            self._release_slot(index)
+
+    def _unlink_source_inner(self, index: int):
+        """Guard-free body of unlink_source — callers must hold the slot guard."""
         mixerInput = self.data.getMixerInputDTO(index)
         if not mixerInput or mixerInput.src == "None":
             return

@@ -548,6 +548,14 @@ class Uridecodebin3Input(Input):
                     continue
                 for source in mixer.data.sources:
                     if source.src == str(self.data.uid):
+                        # Fast-path skip if slot already has matching queues — saves a scheduling round-trip
+                        slot_queues = getattr(mixer, '_slot_queues', {}).get(source.index, {})
+                        have_video_q = "video" in slot_queues
+                        have_audio_q = "audio" in slot_queues
+                        expected_video = getattr(self.data, 'has_video', True)
+                        expected_audio = getattr(self.data, 'has_audio', True)
+                        if have_video_q == expected_video and have_audio_q == expected_audio:
+                            continue
                         mixer.link_source(source.index, self.data.uid)
         except Exception as e:
             import logging

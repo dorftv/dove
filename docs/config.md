@@ -127,6 +127,28 @@ src_locked = true   # slot input cannot be reassigned
 locked = true       # input cannot be deleted
 ```
 
+## Input Pickers (Proxies)
+
+Configurable dropdowns in the "Add Input" dialog. Each `[proxy.<name>]` section declares a picker attached to a specific input type + field.
+
+Defaults include `[proxy.v4l2]` (webcam device picker) and `[proxy.alsa]` (audio device picker). Scan-based pickers must be configured in `config.toml`:
+
+```toml
+[proxy.files]
+type       = "uridecodebin3"
+field      = "uri"
+paths      = ["/videos"]
+extensions = ["mp4", "mkv", "webm", "ts", "mp3", "flac"]
+
+[proxy.images]
+type       = "imagesrc"
+field      = "location"
+paths      = ["/images"]
+extensions = ["png", "jpg", "webp"]
+```
+
+`paths` are scanned inside the container. Mount your media directories via docker compose volumes. Omit a section entirely to hide it from the UI.
+
 ## WebRTC Preview
 
 ```toml

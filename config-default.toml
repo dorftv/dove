@@ -92,18 +92,6 @@ field = "device"
 type = "v4l2src"
 field = "audio_device"
 
-[proxy.files]
-type = "uridecodebin3"
-field = "uri"
-paths = ["/videos"]
-extensions = ["mp4", "mkv", "avi", "mov", "webm", "ts", "flv", "mp3", "flac", "ogg", "wav"]
-
-[proxy.images]
-type = "imagesrc"
-field = "location"
-paths = ["/videos"]
-extensions = ["png", "jpg", "jpeg", "bmp", "webp", "svg"]
-
 [proxy.nodecg]
 # url = "http://nodecg:9090"  # or env: NODECG_URL
 

@@ -111,7 +111,7 @@ class Uridecodebin3Input(Input):
         input_videomixer = GObject.new(_compositor_type,
             name=f"input_videomixer_{uid}",
             force_live=True,
-            latency=30000000,
+            latency=100000000,
             ignore_inactive_pads=True,
             background=1,
             start_time_selection=1)
@@ -165,7 +165,7 @@ class Uridecodebin3Input(Input):
         input_audiomixer = GObject.new(_audiomixer_type,
             name=f"input_audiomixer_{uid}",
             force_live=True,
-            latency=30000000,
+            latency=100000000,
             ignore_inactive_pads=True,
             start_time_selection=1)
 

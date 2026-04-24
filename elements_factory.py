@@ -20,6 +20,32 @@ output_pipeline_classes = {model_type: model for model, model_type in get_pipeli
 SLOT_PROPERTIES = ['alpha', 'xpos', 'ypos', 'width', 'height', 'zorder', 'volume', 'locked', 'src_locked', 'mute', 'name']
 
 
+_CODEC_ELEMENT_MAP = {
+    "aac":  {"avenc_aac", "fdkaacenc", "voaacenc"},
+    "opus": {"opusenc"},
+    "h264": {"x264enc", "openh264enc", "vah264enc", "vaapih264enc", "vulkanh264enc", "mpph264enc"},
+}
+
+
+def _resolve_preview_program_encoder(handler, enc_type, codec=None):
+    if codec is not None and codec not in _CODEC_ELEMENT_MAP:
+        return None
+    allowed_elements = _CODEC_ELEMENT_MAP[codec] if codec is not None else None
+    program_mixer = next((m for m in (handler.get_pipelines("mixers") or [])
+                          if m.data.type == "program"), None)
+    if program_mixer is None:
+        return None
+    program_uid = str(program_mixer.data.uid)
+    for enc in (handler.get_pipelines("encoders") or []):
+        if (getattr(enc.data, 'is_preview', False)
+            and str(enc.data.src) == program_uid
+            and enc.data.type == enc_type):
+            if allowed_elements is not None and enc.data.element not in allowed_elements:
+                continue
+            return enc
+    return None
+
+
 class ElementsFactory:
     def __init__(self, handler):
         self.handler = handler
@@ -231,6 +257,22 @@ class ElementsFactory:
                             ref = out_conf.get(enc_key)
                             if isinstance(ref, str) and ref in encoder_map:
                                 out_conf[enc_key] = encoder_map[ref]
+                            elif isinstance(ref, str) and ref.startswith("@preview:"):
+                                parts = ref.split(":", 2)
+                                if len(parts) < 2 or parts[1] != "program":
+                                    continue
+                                codec = parts[2].lower() if len(parts) == 3 else None
+                                enc_type = "video" if enc_key == "video_encoder" else "audio"
+                                enc = _resolve_preview_program_encoder(self.handler, enc_type, codec)
+                                if enc is None:
+                                    logger.log(f"Output {out_name}: preview encoder '{ref}' not found (type={enc_type}, codec={codec}), skipping output", level='ERROR')
+                                    return
+                                out_conf[enc_key] = enc.data.uid
+                                if enc_key == "video_encoder":
+                                    if enc.data.width:
+                                        out_conf['width'] = enc.data.width
+                                    if enc.data.height:
+                                        out_conf['height'] = enc.data.height
                         self.create_pipeline('output', out_name, out_conf)
                 steps.append((f"output {name}", create_output))
 

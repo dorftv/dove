@@ -552,7 +552,37 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
                     peer = old_mgr.peers[peer_id]
 
-                    # Swap tee pads for each media type (audio optional)
+                    # Move peer to target manager + connect new signal handlers BEFORE
+                    # disconnecting old, so ICE candidates fired during the swap window are
+                    # never lost. Handlers are idempotent (peer.get + None-check guards), so
+                    # the brief overlap where both fire is harmless.
+                    if new_source not in _managers:
+                        _managers[new_source] = WebrtcPreviewManager(new_source)
+                    target_mgr = _managers[new_source]
+                    target_mgr.peers[peer_id] = peer
+
+                    webrtcbin = peer.get('webrtcbin')
+                    old_signal_ids = list(peer.get('signal_ids', []))
+                    if webrtcbin:
+                        new_signal_ids = [
+                            webrtcbin.connect('on-ice-candidate', target_mgr._on_ice_candidate, peer_id),
+                            webrtcbin.connect('notify::ice-connection-state', target_mgr._on_ice_state, peer_id),
+                        ]
+                        peer['signal_ids'] = new_signal_ids
+                        for sig_id in old_signal_ids:
+                            try:
+                                webrtcbin.handler_disconnect(sig_id)
+                            except Exception as e:
+                                logger.log(f"WHEP switch: handler_disconnect failed: {e}", level='WARNING')
+
+                    old_mgr.peers.pop(peer_id, None)
+                    if not old_mgr.peers:
+                        _managers.pop(source_uid, None)
+                    _resources[resource_id] = (new_source, peer_id)
+
+                    # Tee-pad swap inside a BLOCK_DOWNSTREAM probe per media — without this,
+                    # in-flight buffers can hit the new tee before SEGMENT/CAPS propagate.
+                    # Pattern matches pipelines/audio_filters.py::rebuild_between_anchors.
                     swap_list = [('video', new_video_tee)]
                     if new_audio_tee:
                         swap_list.append(('audio', new_audio_tee))
@@ -562,58 +592,39 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                         psink = peer.get(f'{media}_proxysink')
                         if not (old_tee and old_pad and psink):
                             continue
-
-                        # Unlink old
                         sink_pad = psink.get_static_pad("sink")
-                        if sink_pad:
-                            peer_pad = sink_pad.get_peer()
-                            if peer_pad:
-                                peer_pad.unlink(sink_pad)
-                        old_tee.release_request_pad(old_pad)
+                        if not sink_pad:
+                            continue
 
-                        # Link new
-                        new_pad = new_tee.request_pad_simple("src_%u")
-                        new_pad.link(sink_pad)
+                        def _do_pad_swap(pad, info, ud, _media=media, _old_tee=old_tee,
+                                         _new_tee=new_tee, _sink_pad=sink_pad, _peer=peer):
+                            try:
+                                pad.unlink(_sink_pad)
+                                _old_tee.release_request_pad(pad)
+                                new_pad = _new_tee.request_pad_simple("src_%u")
+                                if new_pad is None:
+                                    logger.log(f"WHEP switch: {_media} request_pad_simple returned None", level='ERROR')
+                                    return Gst.PadProbeReturn.REMOVE
+                                link_result = new_pad.link(_sink_pad)
+                                if link_result != Gst.PadLinkReturn.OK:
+                                    logger.log(f"WHEP switch: {_media} pad link failed: {link_result}", level='ERROR')
+                                    return Gst.PadProbeReturn.REMOVE
+                                _peer[f'{_media}_tee'] = _new_tee
+                                _peer[f'{_media}_tee_pad'] = new_pad
+                                if _media == 'video':
+                                    vpay = _peer.get('video_pay')
+                                    if vpay:
+                                        key_event = GstVideo.video_event_new_upstream_force_key_unit(
+                                            Gst.CLOCK_TIME_NONE, True, 0)
+                                        vpay.send_event(key_event)
+                            except Exception as e:
+                                logger.log(f"WHEP switch: {_media} pad swap error: {e}", level='ERROR')
+                            return Gst.PadProbeReturn.REMOVE
 
-                        # Update peer refs
-                        peer[f'{media}_tee'] = new_tee
-                        peer[f'{media}_tee_pad'] = new_pad
-
-                    # Request keyframe for fast display
-                    vpay = peer.get('video_pay')
-                    if vpay:
-                        key_event = GstVideo.video_event_new_upstream_force_key_unit(
-                            Gst.CLOCK_TIME_NONE, True, 0)
-                        vpay.send_event(key_event)
-
-                    # Disconnect old signal handlers (they reference old_mgr via bound methods)
-                    webrtcbin = peer.get('webrtcbin')
-                    for sig_id in peer.get('signal_ids', []):
-                        try:
-                            if webrtcbin:
-                                webrtcbin.handler_disconnect(sig_id)
-                        except Exception:
-                            pass
-
-                    # Move peer from old manager to new/existing manager
-                    old_mgr.peers.pop(peer_id, None)
-                    if not old_mgr.peers:
-                        _managers.pop(source_uid, None)
-
-                    if new_source not in _managers:
-                        _managers[new_source] = WebrtcPreviewManager(new_source)
-                    target_mgr = _managers[new_source]
-                    target_mgr.peers[peer_id] = peer
-
-                    # Reconnect signal handlers to new manager
-                    if webrtcbin:
-                        peer['signal_ids'] = [
-                            webrtcbin.connect('on-ice-candidate', target_mgr._on_ice_candidate, peer_id),
-                            webrtcbin.connect('notify::ice-connection-state', target_mgr._on_ice_state, peer_id),
-                        ]
-
-                    # Update resource mapping
-                    _resources[resource_id] = (new_source, peer_id)
+                        old_pad.add_probe(
+                            Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM,
+                            _do_pad_swap, None,
+                        )
 
                     logger.log(f"WHEP: switched {peer_id[:8]} from {source_uid[:8]} to {new_source[:8]}", level='INFO')
                     loop.call_soon_threadsafe(result_future.set_result, True)

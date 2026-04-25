@@ -1,6 +1,7 @@
 import os
 import pkgutil
 import importlib
+import threading
 from fastapi import APIRouter, HTTPException
 from typing import Generator, Tuple, Type, Dict, Set, Any, Optional, Union, List, get_args, get_origin, Annotated
 from api.output_models import OutputDTO
@@ -47,10 +48,29 @@ AUTO_PRIORITY = {
 }
 
 
+def _probe_hardware_encoder(factory) -> bool:
+    """Probe encoder factory via READY transition. GLib thread only."""
+    quiet_handler = GLib.log_set_handler(
+        "GStreamer",
+        GLib.LogLevelFlags.LEVEL_ERROR | GLib.LogLevelFlags.LEVEL_WARNING,
+        lambda *a: True, None,
+    )
+    try:
+        elem = factory.create(None)
+        if not elem:
+            return False
+        ret = elem.set_state(Gst.State.READY)
+        available = ret != Gst.StateChangeReturn.FAILURE
+        elem.set_state(Gst.State.NULL)
+        return available
+    except Exception:
+        return False
+    finally:
+        GLib.log_remove_handler("GStreamer", quiet_handler)
+
+
 def _is_encoder_available(element_name: str) -> bool:
-    """Check if a GStreamer encoder element is available.
-    Software encoders: find() is enough. Hardware: find() + READY probe.
-    """
+    """Software: factory.find() suffices. Hardware: READY probe on GLib thread."""
     if element_name in _encoder_availability_cache:
         return _encoder_availability_cache[element_name]
 
@@ -63,22 +83,22 @@ def _is_encoder_available(element_name: str) -> bool:
         _encoder_availability_cache[element_name] = True
         return True
 
-    # Hardware encoder: probe with READY state
-    available = False
-    quiet_handler = GLib.log_set_handler(
-        "GStreamer", GLib.LogLevelFlags.LEVEL_ERROR | GLib.LogLevelFlags.LEVEL_WARNING,
-        lambda *a: True, None
-    )
-    try:
-        elem = factory.create(None)
-        if elem:
-            ret = elem.set_state(Gst.State.READY)
-            available = ret != Gst.StateChangeReturn.FAILURE
-            elem.set_state(Gst.State.NULL)
-    except Exception:
-        pass
-    finally:
-        GLib.log_remove_handler("GStreamer", quiet_handler)
+    if threading.current_thread() is threading.main_thread():
+        available = _probe_hardware_encoder(factory)
+    else:
+        result = {}
+        done = threading.Event()
+        def _run():
+            result['v'] = _probe_hardware_encoder(factory)
+            done.set()
+            return False
+        GLib.idle_add(_run)
+        if not done.wait(timeout=5.0):
+            from logger import logger
+            logger.log(f"Encoder probe for {element_name} timed out", level='WARNING')
+            return False  # don't cache timeout — retry next call
+
+        available = result['v']
 
     _encoder_availability_cache[element_name] = available
     return available

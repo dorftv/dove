@@ -56,6 +56,7 @@ class PlaylistInput(Uridecodebin3Input):
         self._suppress_teardown_error = False
         self._watchdog_timer_id = None
         self._watchdog_probe_id = None
+        self._watchdog_tee_pad = None
         self._pending_advance = False
         self._flush_drop_probe_ids = {}
 
@@ -79,14 +80,13 @@ class PlaylistInput(Uridecodebin3Input):
                     pass
                 setattr(self, attr, None)
         # Remove watchdog buffer probe
-        if self._watchdog_probe_id and self.video_tee:
+        if self._watchdog_probe_id and self._watchdog_tee_pad:
             try:
-                src_pad = self.video_tee.get_static_pad("src_0")
-                if src_pad:
-                    src_pad.remove_probe(self._watchdog_probe_id)
+                self._watchdog_tee_pad.remove_probe(self._watchdog_probe_id)
             except Exception:
                 pass
             self._watchdog_probe_id = None
+            self._watchdog_tee_pad = None
         # NULL wpesrc on deletion — safe here (one-time, not cycling)
         # This frees the WebKit renderer process (~250MB)
         for chain in (getattr(self, '_wpe_chain', []), getattr(self, '_html_audio_chain', [])):
@@ -337,13 +337,25 @@ class PlaylistInput(Uridecodebin3Input):
 
     # --- Buffer watchdog (skip frozen clips) ---
 
+    def _get_watchdog_pad(self):
+        """Find the first src pad on the video tee — naming may differ from src_0."""
+        it = self.video_tee.iterate_src_pads()
+        while True:
+            result, pad = it.next()
+            if result == Gst.IteratorResult.OK:
+                return pad
+            if result != Gst.IteratorResult.RESYNC:
+                return None
+            it.resync()
+
     def _start_watchdog(self):
         """Start buffer flow watchdog for video clips."""
         self._stop_watchdog()
         # Install buffer probe on video tee src pad
         if self.video_tee:
-            src_pad = self.video_tee.get_static_pad("src_0")
+            src_pad = self._get_watchdog_pad()
             if src_pad:
+                self._watchdog_tee_pad = src_pad
                 self._watchdog_probe_id = src_pad.add_probe(
                     Gst.PadProbeType.BUFFER, self._watchdog_buffer_probe, None)
         self._reset_watchdog()
@@ -353,11 +365,10 @@ class PlaylistInput(Uridecodebin3Input):
         if self._watchdog_timer_id is not None:
             GLib.source_remove(self._watchdog_timer_id)
             self._watchdog_timer_id = None
-        if self._watchdog_probe_id is not None and self.video_tee:
-            src_pad = self.video_tee.get_static_pad("src_0")
-            if src_pad:
-                src_pad.remove_probe(self._watchdog_probe_id)
+        if self._watchdog_probe_id is not None and self._watchdog_tee_pad is not None:
+            self._watchdog_tee_pad.remove_probe(self._watchdog_probe_id)
             self._watchdog_probe_id = None
+            self._watchdog_tee_pad = None
 
     def _reset_watchdog(self):
         """Reset watchdog timer — called on every buffer.

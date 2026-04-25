@@ -17,6 +17,7 @@ class programMixer(Mixer):
     data: programMixerDTO
     _fallback_pattern: int = 2  # black
     _fade_timer_id: Optional[int] = None
+    _flush_timer_id: Optional[int] = None
     _fade_step: int = 0
     _fade_total_steps: int = 0
     _fade_old_index: Optional[int] = None
@@ -157,11 +158,14 @@ class programMixer(Mixer):
                 self._hide_slot(old_index)
             safe_broadcast("UPDATE", self.data)
 
-        # Cooldown: check for queued requests after 100ms to let pipeline settle
-        GLib.timeout_add(100, self._flush_pending_transition)
+        # debounce: 100ms gate before processing next queued transition
+        if self._flush_timer_id is not None:
+            GLib.source_remove(self._flush_timer_id)
+        self._flush_timer_id = GLib.timeout_add(100, self._flush_pending_transition)
 
     def _flush_pending_transition(self):
         """After cooldown, process any queued transition or release the lock."""
+        self._flush_timer_id = None
         if self._pending_transition is not None:
             self._process_transition()
         else:
@@ -295,4 +299,12 @@ class programMixer(Mixer):
             self._update_mixer_video_filter_params(new_filters)
         if 'audio_filters' in data or 'video_filters' in data:
             safe_broadcast("UPDATE", self.data)
+
+    def cleanup(self):
+        """Cancel pending timers before mixer teardown."""
+        if self._flush_timer_id is not None:
+            GLib.source_remove(self._flush_timer_id)
+            self._flush_timer_id = None
+        self._cancel_fade()
+        super().cleanup()
 

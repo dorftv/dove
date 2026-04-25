@@ -272,7 +272,8 @@ class Mixer(GSTBase, ABC):
         _uid = self.data.uid
         queue = self._slot_queues.get(index, {}).get(av)
         if not queue:
-            logger.log(f"No {av} queue for slot {index} — cannot rebuild slot filters", level='WARNING')
+            # Slot has no source yet — filter saved on DTO, will be applied on link_source
+            logger.log(f"Slot {index} {av} has no queue yet — filter chain deferred until source linked", level='DEBUG')
             self._release_slot(index)
             return
 
@@ -440,6 +441,9 @@ class Mixer(GSTBase, ABC):
                     pad = mixer.get_static_pad(mixerSource.sink)
                     if pad:
                         mixer.release_request_pad(pad)
+
+            # Drop per-slot bookkeeping so the dicts don't grow over a long session.
+            self._slot_filters.pop(mixerSource.index, None)
 
             self.data.remove_slot(mixerSource)
             safe_broadcast("UPDATE", self.data)

@@ -1,3 +1,5 @@
+import time
+
 from api.inputs.uridecodebin3 import Uridecodebin3InputDTO
 from gi.repository import Gst, GLib, GObject
 from logger import logger
@@ -66,6 +68,9 @@ class Uridecodebin3Input(Input):
 
         # --- Source ---
         self._is_live = _is_live_uri(uri)
+        # Live sources have no duration/seekable position; track wall elapsed instead
+        self._added_at = time.monotonic()
+        self.data.is_live = self._is_live
         uridecodebin = Gst.ElementFactory.make("uridecodebin3", f"uridecodebin_{uid}")
         if uri:
             uridecodebin.set_property("uri", uri)

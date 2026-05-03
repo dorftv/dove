@@ -140,6 +140,20 @@ class PipelineHandler(object):
             if not pipeline:
                 return True
 
+            # Live sources: pipeline running-time != input lifetime, use wall elapsed.
+            if getattr(input_obj, '_is_live', False):
+                input_obj.data.position = int(time.monotonic() - input_obj._added_at)
+                if hasattr(input_obj, 'on_position_updated'):
+                    try:
+                        input_obj.on_position_updated()
+                    except Exception as e:
+                        logger.log(f"on_position_updated failed for {uid}: {e}", level='ERROR')
+                    safe_broadcast("UPDATE", input_obj.data, type="input")
+                else:
+                    safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
+                return True
+
+
             # Circuit-breaker: skip query if previous was slow.
             # on_position_updated() is intentionally not called here — the input is under
             # stress and playlist prestart can tolerate 1-3s delay.

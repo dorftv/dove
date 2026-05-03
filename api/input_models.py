@@ -43,6 +43,7 @@ class InputDTO(BaseModel):
     width: Optional[int] = Field(default_factory=get_default_width)
     has_video: Optional[bool] = Field(default_factory=lambda: ConfigReader().get_enable_video())
     has_audio: Optional[bool] = Field(default_factory=lambda: ConfigReader().get_enable_audio())
+    is_live: Optional[bool] = False
     fit: Optional[bool] = True  # True=maintain aspect ratio, False=stretch
     audio_filters: Optional[list[AudioFilterDTO]] = []
     video_filters: Optional[list[VideoFilterDTO]] = []

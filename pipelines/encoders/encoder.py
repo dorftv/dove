@@ -71,6 +71,8 @@ class Encoder(GSTBase):
         use_vapostproc = pre.startswith("vapostproc") if pre else False
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
+            # ts-offset set by paired audio encoder when filters add latency
+            f"identity name=video_delay_{uid} ts-offset=0",
         ]
         if use_vapostproc:
             # GPU path: vapostproc handles format conversion + scaling
@@ -111,7 +113,8 @@ class Encoder(GSTBase):
         use_filters = not is_preview
 
         parts = [
-            f"queue name=enc_queue_{uid} max-size-time=200000000 max-size-buffers=0 max-size-bytes=0",
+            # 4s headroom: covers audioloudnorm 3s lookahead warmup
+            f"queue name=enc_queue_{uid} max-size-time=4000000000 max-size-buffers=0 max-size-bytes=0",
             "audioconvert", "audioresample",
         ]
 
@@ -173,12 +176,19 @@ class Encoder(GSTBase):
         if self.data.state != state_name:
             self.data.state = state_name
             safe_broadcast("UPDATE", self.data, type="encoder")
+        if (self.data.type == "audio"
+                and not getattr(self.data, 'is_preview', False)
+                and not getattr(self, '_latency_compensation_done', False)
+                and state == Gst.State.PLAYING):
+            self._latency_compensation_done = True
+            self._apply_filter_latency_compensation()
 
     def attach(self, pipeline: Gst.Pipeline):
         uid = self.data.uid
         self.core_pipeline = pipeline
         self._bin = None
         self.tee = pipeline.get_by_name(f"enc_tee_{uid}")
+        self._latency_compensation_done = False
 
     def _find_element(self, name):
         """Find a named element in bin or core pipeline."""
@@ -221,6 +231,7 @@ class Encoder(GSTBase):
                     new_filters, self._find_element, uid,
                     anchor_in=f"af_enc_in_{uid}", anchor_out=f"af_enc_out_{uid}",
                 )
+                self._apply_filter_latency_compensation()
                 return False
             GLib.idle_add(do_update_params)
         else:
@@ -241,4 +252,45 @@ class Encoder(GSTBase):
             af_in, af_out, new_filters, uid, pipe,
             element_map=FILTER_ELEMENT_MAP, audio=True, allow_rate_conversion=True,
         )
+        self._apply_filter_latency_compensation()
+        return False
+
+    def _apply_filter_latency_compensation(self):
+        if getattr(self.data, 'is_preview', False):
+            return
+        af_out = self._bin.get_by_name(f"af_enc_out_{self.data.uid}") if self._bin else None
+        if not af_out:
+            return
+        sink = af_out.get_static_pad("sink")
+        if not sink:
+            return
+
+        def _on_first_buffer(pad, info, _data):
+            try:
+                q = Gst.Query.new_latency()
+                if pad.peer_query(q):
+                    _live, min_lat, _max_lat = q.parse_latency()
+                    GLib.idle_add(self._set_paired_video_offset, int(min_lat))
+            except Exception as e:
+                logger.log(f"Latency probe failed for encoder {self.data.uid}: {e}", level='WARNING')
+            return Gst.PadProbeReturn.REMOVE
+
+        sink.add_probe(Gst.PadProbeType.BUFFER, _on_first_buffer, None)
+
+    def _set_paired_video_offset(self, ts_offset_ns):
+        from pipeline_handler import HandlerSingleton
+        handler = HandlerSingleton()
+        audio_uid = self.data.uid
+        video_uid = None
+        for o in handler.get_pipelines("outputs") or []:
+            if getattr(o.data, 'audio_encoder', None) == audio_uid:
+                video_uid = getattr(o.data, 'video_encoder', None)
+                break
+        if not video_uid:
+            return False
+        pipeline = self._bin.get_parent() if self._bin else None
+        delay = pipeline.get_by_name(f"video_delay_{video_uid}") if pipeline else None
+        if delay:
+            delay.set_property("ts-offset", ts_offset_ns)
+            logger.log(f"Encoder {audio_uid}: applied video ts-offset={ts_offset_ns}ns to {video_uid}", level='INFO')
         return False

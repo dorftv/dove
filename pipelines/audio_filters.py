@@ -414,6 +414,9 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
         return False
 
     def _do_rebuild(pad, info, user_data):
+        # double-block prevents half-built chain emitting partial buffers
+        tail_block_pad = af_out.get_static_pad("sink").get_peer() if af_out.get_static_pad("sink") else None
+        tail_probe_id = tail_block_pad.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM, lambda *_: Gst.PadProbeReturn.OK, None) if tail_block_pad else 0
         try:
             _tail_gen = next(_rebuild_counter)
             out_sink = af_out.get_static_pad("sink")
@@ -510,6 +513,8 @@ def rebuild_between_anchors(af_in, af_out, new_filters, uid, pipe, element_map=N
             except Exception:
                 pass
 
+        if tail_block_pad and tail_probe_id:
+            tail_block_pad.remove_probe(tail_probe_id)
         return Gst.PadProbeReturn.REMOVE
 
     in_src.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM, _do_rebuild, None)

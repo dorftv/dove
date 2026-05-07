@@ -496,12 +496,15 @@ class Mixer(GSTBase, ABC):
             # Previous soft-unlink may have left connections in place.
             for av in ["video", "audio"]:
                 self._cleanup_slot_connections(index, av)
-                mixer = self.getMixer(av)
-                if mixer and mixerInput.sink:
-                    sink_pad = mixer.get_static_pad(mixerInput.sink)
-                    if sink_pad:
-                        sink_pad.send_event(Gst.Event.new_flush_start())
-                        sink_pad.send_event(Gst.Event.new_flush_stop(True))
+
+            if mixerInput.src and mixerInput.src != "None":
+                for av in ["video", "audio"]:
+                    mixer = self.getMixer(av)
+                    if mixer and mixerInput.sink:
+                        sink_pad = mixer.get_static_pad(mixerInput.sink)
+                        if sink_pad:
+                            sink_pad.send_event(Gst.Event.new_flush_start())
+                            sink_pad.send_event(Gst.Event.new_flush_stop(True))
 
             # Get source component - could be input or mixer
             handler = HandlerSingleton()
@@ -645,9 +648,6 @@ class Mixer(GSTBase, ABC):
                     sink_pad.set_property("alpha", 1.0)
                     logger.log(f"Set video alpha=1.0 on {sink_pad.get_name()}", level='DEBUG')
                 else:
-                    # For audio, send flush events to reset the pad state before enabling
-                    sink_pad.send_event(Gst.Event.new_flush_start())
-                    sink_pad.send_event(Gst.Event.new_flush_stop(True))
                     sink_pad.set_property("volume", 1.0)
                     sink_pad.set_property("mute", False)
 

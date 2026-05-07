@@ -1,4 +1,5 @@
 from uuid import uuid4
+from gi.repository import Gst, GLib
 from logger import logger
 from api.mixers_dtos import sceneMixerDTO, programMixerDTO, mixerCutProgramDTO
 from pipelines.mixers.scene_mixer import sceneMixer
@@ -279,10 +280,26 @@ class ElementsFactory:
         # 7. Link all slots and overlays
         steps.extend(link_steps)
 
-        # 8. Cut program (last)
+        # 8. Cut program — defer until scene audio is flowing so the program
+        # audiomixer sees CAPS/SEGMENT before _show_slot writes volume.
         def cut_program():
-            if isinstance(self.cutProgram, mixerCutProgramDTO):
-                state['program_mixer'].cut_program_sync(self.cutProgram)
+            if not isinstance(self.cutProgram, mixerCutProgramDTO):
+                return
+            program_mixer = state['program_mixer']
+            src = self.cutProgram.src
+            cut_data = self.cutProgram
+            pipeline = getattr(getattr(self.handler, 'core_pipeline', None), 'pipeline', None)
+            tee = pipeline.get_by_name(f"scene_audio_tee_{src}") if (pipeline and src and src != "None") else None
+            sink_pad = tee.get_static_pad("sink") if tee else None
+            if sink_pad is None:
+                program_mixer.cut_program_sync(cut_data)
+                return
+            sink_pad.add_probe(
+                Gst.PadProbeType.BUFFER,
+                lambda *_: (GLib.idle_add(program_mixer.cut_program_sync, cut_data),
+                            Gst.PadProbeReturn.REMOVE)[1],
+                None,
+            )
         steps.append(("cut program", cut_program))
 
         return steps

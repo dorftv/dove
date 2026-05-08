@@ -46,7 +46,7 @@ async def proxy_get():
                                     raise ValueError(f"proxy/ovenmedia/{name}: bad url_template '{template}': {e}")
 
                                 results.append({
-                                    "name": f"{name}/{vhost}/{app}/{stream}",
+                                    "name": f"{name} | {vhost}/{app}/{stream}",
                                     "url": url,
                                     "clients": 0,
                                     "created": datetime.now(timezone.utc).isoformat(),

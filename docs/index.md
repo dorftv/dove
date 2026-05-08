@@ -28,6 +28,7 @@ DOVE is a live video mixing application. Media sources (**Inputs**) are composit
 ## Reference
 
 - [Previews](/help/previews) — HLS and WebRTC preview streams
+- [Input Pickers (Proxies)](/help/proxies) — config-driven dropdowns for files, OME, MediaMTX, playlists
 - [Authentication](/help/auth) — OIDC login, roles, and protecting external services
 - [Keyboard Shortcuts](/help/keyboard-shortcuts)
 - [Connection Status](/help/connection-status)

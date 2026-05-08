@@ -1,6 +1,7 @@
 import base64
 from datetime import datetime, timezone
 from fastapi import APIRouter
+from logger import logger
 from proxy.helper import fetch_proxy_items
 
 router = APIRouter()
@@ -14,7 +15,10 @@ async def proxy_get():
             base64_auth = base64.b64encode(details['auth'].encode('ascii')).decode('ascii')
             headers['Authorization'] = f'Basic {base64_auth}'
 
-        stream_type = details.get('type', 'srt').lower()
+        template = details.get('url_template')
+        if not template:
+            logger.log(f"proxy/ovenmedia/{name}: missing url_template", level='ERROR')
+            return []
 
         vhosts_r = await client.get(f"{details['url']}/vhosts", headers=headers)
         vhosts_r.raise_for_status()
@@ -35,12 +39,11 @@ async def proxy_get():
 
                         if streams_data.get('statusCode') == 200 and isinstance(streams_data.get('response'), list):
                             for stream in streams_data['response']:
-                                if stream_type == 'webrtc':
-                                    url = f"{details['base_url']}/{vhost}/{app}/{stream}"
-                                elif stream_type == 'llhls':
-                                    url = f"{details['base_url']}/{vhost}/{app}/{stream}/index.m3u8"
-                                else:
-                                    url = f"{details['base_url']}?streamid={vhost}/{app}/{stream}"
+                                # operator pins rendition + protocol in the template, e.g. srt://host:port?streamid={vhost}/{app}/{stream}/1080
+                                try:
+                                    url = template.format(vhost=vhost, app=app, stream=stream)
+                                except (KeyError, ValueError) as e:
+                                    raise ValueError(f"proxy/ovenmedia/{name}: bad url_template '{template}': {e}")
 
                                 results.append({
                                     "name": f"{name}/{vhost}/{app}/{stream}",

@@ -412,6 +412,7 @@ class PipelineHandler(object):
                 src=src_uid, is_preview=True,
                 options=video_enc_options,
                 width=preview_config.get('width'), height=preview_config.get('height'),
+                framerate=f"{config.get_preview_fps()}/1",
             ))
             if not self._add_pipeline_direct(video_enc):
                 video_enc = None

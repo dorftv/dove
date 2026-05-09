@@ -49,6 +49,14 @@ class ConfigReader:
     def get_preview_enabled(self):
         return self.config.get('main', {}).get('preview_enabled', True)
 
+    def get_preview_fps(self):
+        # Initial preview fps; runtime PUT clamps 1-60. Falls back to default_framerate numerator.
+        fps = self.config.get('preview', {}).get('fps')
+        if fps is not None:
+            return int(fps)
+        fr = self.config['main']['default_framerate']
+        return int(str(fr).split('/')[0])
+
     def get_enabled_outputs(self):
         if 'ui' in self.config:
             if 'enabled_outputs' in self.config['ui']:

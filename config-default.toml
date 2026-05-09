@@ -1,3 +1,6 @@
+[preview]
+# fps = 15  # initial preview framerate (runtime tunable via UI 1-60)
+
 [preview.inputs]
 type=["webrtcbin", "hlssink2"]
 width=320

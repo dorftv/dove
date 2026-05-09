@@ -7,6 +7,7 @@ from api.helper import get_encoder_types
 from api.auth import require_role, require_read, is_auth_enabled, get_current_user
 from gi.repository import Gst, GLib
 
+from event_loop_bridge import safe_broadcast
 from config_handler import ConfigReader
 config = ConfigReader()
 
@@ -233,17 +234,17 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
 
     fps = max(1, min(data.fps, 60))
 
-    # Collect video capsfilter elements from preview output bins.
-    # The capsfilter (inline caps after videorate) controls the framerate.
-    # Changing its caps makes videorate drop frames to match.
-    capsfilters = []
-    for output in handler._pipelines.get("outputs", []):
-        if not getattr(output.data, 'is_preview', False):
+    # video/x-raw capsfilter, not the video/x-h264 profile capsfilter
+    targets = []
+    for enc in handler._pipelines.get("encoders", []):
+        if not getattr(enc.data, 'is_preview', False):
             continue
-        obin = getattr(output, '_bin', None)
-        if not obin:
+        if enc.data.type != "video":
             continue
-        iterator = obin.iterate_recurse()
+        ebin = getattr(enc, '_bin', None)
+        if not ebin:
+            continue
+        iterator = ebin.iterate_recurse()
         while True:
             result, element = iterator.next()
             if result != Gst.IteratorResult.OK:
@@ -252,24 +253,20 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
             if factory and factory.get_name() == "capsfilter":
                 caps = element.get_property("caps")
                 if caps and caps.to_string().startswith("video/x-raw"):
-                    capsfilters.append(element)
+                    targets.append((enc, element))
                     break
 
     def apply_fps():
-        for cf in capsfilters:
-            old_caps = cf.get_property("caps")
-            s = old_caps.get_structure(0)
-            new_caps = Gst.Caps.from_string(
-                f"video/x-raw,format={s.get_string('format')}"
-                f",width={s.get_value('width')}"
-                f",height={s.get_value('height')}"
-                f",framerate={fps}/1"
-            )
+        for enc, cf in targets:
+            new_caps = cf.get_property("caps").copy()
+            new_caps.get_structure(0).set_value("framerate", Gst.Fraction(fps, 1))
             cf.set_property("caps", new_caps)
+            enc.data.framerate = f"{fps}/1"
+            safe_broadcast("UPDATE", enc.data, type="encoder")
         return False
     GLib.idle_add(apply_fps)
 
-    return {"fps": fps, "updated": len(capsfilters)}
+    return {"fps": fps, "updated": len(targets)}
 
 
 @router.get("/config/export", dependencies=[require_role("supervisor")])
@@ -436,26 +433,23 @@ async def _check_admin(request: Request) -> bool:
 
 
 def _get_current_preview_fps(handler):
-    """Get framerate from first preview output's video capsfilter."""
+    """Read framerate from the first preview video encoder DTO."""
     if not handler or not handler._pipelines:
         return None
-    for output in handler._pipelines.get("outputs", []):
-        if not getattr(output.data, 'is_preview', False):
+    for enc in handler._pipelines.get("encoders", []):
+        if not getattr(enc.data, 'is_preview', False):
             continue
-        obin = getattr(output, '_bin', None)
-        if not obin:
+        if enc.data.type != "video":
             continue
-        iterator = obin.iterate_recurse()
-        while True:
-            result, element = iterator.next()
-            if result != Gst.IteratorResult.OK:
-                break
-            factory = element.get_factory()
-            if factory and factory.get_name() == "capsfilter":
-                caps = element.get_property("caps")
-                if caps and caps.to_string().startswith("video/x-raw"):
-                    s = caps.get_structure(0)
-                    ok, num, den = s.get_fraction("framerate")
-                    if ok and den > 0:
-                        return num // den
+        fr = enc.data.framerate
+        if not fr or "/" not in fr:
+            return None
+        try:
+            num_s, den_s = fr.split("/", 1)
+            num, den = int(num_s), int(den_s)
+        except ValueError:
+            return None
+        if den <= 0:
+            return None
+        return num // den
     return None

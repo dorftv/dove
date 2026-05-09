@@ -61,3 +61,16 @@ The header bar has a preview mode toggle with three options:
 - **HLS** — Forces HLS for all previews. Useful on restrictive networks or when UDP is unavailable.
 
 HLS mode requires `"hlssink2"` in the `type` list for the relevant preview category. If HLS is not configured, the toggle has no effect and WebRTC is used.
+
+## FPS tuning
+
+Preview framerate is configurable via `[preview] fps` in `config.toml`:
+
+```toml
+[preview]
+fps = 15
+```
+
+- **Default:** inherits `main.default_framerate` (typically 25 or 30).
+- **Runtime adjustment:** the server status popover (admin only) exposes a slider (1–60). Lower values reduce CPU/bandwidth at the cost of motion smoothness.
+- **Runtime changes are ephemeral** — they apply until the next restart. To make a change permanent, edit `[preview] fps` in `config.toml`.

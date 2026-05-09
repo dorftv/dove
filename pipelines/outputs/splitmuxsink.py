@@ -3,6 +3,7 @@ from pathlib import Path
 
 from gi.repository import Gst
 
+from config_handler import ConfigReader
 from logger import logger
 from pipelines.outputs.output import Output
 from api.outputs.splitmuxsink import splitmuxsinkOutputDTO
@@ -44,7 +45,7 @@ class splitmuxsinkOutput(Output):
             return True
         except Exception as e:
             logger.log(
-                f"splitmuxsink {self.data.uid}: location '{location_template}' not writable ({e}), falling back to /var/dove/recordings/{self.data.uid}/",
+                f"splitmuxsink {self.data.uid}: location '{location_template}' not writable ({e}), falling back to {self._fallback_dir}/",
                 level='WARNING',
             )
             return False
@@ -102,9 +103,9 @@ class splitmuxsinkOutput(Output):
 
         # location is needed as fallback; format-location-full signal overrides it
         ext = self._get_ext()
-        self._fallback_dir = f"/var/dove/recordings/{uid}"
+        # config-driven; mkdir deferred to _on_format_location so unused fallback never touches disk
+        self._fallback_dir = f"{ConfigReader().get_recordings_path()}/{uid}"
         fallback_location = f"{self._fallback_dir}/segment%05d{ext}"
-        Path(self._fallback_dir).mkdir(parents=True, exist_ok=True)
 
         # Probe the user-configured location once; if not writable, fall back for the whole session
         self._use_fallback_dir = not self._probe_location_writable(self.data.location)

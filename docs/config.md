@@ -14,6 +14,7 @@ default_resolution = "HD720"   # QHD, FullHD, HD720, qHD, …
 default_framerate  = "30/1"
 volume             = 0.7       # default input volume
 hls_path           = "/var/dove/hls"
+recordings_path    = "/var/dove/recordings"
 ```
 
 Available resolutions are defined in `[resolutions]` in `config-default.toml` (QHD 2560×1440 down to SmallPreview 320×180).

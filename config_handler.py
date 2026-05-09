@@ -173,6 +173,9 @@ class ConfigReader:
     def get_hls_path(self):
         return self.config.get('main', {}).get('hls_path', '/var/dove/hls')
 
+    def get_recordings_path(self):
+        return self.config.get('main', {}).get('recordings_path', '/var/dove/recordings')
+
     def get_scene_fallback_pattern(self):
         return self.config.get('scenes', {}).get('fallback_pattern', 2)
 

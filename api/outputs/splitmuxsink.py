@@ -7,11 +7,15 @@ from api.encoder.video_encoder import h264EncoderUnion, h265EncoderUnion, x264En
 from api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO, vorbisEncoderDTO, flacEncoderDTO, opusEncoderDTO
 from api.encoder.mux import mp4MuxDTO, matroskaMuxDTO, mpegtsMuxDTO
 
+from config_handler import ConfigReader
 from event_loop_bridge import safe_broadcast
 from api.helper import create_or_raise
 
 
 router = APIRouter()
+
+# resolved at import time; Pydantic JSON schema does not honor default_factory
+_RECORDINGS_DEFAULT = f"{ConfigReader().get_recordings_path()}/%Y-%m-%d/recording_%H-%M-%S"
 
 class splitmuxsinkOutputDTO(OutputDTO):
     type: str = Field(
@@ -20,10 +24,10 @@ class splitmuxsinkOutputDTO(OutputDTO):
         description="Record to segmented files.",
     )
     location: Optional[str] = Field(
-        default="/var/dove/recordings/%Y-%m-%d/recording_%H-%M-%S",
+        default=_RECORDINGS_DEFAULT,
         label="Location",
         description="File path pattern (strftime format, extension auto-added from mux)",
-        placeholder="/var/dove/recordings/%Y-%m-%d/recording_%H-%M-%S",
+        placeholder=_RECORDINGS_DEFAULT,
     )
     segment_duration: Literal["30m", "1h", "2h", "4h", "6h"] = Field(
         default="1h",

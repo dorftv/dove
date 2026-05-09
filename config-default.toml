@@ -48,6 +48,7 @@ audio_rate = 48000
 audio_channels = 2
 
 hls_path = "/var/dove/hls"
+recordings_path = "/var/dove/recordings"
 
 
 #preview settings

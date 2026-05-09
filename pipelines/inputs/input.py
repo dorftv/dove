@@ -64,16 +64,6 @@ class Input(GSTBase, ABC):
         self.volume_element = pipeline.get_by_name(f"volume_{uid}")
         logger.log(f"Input {uid} attach: video_tee={'found' if self.video_tee else 'NOT FOUND'}, audio_tee={'found' if self.audio_tee else 'NOT FOUND'}, volume={'found' if self.volume_element else 'NOT FOUND'}, videomixer={'found' if self.input_videomixer else 'NOT FOUND'}", level='DEBUG')
 
-    def attach_to_bin(self, bin: Gst.Bin):
-        """Get element references from within a bin (for dynamic addition)."""
-        uid = self.data.uid
-        self.video_tee = bin.get_by_name(f"video_tee_{uid}")
-        self.audio_tee = bin.get_by_name(f"audio_tee_{uid}")
-        self.input_videomixer = bin.get_by_name(f"input_videomixer_{uid}")
-        self.input_audiomixer = bin.get_by_name(f"input_audiomixer_{uid}")
-        self.volume_element = bin.get_by_name(f"volume_{uid}")
-        logger.log(f"Input {uid} attach_to_bin: video_tee={'found' if self.video_tee else 'NOT FOUND'}, audio_tee={'found' if self.audio_tee else 'NOT FOUND'}, videomixer={'found' if self.input_videomixer else 'NOT FOUND'}", level='DEBUG')
-
     def seek_to_position(self, position):
         pipeline = self.get_pipeline()
         if not pipeline:

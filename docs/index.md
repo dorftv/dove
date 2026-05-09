@@ -19,6 +19,7 @@ DOVE is a live video mixing application. Media sources (**Inputs**) are composit
 - [yt-dlp](/help/inputs-ytdlp) — YouTube, Twitch, and hundreds of other sites
 - [NodeCG](/help/inputs-nodecg) — broadcast graphics via NodeCG
 - [Test Source](/help/inputs-testsrc) — color bars and test patterns
+- [Screencast (WHIP)](/help/screencast) — browser screen share / webcam ingest (experimental)
 
 ## Audio & Video Processing
 

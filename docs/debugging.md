@@ -26,6 +26,8 @@ curl http://localhost:5000/api/debug/graphviz/dot | dot -Tpng -o pipeline.png
 
 FastAPI auto-generated Swagger UI for all REST endpoints. Allows interactive testing of the API.
 
+Requires admin role. Anonymous and non-admin authenticated users get 401/403.
+
 ## GStreamer Debug Environment Variables
 
 ```bash

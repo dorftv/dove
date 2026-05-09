@@ -34,8 +34,8 @@ Control which input and output types appear in the "+" menus:
 
 ```toml
 [ui]
-enabled_inputs  = ["uridecodebin3", "wpesrc", "ytdlp", "testsrc", "nodecg", "playlist"]
-enabled_outputs = ["srtsink", "srtserversink", "rtmpsink", "hlssink2", "decklink"]
+enabled_inputs  = ["uridecodebin3", "playlist", "wpesrc", "ytdlp", "nodecg", "testsrc", "v4l2src", "imagesrc", "whip"]
+enabled_outputs = ["srtsink", "srtserversink", "rtmpsink", "rtspclientsink", "hlssink2", "splitmuxsink", "decklink", "shout2send"]
 ```
 
 ## Pre-loading Scenes, Inputs and Outputs

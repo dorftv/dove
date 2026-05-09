@@ -21,6 +21,9 @@ Inputs are media sources added to the DOVE pipeline. Each input produces a norma
 | `ytdlp` | YouTube, Twitch, and other sites via yt-dlp | [yt-dlp](inputs-ytdlp) |
 | `nodecg` | NodeCG broadcast graphics | [NodeCG](inputs-nodecg) |
 | `testsrc` | Test patterns and color bars | [Test Source](inputs-testsrc) |
+| `v4l2src` | Webcams and capture cards (V4L2) | — |
+| `imagesrc` | Still images (PNG, JPEG, WebP, SVG) | — |
+| `whip` | Browser screen share or webcam via WebRTC | [Screencast](screencast) |
 
 ## Adding an Input
 

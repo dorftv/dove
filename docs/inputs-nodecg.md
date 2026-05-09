@@ -25,7 +25,7 @@ NodeCG is a broadcast graphics framework. Graphics are defined as bundles — we
 
 ## Built-in Proxy
 
-DOVE includes a reverse proxy for NodeCG. When configured, the NodeCG dashboard panels load through DOVE — same origin, same auth, no CORS issues.
+DOVE includes a reverse proxy for NodeCG. When configured, the NodeCG dashboard panels load through DOVE — same origin, same auth, no CORS issues. Both the HTTP routes and the NodeCG WebSocket are protected when auth is enabled.
 
 ### Setup
 
@@ -50,6 +50,6 @@ This adds a NodeCG service on the DOVE network and sets `NODECG_URL` automatical
 
 ### How it works
 
-The proxy mounts NodeCG paths at root level (`/bundles/`, `/dashboard/`, `/socket.io/`, etc.) so that NodeCG's root-relative URLs work in iframes. When [authentication](/help/auth) is enabled, the proxy is protected — only authenticated DOVE users can access NodeCG.
+The proxy mounts NodeCG paths at root level (`/bundles/`, `/dashboard/`, `/socket.io/`, etc.) so that NodeCG's root-relative URLs work in iframes. When [authentication](/help/auth) is enabled, the proxy requires the `user` role — users without `dove-user` group membership cannot access the NodeCG dashboard or its WebSocket.
 
 The wpesrc rendering (video capture of graphics pages) goes directly over the Docker network and does not use the proxy.

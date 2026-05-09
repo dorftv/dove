@@ -1,14 +1,30 @@
-# DOVE — DORFTV Online Video Editor
+# DOVE — Online Video Editor
 
-![DOVE Logo](assets/logo.png)
+<table>
+  <tr>
+    <td width="35%" valign="middle">
+      <img src="assets/logo.png" alt="DOVE" width="240">
+    </td>
+    <td width="65%" valign="middle">
+      DOVE is an API driven Video/Audio Editor for live mixing with an intuitive web based Interface.
+      <br><br>
+      Developed by and for <a href="https://dorftv.at">DORFTV</a>. Inspired by <a href="https://github.com/bbc/brave">bbc/brave</a>.
+    </td>
+  </tr>
+</table>
 
-**License: Apache-2.0** · **Python 3.12+** · **GStreamer 1.26+**
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![GStreamer 1.26+](https://img.shields.io/badge/GStreamer-1.26+-F47B20.svg)](https://gstreamer.freedesktop.org/)
+[![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82.svg?logo=nuxt&logoColor=white)](https://nuxt.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
-A live video mixing application with a web-based interface. Mix inputs into scenes, cut scenes to program, and stream the output to one or more destinations.
-
-Developed by and for [DORFTV](https://dorftv.at). Inspired by [bbc/brave](https://github.com/bbc/brave).
-
-<!-- Screenshots coming soon -->
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/main-ui.png" alt="Main mixing interface — scene grid, program output, and multi-input panel"></td>
+    <td width="50%"><img src=".github/screenshots/nodecg-overlay.png" alt="NodeCG broadcast graphics overlay with live lower third controls"></td>
+  </tr>
+</table>
 
 ## Concept
 
@@ -55,7 +71,7 @@ Inputs → Scenes → Program → Outputs
 
 ### Encoders
 
-Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan. Software fallback via x264/x265. Set `video_encoder.name = "auto"` to pick the best available encoder at startup.
+Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan. Software fallback via x264/x265. Set `video_encoder.name = "auto"` to pick the best available encoder at startup. Multiple outputs can share a single encoder, or each output can have its own dedicated encoder.
 
 | Encoder | Type |
 |---------|------|
@@ -75,7 +91,7 @@ Per-input dynamic filter chains, applied at runtime without pipeline restart.
 
 ### Previews
 
-- **WebRTC** — sub-second latency preview in the browser. Seamless source switching without WebRTC teardown.
+- **WebRTC** — sub-second latency preview in the browser.
 - **HLS** — works in restricted networks, through any reverse proxy over HTTPS.
 
 ### Keyboard Shortcuts
@@ -83,6 +99,10 @@ Per-input dynamic filter chains, applied at runtime without pipeline restart.
 Full keyboard control for live production: scene selection (1–9), cut/crossfade (Enter), transition toggle (T), and more. Press `?` in the UI for the full list. See [`docs/keyboard-shortcuts.md`](docs/keyboard-shortcuts.md).
 
 ## Quick Start
+
+**Want a ready-to-run setup with example inputs and scenes?** See [dove-demo](https://github.com/dorftv/dove-demo) for a pre-configured docker-compose stack you can spin up in one command.
+
+To install DOVE from scratch:
 
 ### Docker Compose
 
@@ -141,44 +161,24 @@ Four roles: User, Supervisor, Outputs, Admin. See [`docs/auth.md`](docs/auth.md)
 
 In-app help is available at `/help` after starting DOVE. All docs are in the [`docs/`](docs/) directory:
 
-- [Interface overview](docs/interface.md)
-- [Inputs](docs/inputs.md) — [uridecodebin3](docs/inputs-uridecodebin3.md), [playlist](docs/inputs-playlist.md), [wpesrc](docs/inputs-wpesrc.md), [ytdlp](docs/inputs-ytdlp.md), [nodecg](docs/inputs-nodecg.md), [testsrc](docs/inputs-testsrc.md)
-- [Scenes](docs/scenes.md)
-- [Outputs](docs/outputs.md) · [Encoders](docs/encoders.md)
-- [Audio filters](docs/audio-filters.md) · [Video filters](docs/video-filters.md)
-- [Previews](docs/previews.md)
-- [Configuration](docs/config.md)
-- [Authentication](docs/auth.md)
-- [Debugging](docs/debugging.md)
+**Setup** — [Interface overview](docs/interface.md) · [Configuration](docs/config.md) · [Authentication](docs/auth.md)
+
+**Pipeline** — [Inputs](docs/inputs.md) ([uridecodebin3](docs/inputs-uridecodebin3.md) · [playlist](docs/inputs-playlist.md) · [wpesrc](docs/inputs-wpesrc.md) · [ytdlp](docs/inputs-ytdlp.md) · [nodecg](docs/inputs-nodecg.md) · [testsrc](docs/inputs-testsrc.md)) · [Scenes](docs/scenes.md) · [Outputs](docs/outputs.md) · [Encoders](docs/encoders.md)
+
+**Effects & Output** — [Audio filters](docs/audio-filters.md) · [Video filters](docs/video-filters.md) · [Previews](docs/previews.md)
+
+**Operations** — [Debugging](docs/debugging.md)
 
 ## Tech Stack
 
-- **GStreamer 1.26+** — single unified pipeline
+- **GStreamer 1.26+**
 - **FastAPI + uvicorn** — REST API and WebSocket
 - **Nuxt 4** — web frontend
 - **Python 3.12+**
-- **yt-dlp** — stream URL extraction
 
 ## Development
 
-**Backend:**
-```bash
-cd dove
-poetry install
-python main.py -c config.toml
-```
-
-**Frontend:**
-```bash
-cd dove-frontend
-npm install
-npm run dev   # http://localhost:3000
-```
-
-**GStreamer debug:**
-```bash
-GST_DEBUG=2 GST_DEBUG_DUMP_DOT_DIR=/tmp python main.py -c config.toml
-```
+Running DOVE natively from a Python venv: see [`docs/install.md`](docs/install.md).
 
 ## Contributing
 
@@ -186,10 +186,9 @@ Contributions are welcome! Please open an issue first to discuss larger changes.
 
 ## Notes
 
-- `wpesrc` requires `--cap-add SYS_ADMIN` and `--security-opt apparmor=unconfined` (handled by the provided compose files)
 - Decklink requires a supported Blackmagic Design card and the `decklink` GStreamer plugin
 - WebRTC previews use `announced_ip` for the server's public IP — set in `config.toml` or via `ANNOUNCED_IP` env var
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[GNU Affero General Public License v3.0](LICENSE)

@@ -13,9 +13,9 @@ See [Encoders](encoders) for encoder selection and configuration.
 | RTMP | Push to a streaming server (Nginx, Wowza, etc.) |
 | RTSP | Push to an RTSP server |
 | HLS | Segments written to disk, served via HTTP |
+| Recording (`splitmuxsink`) | Segmented file recording to disk (configurable mux) |
 | Decklink | SDI/HDMI output via a Blackmagic Design capture card |
 | Icecast | Icecast/Shoutcast audio stream |
-| WHIP | WebRTC WHIP push to a media server *(not functional)* |
 
 ## Adding an Output
 

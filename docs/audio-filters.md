@@ -40,6 +40,8 @@ Filters are applied in order between the volume control and the output.
 | Filter | Description | Parameters |
 |--------|-------------|------------|
 | **Echo/Delay** | Audio echo with feedback | `delay` (1–1000 ms), `intensity` (0–1), `feedback` (0–0.9) |
+| **Denoise** | RNNoise speech denoiser, ~10 ms latency | `vad_threshold` (0–1) |
+| **Loudnorm** | EBU R128 loudness normalization (3 s lookahead) | `target` (LUFS), `range` (LU), `peak` (dBTP), `offset` (dB) |
 
 ## Using the UI
 

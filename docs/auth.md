@@ -61,7 +61,7 @@ Permissions are based on OIDC groups. A user can have multiple groups (additive)
 
 | Role | Group (default) | Permissions |
 |------|----------------|-------------|
-| User | `dove-user` | Create/delete inputs, cut program, add/remove sources in scenes, control playback, browse files |
+| User | `dove-user` | Create/delete inputs, cut program, add/remove sources in scenes, control playback, browse files, NodeCG dashboard access |
 | Supervisor | `dove-supervisor` | Create/delete scenes, add/remove slots, edit slot properties (position, size, alpha, volume) |
 | Outputs | `dove-outputs` | Create/delete outputs and encoders |
 | Admin | `dove-admin` | Everything including config, debug pages, system settings |
@@ -191,6 +191,8 @@ name = "admin-scripts"
 role = "admin"
 ```
 
+`role` defaults to `user` if omitted — set `role = "admin"` only for trusted scripts that need full access.
+
 Or via environment variable (single token, convenient for Docker):
 
 ```
@@ -219,3 +221,9 @@ curl -H "Authorization: Bearer $TOKEN" http://dove:5000/api/outputs
 ```
 
 Both methods work for REST API and WebSocket connections. The auth check order is: session cookie → static API token → OIDC JWT.
+
+Browsers authenticate the WebSocket via the session cookie automatically. Headless clients must send the token as a WebSocket handshake header — query-string tokens are not supported:
+
+```bash
+wscat -H "Authorization: Bearer your-secret-here" -c ws://dove:5000/ws
+```

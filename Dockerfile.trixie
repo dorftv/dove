@@ -11,7 +11,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install cargo-c
 
-ARG GST_RS_VERSION=0.15
+ARG GST_RS_VERSION=0.15.2
 RUN git clone --depth 1 -b ${GST_RS_VERSION} \
     https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
 
@@ -83,4 +83,4 @@ ENV XDG_RUNTIME_DIR=/tmp
 EXPOSE 5000
 
 USER dove
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]

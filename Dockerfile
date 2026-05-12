@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.28.2
+ARG GSTREAMER_VERSION=1.28.3
 
 # Core build deps
 RUN apk add --no-cache \
@@ -76,7 +76,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN cargo install --locked cargo-c
 
-ARG GST_RS_VERSION=0.15
+ARG GST_RS_VERSION=0.15.2
 RUN git clone --depth 1 -b ${GST_RS_VERSION} \
     https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
 
@@ -145,9 +145,8 @@ COPY . /app
 WORKDIR /app
 RUN cp config-example.toml config.toml
 
+RUN python3 -m pip install --upgrade --break-system-packages 'pip>=26.1' 'setuptools>=78.1.1'
 RUN pip install . --ignore-installed --break-system-packages
-RUN pip install ruff --break-system-packages
-ENV RUFF_CACHE_DIR=/tmp/.ruff_cache
 
 # Non-root user with video group (GPU access via /dev/dri)
 RUN addgroup -S dove && adduser -S -G dove dove \
@@ -164,8 +163,9 @@ ENV JSC_SIGNAL_FOR_GC=14
 ENV DBUS_SESSION_BUS_ADDRESS=disabled:
 ENV WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
 
-# Pre-scan GStreamer plugins at build time (baked registry = instant startup)
+USER dove
+
+# Pre-scan GStreamer plugins at build time (baked registry = instant startup, no warnings on first run)
 RUN gst-inspect-1.0 > /dev/null 2>&1
 
-USER dove
 CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]

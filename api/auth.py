@@ -88,7 +88,10 @@ async def _get_oidc_metadata() -> dict:
     if _oidc_metadata:
         return _oidc_metadata
     cfg = _get_config()
-    internal = cfg['internal_issuer'].rstrip('/')
+    internal = cfg.get('internal_issuer', '').strip().rstrip('/')
+    if not internal:
+        # No OIDC issuer configured — token-only deployment. Treat as auth failure.
+        raise HTTPException(status_code=401, detail="Invalid token")
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{internal}/.well-known/openid-configuration")
@@ -195,7 +198,7 @@ def _check_api_token(token: str) -> Optional[UserInfo]:
     for t in cfg.get('api_tokens', []):
         if secrets.compare_digest(t['token'], token):
             groups_map = cfg.get('groups', {})
-            role = t.get('role', 'admin')
+            role = t.get('role', 'user')
             group = groups_map.get(role, role)
             return UserInfo(
                 sub=f"api-token:{t.get('name', 'unnamed')}",
@@ -250,12 +253,6 @@ async def get_current_user(request: HTTPConnection, response: Response = None) -
             refresh_token=refresh_token,
             expires_at=expires_at,
         )
-
-    query_token = request.query_params.get('token')
-    if query_token:
-        api_user = _check_api_token(query_token)
-        if api_user:
-            return api_user
 
     auth_header = request.headers.get('authorization', '')
     if auth_header.startswith('Bearer '):

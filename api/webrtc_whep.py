@@ -476,6 +476,8 @@ async def whep_offer(source_uid: str, request: Request):
     if "application/sdp" not in content_type:
         return Response(status_code=400, content="Content-Type must be application/sdp")
 
+    if int(request.headers.get('content-length', 0)) > 65536:
+        raise HTTPException(status_code=413, detail="Payload too large")
     sdp_offer = (await request.body()).decode("utf-8")
     peer_id = str(uuid.uuid4())
     resource_id = str(uuid.uuid4())
@@ -646,6 +648,8 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                 entity = handler.get_pipeline_by_uid(source_uid)
                 if not entity or not config.is_public_preview(entity.data.name):
                     return Response(status_code=401)
+        if int(request.headers.get('content-length', 0)) > 65536:
+            raise HTTPException(status_code=413, detail="Payload too large")
         body = (await request.body()).decode("utf-8")
         sdp_mline_index = 0
         for line in body.strip().split("\n"):

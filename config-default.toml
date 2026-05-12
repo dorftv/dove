@@ -112,7 +112,7 @@ enabled = false
 # [[auth.api_tokens]]
 # token = "your-secret-here"
 # name = "admin-scripts"
-# role = "admin"
+# role = "admin"  # default is "user"; set to "admin" only for trusted scripts
 
 # Entity names whose previews are accessible without authentication
 public_previews = []

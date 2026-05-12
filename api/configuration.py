@@ -375,7 +375,11 @@ async def export_config(
     return Response(
         content=toml_str,
         media_type="application/toml",
-        headers={"Content-Disposition": "attachment; filename=dove-config.toml"},
+        headers={
+            "Content-Disposition": "attachment; filename=dove-config.toml",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+        },
     )
 
 

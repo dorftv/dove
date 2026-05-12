@@ -11,7 +11,7 @@ Endpoints mirror the WHEP pattern:
 import asyncio
 import uuid
 from uuid import UUID
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from api.webrtc_utils import get_host_ip
 from event_loop_bridge import bridge
@@ -49,6 +49,9 @@ async def whip_offer(input_uid: str, request: Request):
     content_type = request.headers.get("content-type", "")
     if "application/sdp" not in content_type:
         return Response(status_code=400, content="Content-Type must be application/sdp")
+
+    if int(request.headers.get('content-length', 0)) > 65536:
+        raise HTTPException(status_code=413, detail="Payload too large")
 
     whip_input = _find_whip_input(input_uid)
     if not whip_input:
@@ -119,6 +122,8 @@ async def whip_ice_candidate(resource_id: str, request: Request):
     content_type = request.headers.get("content-type", "")
 
     if "application/trickle-ice-sdpfrag" in content_type:
+        if int(request.headers.get('content-length', 0)) > 65536:
+            raise HTTPException(status_code=413, detail="Payload too large")
         body = (await request.body()).decode("utf-8")
         # Note: a=mid: is technically a string, but browsers use numeric indices.
         # Falls back to 0 if non-numeric (safe for video-only streams).

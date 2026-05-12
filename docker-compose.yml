@@ -22,12 +22,6 @@ services:
       - 10000-10100:10000-10100/udp
     networks:
       - dove
-    security_opt:
-      - "apparmor=unconfined"
-      - "seccomp=unconfined"
-    cap_add:
-     - SYS_ADMIN
-     - CAP_NET_ADMIN
     deploy:
       resources:
         limits:

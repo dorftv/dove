@@ -11,6 +11,7 @@ import websockets
 from fastapi import APIRouter, Request, WebSocket, HTTPException
 from fastapi.responses import Response
 
+from api.auth import is_auth_enabled, get_current_user
 from config_handler import ConfigReader
 from logger import logger
 
@@ -132,6 +133,20 @@ async def proxy_dashboard_js(request: Request):
 
 @router.websocket("/socket.io/")
 async def ws_proxy(client_ws: WebSocket):
+    if is_auth_enabled():
+        try:
+            user = await get_current_user(client_ws)
+        except Exception:
+            await client_ws.close(code=4001, reason="Not authenticated")
+            return
+        auth_cfg = config.get_auth_config()
+        groups_map = auth_cfg.get('groups', {})
+        admin_group = groups_map.get('admin', 'dove-admin')
+        user_group = groups_map.get('user', 'dove-user')
+        if admin_group not in user.groups and user_group not in user.groups:
+            await client_ws.close(code=4003, reason="Insufficient permissions")
+            return
+
     url = _get_url()
     if not url:
         await client_ws.close(code=1008, reason="NodeCG not configured")

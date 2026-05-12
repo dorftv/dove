@@ -5,6 +5,7 @@ import threading
 from contextlib import asynccontextmanager
 from threading import Thread
 from fastapi import FastAPI
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 
 import uvicorn
@@ -81,7 +82,23 @@ class APIThread(Thread):
         if auth_config.get('enabled') and not auth_config.get('cookie_secret'):
             logger.log("Auth enabled without cookie_secret — sessions won't persist across restarts", level='WARNING')
 
-        fastapi = FastAPI(lifespan=self.lifespan, docs_url="/api/debug/docs", redoc_url=None)
+        fastapi = FastAPI(
+            lifespan=self.lifespan,
+            docs_url=None,
+            openapi_url=None,
+            redoc_url=None,
+        )
+
+        @fastapi.get("/api/debug/docs", include_in_schema=False,
+                     dependencies=[auth_module.require_role("admin")])
+        async def _swagger_ui():
+            return get_swagger_ui_html(openapi_url="/openapi.json", title="DOVE API")
+
+        @fastapi.get("/openapi.json", include_in_schema=False,
+                     dependencies=[auth_module.require_role("admin")])
+        async def _openapi():
+            return fastapi.openapi()
+
         fastapi.include_router(auth_module.router, tags=['Auth'])
         fastapi.include_router(configuration.router, tags=['Config'])
 
@@ -119,7 +136,7 @@ class APIThread(Thread):
         if 'playlist' in proxy_types:
             fastapi.include_router(playlist.router, tags=['Proxy'], dependencies=proxy_deps)
         if 'nodecg' in proxy_types:
-            fastapi.include_router(nodecg_proxy.router, tags=['NodeCG Proxy'], dependencies=proxy_deps)
+            fastapi.include_router(nodecg_proxy.router, tags=['NodeCG Proxy'], dependencies=[auth_module.require_role("user")])
 
 
         @fastapi.middleware("http")
@@ -141,6 +158,6 @@ class APIThread(Thread):
         access_logger.addFilter(SuppressHLSAccessFilter())
         access_logger.addFilter(RedactTokenAccessFilter())
 
-        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10)
+        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10, ws_max_size=65536)
         server = uvicorn.Server(uvicorn_config)
         loop.run_until_complete(server.serve())

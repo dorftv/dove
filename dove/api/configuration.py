@@ -1,4 +1,5 @@
 import os
+from importlib.metadata import version as _pkg_version, PackageNotFoundError
 import toml
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import JSONResponse, Response
@@ -82,6 +83,10 @@ def get_safe_config():
                              if k not in ('turn_password',)}
         else:
             safe[section] = values
+    try:
+        safe['version'] = _pkg_version("dove-video-editor")
+    except PackageNotFoundError:
+        safe['version'] = "dev"
     return safe
 
 @router.get("/config/preview_enabled", dependencies=[require_read()])

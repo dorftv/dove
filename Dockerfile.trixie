@@ -83,4 +83,4 @@ ENV XDG_RUNTIME_DIR=/tmp
 EXPOSE 5000
 
 USER dove
-CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]
+CMD ["python3", "-m", "dove.main", "--config", "/app/config.toml"]

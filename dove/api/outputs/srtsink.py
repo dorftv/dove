@@ -1,0 +1,79 @@
+from fastapi import APIRouter, Request
+from pydantic import Field
+from dove.api.output_models import OutputDTO, SuccessDTO
+from typing import Optional, Union
+from uuid import UUID
+from dove.api.encoder.video_encoder import h264EncoderUnion, h265EncoderUnion, x264EncoderDTO
+from dove.api.encoder.audio_encoder import aacEncoderDTO, mp2EncoderDTO
+from dove.api.encoder.mux import mpegtsMuxDTO
+
+from dove.event_loop_bridge import safe_broadcast
+from dove.api.helper import create_or_raise
+
+
+
+router = APIRouter()
+
+class srtsinkOutputDTO(OutputDTO):
+    type: str = Field(
+        label="SRT Sink",
+        default="srtsink",
+        description="stream output to SRT Server.",
+    )
+    uri: str = Field(
+        label="Uri",
+        title="Uri",
+        description="Enter SRT Server URL and Port",
+        placeholder="srt://server:port"
+    )
+
+    streamid: Optional[str] = Field(
+        default=None,
+        label="Stream ID",
+        description="Optional stream identifier",
+        placeholder="streamid"
+    )
+
+    latency: Optional[int] = Field(
+        default=300,
+        label="Latency",
+        description="Latency",
+        placeholder="300"
+    )
+
+    video_encoder: Union[UUID, h264EncoderUnion, h265EncoderUnion] = Field(
+        default_factory=lambda: x264EncoderDTO(
+            options="bitrate=4000 pass=cbr speed-preset=veryfast",
+            profile="main",
+        ),
+    )
+    audio_encoder: Union[UUID, aacEncoderDTO, mp2EncoderDTO] = Field(
+        default_factory=lambda: aacEncoderDTO(
+            name="aac",
+            options=""
+        ),
+    )
+    mux: mpegtsMuxDTO = Field(
+        default_factory=lambda: mpegtsMuxDTO(
+            name = "mpegtsmux",
+            options="alignment=7 latency=4000000000"
+        ),
+    )
+
+from dove.pipelines.outputs.srtsink import srtsinkOutput
+
+@router.put("/srtsink", response_model=SuccessDTO)
+async def create_srtsink_output(request: Request, data: srtsinkOutputDTO):
+    handler = request.app.state.pipeline_handler
+    output = handler.get_pipeline("outputs", data.uid)
+
+    if output:
+        output.data = data
+        safe_broadcast("UPDATE", data)
+    else:
+        output = srtsinkOutput(data=data)
+        await create_or_raise(handler, output)
+
+    return data
+
+

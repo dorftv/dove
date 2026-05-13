@@ -60,7 +60,7 @@ pip install -e .
 # config.toml is gitignored; create it with the standard 3-line header
 printf '# DOVE config overrides\n# Values here override config-default.toml (per-section, not deep merge)\n# See config-default.toml for all available options\n' > config.toml
 
-python main.py --config config.toml
+python -m dove.main --config config.toml
 ```
 
 DOVE listens on `http://localhost:5000`.
@@ -70,7 +70,7 @@ DOVE listens on `http://localhost:5000`.
 ```bash
 cd dove
 poetry install
-poetry run python main.py --config config.toml
+poetry run python -m dove.main --config config.toml
 ```
 
 ## Frontend
@@ -86,5 +86,5 @@ The dev server proxies API/WebSocket/WHEP traffic to `http://localhost:5000` by 
 ## GStreamer debug
 
 ```bash
-GST_DEBUG=2 GST_DEBUG_DUMP_DOT_DIR=/tmp python main.py -c config.toml
+GST_DEBUG=2 GST_DEBUG_DUMP_DOT_DIR=/tmp python -m dove.main -c config.toml
 ```

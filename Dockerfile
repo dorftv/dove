@@ -168,4 +168,4 @@ USER dove
 # Pre-scan GStreamer plugins at build time (baked registry = instant startup, no warnings on first run)
 RUN gst-inspect-1.0 > /dev/null 2>&1
 
-CMD ["python3", "/app/main.py", "--config", "/app/config.toml"]
+CMD ["python3", "-m", "dove.main", "--config", "/app/config.toml"]

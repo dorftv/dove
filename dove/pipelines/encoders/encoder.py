@@ -46,6 +46,14 @@ class Encoder(GSTBase):
         # Preview encoders: omit height so GStreamer preserves input aspect ratio
         is_preview = getattr(self.data, 'is_preview', False)
 
+        # Preview FPS via videorate max-rate (runtime tunable, no caps renegotiation)
+        max_rate = None
+        if is_preview and self.data.framerate:
+            try:
+                max_rate = int(self.data.framerate.split('/')[0])
+            except (ValueError, IndexError):
+                max_rate = None
+
         # Caps
         caps_parts = [f"video/x-raw,format={fmt}"]
         if self.data.width:
@@ -54,9 +62,13 @@ class Encoder(GSTBase):
             caps_parts.append(f"height={self.data.height}")
         if is_preview:
             caps_parts.append("pixel-aspect-ratio=1/1")
-        if self.data.framerate:
+        if self.data.framerate and not is_preview:
             caps_parts.append(f"framerate={self.data.framerate}")
         caps_str = ",".join(caps_parts)
+
+        videorate_str = "videorate skip-to-first=true"
+        if max_rate is not None:
+            videorate_str = f"videorate skip-to-first=true max-rate={max_rate}"
 
         # Encoder element + options
         opts = (self.data.options or '').strip()
@@ -78,13 +90,13 @@ class Encoder(GSTBase):
             # GPU path: vapostproc handles format conversion + scaling
             parts.extend([
                 pre,
-                "videorate skip-to-first=true",
+                videorate_str,
                 caps_str,
             ])
         else:
             # CPU path: standard videoconvert + videoscale
             parts.extend([
-                "videoconvert", "videoscale", "videorate skip-to-first=true",
+                "videoconvert", "videoscale", videorate_str,
                 caps_str,
             ])
             if pre:

@@ -234,7 +234,6 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
 
     fps = max(1, min(data.fps, 60))
 
-    # video/x-raw capsfilter, not the video/x-h264 profile capsfilter
     targets = []
     for enc in handler._pipelines.get("encoders", []):
         if not getattr(enc.data, 'is_preview', False):
@@ -250,17 +249,13 @@ def set_preview_fps(request: Request, data: PreviewFpsDTO):
             if result != Gst.IteratorResult.OK:
                 break
             factory = element.get_factory()
-            if factory and factory.get_name() == "capsfilter":
-                caps = element.get_property("caps")
-                if caps and caps.to_string().startswith("video/x-raw"):
-                    targets.append((enc, element))
-                    break
+            if factory and factory.get_name() == "videorate":
+                targets.append((enc, element))
+                break
 
     def apply_fps():
-        for enc, cf in targets:
-            new_caps = cf.get_property("caps").copy()
-            new_caps.get_structure(0).set_value("framerate", Gst.Fraction(fps, 1))
-            cf.set_property("caps", new_caps)
+        for enc, vrate in targets:
+            vrate.set_property("max-rate", fps)
             enc.data.framerate = f"{fps}/1"
             safe_broadcast("UPDATE", enc.data, type="encoder")
         return False

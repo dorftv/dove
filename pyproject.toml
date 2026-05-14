@@ -1,12 +1,25 @@
 [tool.poetry]
-name = "dove"
-version = "0.7.0"
-description = "DOVE - DORFTV Online Video Editor"
+name = "dove-video-editor"
+version = "1.0.0rc1"
+description = "DOVE - Online Video Editor"
 authors = ["Stefan Hageneder <stefan.hageneder@dorftv.at>"]
-license = "Apache-2.0"
+license = "AGPL-3.0-or-later"
 readme = "README.md"
 homepage = "https://github.com/dorftv/dove"
 repository = "https://github.com/dorftv/dove"
+keywords = ["gstreamer", "video", "live-streaming", "broadcast", "webrtc", "srt", "rtmp", "mixer"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Video :: Capture",
+    "Topic :: Multimedia :: Sound/Audio :: Mixers",
+]
 packages = [{include = "dove"}]
 
 [tool.poetry.scripts]

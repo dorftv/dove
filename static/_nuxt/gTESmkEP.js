@@ -1,0 +1,1 @@
+function a(e,t={}){const o=localStorage.getItem("dove-api-token");return o&&(t.headers={...t.headers,Authorization:`Bearer ${o}`}),$fetch(e,t)}function r(){const e=localStorage.getItem("dove-api-token");return e?{Authorization:`Bearer ${e}`}:{}}export{r as a,a as u};

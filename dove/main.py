@@ -18,9 +18,25 @@ _fault_out = _crash_file or sys.stderr
 faulthandler.enable(file=_fault_out, all_threads=True)
 faulthandler.register(signal.SIGUSR2, file=_fault_out, all_threads=True)
 
+# In-process scan so we can filter harmless GstIntRange CRITICALs from Python.
+os.environ.setdefault('GST_REGISTRY_FORK', 'no')
+
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib
+
+def _filter_intrange_critical(domain, level, message, _user_data):
+    if 'gst_value_collect_int_range' in message or 'range start is not smaller' in message:
+        return
+    print(f'({domain}-CRITICAL): {message}', file=sys.stderr, flush=True)
+
+GLib.log_set_handler(
+    'GStreamer', GLib.LogLevelFlags.LEVEL_CRITICAL,
+    _filter_intrange_critical, None,
+)
+
+from gi.repository import Gst  # noqa: E402
+Gst.init([])
 
 from dove.api_thread import APIThread
 from dove.pipeline_handler import HandlerSingleton

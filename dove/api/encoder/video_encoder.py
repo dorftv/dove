@@ -92,7 +92,7 @@ class vulkanh264encEncoderDTO(h264EncoderDTO):
     name: Literal["vulkanh264enc"] = "vulkanh264enc"
     element: Literal["vulkanh264enc"] = "vulkanh264enc"
     format: ClassVar[str] = "NV12"
-    pre_elements: ClassVar[str] = "vulkanupload"
+    pre_elements: ClassVar[str] = "vulkan"
     post_elements: ClassVar[str] = "h264parse"
     options: Optional[str] = Field(
         label = "vulkanh264enc options",
@@ -154,7 +154,7 @@ class vulkanh265encEncoderDTO(h265EncoderDTO):
     name: Literal["vulkanh265enc"] = "vulkanh265enc"
     element: Literal["vulkanh265enc"] = "vulkanh265enc"
     format: ClassVar[str] = "NV12"
-    pre_elements: ClassVar[str] = "vulkanupload"
+    pre_elements: ClassVar[str] = "vulkan"
     post_elements: ClassVar[str] = "h265parse"
 
 

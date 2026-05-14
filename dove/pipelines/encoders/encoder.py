@@ -81,6 +81,7 @@ class Encoder(GSTBase):
 
         # Build pipeline
         use_vapostproc = pre.startswith("vapostproc") if pre else False
+        use_vulkan = pre.startswith("vulkan") if pre else False
         parts = [
             f"queue name=enc_queue_{uid} leaky=upstream max-size-buffers=1",
             # ts-offset set by paired audio encoder when filters add latency
@@ -92,6 +93,15 @@ class Encoder(GSTBase):
                 pre,
                 videorate_str,
                 caps_str,
+            ])
+        elif use_vulkan:
+            # Vulkan encoder: CPU pre-convert/scale (no Vulkan-side scaler in 1.28.3),
+            # videorate before vulkanupload (system memory only).
+            parts.extend([
+                videorate_str,
+                "videoconvert", "videoscale",
+                caps_str,
+                "vulkanupload",
             ])
         else:
             # CPU path: standard videoconvert + videoscale

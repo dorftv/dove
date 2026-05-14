@@ -16,7 +16,7 @@ Outputs can share an encoder: when multiple outputs use the same encoder, the en
 
 ## Auto Selection
 
-Setting `video_encoder.name = "auto"` in `config.toml` lets DOVE pick the best available encoder at startup. It probes hardware encoders first and falls back to software (`x264`) if none are available.
+Setting `video_encoder.name = "auto"` in `config.toml` lets DOVE pick the best available encoder at startup. Priority order for H.264: `vah264enc` → `vah264lpenc` → `vaapih264enc` → `vulkanh264enc` → `openh264enc` → `x264enc`. VAAPI is preferred over Vulkan because the matching `vapostproc` element does color conversion and scaling on the GPU — no equivalent exists for the Vulkan path in GStreamer 1.28 yet.
 
 ## Configuration
 

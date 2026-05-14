@@ -40,8 +40,8 @@ _HARDWARE_ENCODERS = {
 
 # Auto-detection priority (best first)
 AUTO_PRIORITY = {
-    "h264": ["vulkanh264enc", "vah264enc", "vah264lpenc", "vaapih264enc", "openh264enc", "x264enc"],
-    "h265": ["vulkanh265enc", "vah265enc", "vaapih265enc", "x265enc"],
+    "h264": ["vah264enc", "vah264lpenc", "vaapih264enc", "vulkanh264enc", "openh264enc", "x264enc"],
+    "h265": ["vah265enc", "vaapih265enc", "vulkanh265enc", "x265enc"],
     "vp8":  ["vp8enc"],
     "vp9":  ["vp9enc"],
     "av1":  ["av1enc"],

@@ -28,6 +28,7 @@ client_secret = ""    # OIDC client secret (confidential client)
 # cookie_secret = ""  # auto-generated if not set (sessions lost on restart)
 # cookie_secure = true  # set false for local HTTP dev
 # allowed_origins = []  # trusted redirect origins for multi-port dev setups
+# scope = "openid"  # OAuth scope; only set if your IdP requires a named scope to emit the groups claim
 
 # Internal issuer URL for Docker deployments where the backend
 # reaches the IdP via a different hostname than the browser.
@@ -54,6 +55,7 @@ All settings can be overridden via environment variables:
 | `AUTH_COOKIE_SECRET` | `auth.cookie_secret` |
 | `AUTH_COOKIE_SECURE=false` | `auth.cookie_secure` |
 | `AUTH_ALLOWED_ORIGINS` | `auth.allowed_origins` |
+| `AUTH_SCOPE` | `auth.scope` |
 
 ## Roles & Permissions
 
@@ -123,7 +125,7 @@ Create an OpenID Connect client:
 
 ### Group Claim
 
-Ensure group membership is included in the access token as a `groups` claim (array of group names). In Keycloak this is a "Group Membership" mapper with token claim name `groups` and "Full group path" off.
+Ensure group membership is included in the access token as a `groups` claim (array of group names). In Keycloak this is a "Group Membership" mapper with token claim name `groups` and "Full group path" off. Attach the mapper to the client's dedicated scope (`<client>-dedicated` under Client scopes) so groups are emitted on every token for this client — the default `scope = "openid"` is enough. If you instead attach it to a separate client scope, name that scope in `auth.scope` (e.g. `"openid dove-groups"`).
 
 ### Users
 

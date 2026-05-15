@@ -108,6 +108,7 @@ enabled = false
 # cookie_secret = ""  # auto-generated if not set (sessions lost on restart)
 # cookie_secure = true  # set false for local HTTP dev
 # allowed_origins = []  # trusted redirect origins, e.g. ["http://localhost:3000"]
+# scope = "openid"  # OAuth scope; only set if your IdP requires a specific scope name to emit the groups claim
 
 # Static API tokens for scripts (no OIDC provider needed)
 # [[auth.api_tokens]]

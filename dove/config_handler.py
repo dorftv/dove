@@ -195,6 +195,7 @@ class ConfigReader:
             'cookie_secret': '',
             'cookie_secure': True,
             'allowed_origins': [],
+            'scope': 'openid',
             'api_tokens': [],
             'groups': {
                 'user': 'dove-user',
@@ -216,7 +217,7 @@ class ConfigReader:
         import os
         if os.environ.get('AUTH_ENABLED', '').lower() in ('true', '1'):
             defaults['enabled'] = True
-        for key in ('issuer', 'internal_issuer', 'client_id', 'client_secret', 'cookie_secret'):
+        for key in ('issuer', 'internal_issuer', 'client_id', 'client_secret', 'cookie_secret', 'scope'):
             env_val = os.environ.get(f'AUTH_{key.upper()}')
             if env_val:
                 defaults[key] = env_val

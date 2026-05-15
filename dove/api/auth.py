@@ -334,7 +334,7 @@ async def login(request: Request):
         client_id=cfg['client_id'],
         client_secret=cfg['client_secret'],
         redirect_uri=callback_url,
-        scope='openid dove-groups',
+        scope=cfg['scope'],
     )
     uri, state = client.create_authorization_url(meta['authorization_endpoint'])
     response = RedirectResponse(uri)
@@ -356,6 +356,13 @@ async def auth_callback(request: Request):
     stored_state = request.cookies.get('oauth_state')
     if not stored_state:
         raise HTTPException(status_code=400, detail="Missing oauth_state cookie — restart login flow")
+    # Surface IdP-side errors before code exchange (avoids misleading token-endpoint crash).
+    err = request.query_params.get('error')
+    if err:
+        desc = request.query_params.get('error_description', '')
+        detail = f"{err}: {desc}" if desc else err
+        logger.log(f"OIDC callback returned error: {detail}", level='WARNING')
+        raise HTTPException(status_code=400, detail=detail)
     callback_url = f"{redirect_base}/auth/callback"
     client = AsyncOAuth2Client(
         client_id=cfg['client_id'],

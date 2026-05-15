@@ -49,6 +49,7 @@ audio_channels = 2
 
 hls_path = "/var/dove/hls"
 recordings_path = "/var/dove/recordings"
+# forwarded_allow_ips = "*"  # trust X-Forwarded-* from these sources; "*" = any, or comma-separated IPs/CIDRs
 
 
 #preview settings

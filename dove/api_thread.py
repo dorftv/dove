@@ -158,6 +158,6 @@ class APIThread(Thread):
         access_logger.addFilter(SuppressHLSAccessFilter())
         access_logger.addFilter(RedactTokenAccessFilter())
 
-        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10, ws_max_size=65536)
+        uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10, ws_max_size=65536, proxy_headers=True, forwarded_allow_ips=config.get_forwarded_allow_ips())
         server = uvicorn.Server(uvicorn_config)
         loop.run_until_complete(server.serve())

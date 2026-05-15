@@ -176,6 +176,13 @@ class ConfigReader:
     def get_recordings_path(self):
         return self.config.get('main', {}).get('recordings_path', '/var/dove/recordings')
 
+    def get_forwarded_allow_ips(self):
+        import os
+        env_val = os.environ.get('FORWARDED_ALLOW_IPS')
+        if env_val:
+            return env_val
+        return self.config.get('main', {}).get('forwarded_allow_ips', '*')
+
     def get_scene_fallback_pattern(self):
         return self.config.get('scenes', {}).get('fallback_pattern', 2)
 

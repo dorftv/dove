@@ -164,6 +164,11 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
     }
 
     # Example: protect another service with DOVE auth
@@ -173,6 +178,8 @@ server {
     }
 }
 ```
+
+DOVE trusts `X-Forwarded-Proto` / `X-Forwarded-Host` by default (`forwarded_allow_ips = "*"`). If DOVE's port is reachable from outside the proxy, tighten this in `[main]` of `config.toml` to the proxy's IP or subnet.
 
 This works because DOVE and the service share the same domain, so the browser sends DOVE's session cookie with every request. Nginx validates the cookie via DOVE before proxying.
 

@@ -1,5 +1,6 @@
 import toml
 import argparse
+from importlib.resources import files
 
 class ConfigReader:
     _instance = None
@@ -7,7 +8,7 @@ class ConfigReader:
     def __new__(cls):
         if cls._instance is None:
             self = super(ConfigReader, cls).__new__(cls)
-            self.default_config_path = "config-default.toml"
+            self.default_config_path = files('dove') / 'config-default.toml'
             parser = argparse.ArgumentParser()
             parser.add_argument("-c", "--config", action="store", type=str, required=False)
             self.args = parser.parse_args()
@@ -23,7 +24,7 @@ class ConfigReader:
                 base[key] = value
 
     def load_config(self):
-        with open(self.default_config_path, 'r') as default_config_file:
+        with self.default_config_path.open('r') as default_config_file:
             config_default = toml.load(default_config_file)
         if self.args.config is not None:
             self.override_config_path = self.args.config

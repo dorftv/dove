@@ -642,7 +642,7 @@ class PipelineHandler(object):
                 self._delete_component(enc, "encoders")
 
         # Clean up HLS segment directory
-        self._cleanup_hls_directory(src_uid)
+        GLib.idle_add(self._cleanup_hls_directory, src_uid)
 
     def _cleanup_hls_directory(self, src_uid):
         """Remove HLS segment files for a source."""
@@ -656,6 +656,7 @@ class PipelineHandler(object):
                 logger.log(f"Cleaned up HLS directory {hls_dir}", level='DEBUG')
             except Exception as e:
                 logger.log(f"Failed to clean HLS directory {hls_dir}: {e}", level='WARNING')
+        return False
 
     def _delete_component(self, pipeline, type):
         """Delete a component, clean up GStreamer resources, and broadcast DELETE."""

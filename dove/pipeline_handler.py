@@ -45,7 +45,9 @@ class PipelineHandler(object):
         self._start_time = time.monotonic()
         self._input_ticks = {}  # uid -> {"timer_id": int, "last_query_ms": float, "skip_count": int}
         self._tick_count = 0
+        self._orphaned_input_bins: list = []
         self._tick()
+        GLib.timeout_add_seconds(30, self._sweep_orphan_input_bins)
 
     def _tick(self):
         GLib.timeout_add_seconds(1, self._tick_callback)
@@ -103,6 +105,24 @@ class PipelineHandler(object):
             # Always reschedule — tick must never stop
             self._tick()
         return False
+
+    def _sweep_orphan_input_bins(self):
+        """Periodic non-blocking check on orphaned input bins; drop those that have settled."""
+        try:
+            cleared = []
+            for b in self._orphaned_input_bins:
+                try:
+                    state_ret, _, _ = b.get_state(0)
+                    if state_ret == Gst.StateChangeReturn.SUCCESS:
+                        cleared.append(b)
+                except Exception:
+                    pass
+            for b in cleared:
+                self._orphaned_input_bins.remove(b)
+                logger.log(f"orphan input bin {b.get_name()} cleanup completed, {len(self._orphaned_input_bins)} orphans remain", level='INFO')
+        except Exception as e:
+            logger.log(f"orphan sweep error: {e}", level='ERROR')
+        return True
 
     def _start_input_tick(self, input_obj):
         uid = input_obj.data.uid
@@ -744,28 +764,48 @@ class PipelineHandler(object):
             except Exception as e:
                 logger.log(f"Output cleanup error for {uid}: {e}", level='ERROR')
 
-        # Lock state and remove from pipeline first (fast since locked).
-        # Then NULL via GLib.idle_add (never use threading.Thread for set_state).
+        # core.remove must run AFTER NULL — early removal strands GstTasks and deadlocks set_state on uridecodebin3 bins.
         component_bin = getattr(pipeline, '_bin', None)
         if component_bin and core:
-            component_bin.set_locked_state(True)
-            if component_bin.get_parent() == core:
-                core.remove(component_bin)
-            logger.log(f"Removed bin for {uid}", level='DEBUG')
             def _deferred_null_bin(b):
+                orphan = False
                 try:
-                    # Unlock all children so NULL propagates (e.g. playlist wpesrc chain)
-                    it = b.iterate_elements()
-                    done = False
-                    while not done:
-                        ret, elem = it.next()
-                        if ret == Gst.IteratorResult.OK:
-                            elem.set_locked_state(False)
-                        else:
-                            done = True
-                    b.set_state(Gst.State.NULL)
+                    name = b.get_name()
+                    try:
+                        b.send_event(Gst.Event.new_flush_start())
+                    except Exception as e:
+                        logger.log(f"flush_start failed for {name}: {e}", level='WARNING')
+                    try:
+                        b.send_event(Gst.Event.new_flush_stop(True))
+                    except Exception as e:
+                        logger.log(f"flush_stop failed for {name}: {e}", level='WARNING')
+                    try:
+                        b.set_state(Gst.State.READY)
+                        state_ret, _, _ = b.get_state(2 * Gst.SECOND)
+                        if state_ret == Gst.StateChangeReturn.ASYNC:
+                            orphan = True
+                            logger.log(f"set_state(READY) ASYNC timeout for {name}", level='WARNING')
+                    except Exception as e:
+                        logger.log(f"set_state(READY) failed for {name}: {e}", level='WARNING')
+                    try:
+                        b.set_state(Gst.State.NULL)
+                        state_ret, _, _ = b.get_state(2 * Gst.SECOND)
+                        if state_ret == Gst.StateChangeReturn.ASYNC:
+                            orphan = True
+                            logger.log(f"set_state(NULL) ASYNC timeout for {name}", level='WARNING')
+                    except Exception as e:
+                        logger.log(f"set_state(NULL) failed for {name}: {e}", level='WARNING')
+                    try:
+                        if b.get_parent() == core:
+                            core.remove(b)
+                    except Exception as e:
+                        logger.log(f"core.remove failed for {name}: {e}", level='WARNING')
                 except Exception as e:
-                    logger.log(f"Exception in deferred set_state(NULL) for {b.get_name()}: {e}", level='ERROR')
+                    logger.log(f"Exception in deferred NULL bin: {e}", level='ERROR')
+                if orphan:
+                    self._orphaned_input_bins.append(b)
+                    if len(self._orphaned_input_bins) > 10:
+                        logger.log(f"_orphaned_input_bins size={len(self._orphaned_input_bins)}", level='INFO')
                 return False
             GLib.idle_add(_deferred_null_bin, component_bin)
 

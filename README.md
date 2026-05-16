@@ -3,7 +3,7 @@
 <table>
   <tr>
     <td width="35%" valign="middle">
-      <img src="assets/logo.png" alt="DOVE" width="240">
+      <img src="dove/assets/logo.png" alt="DOVE" width="240">
     </td>
     <td width="65%" valign="middle">
       DOVE is an API driven Video/Audio Editor for live mixing with an intuitive web based Interface.
@@ -85,9 +85,9 @@ Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan. Software fallback
 
 Per-input dynamic filter chains, applied at runtime without pipeline restart.
 
-**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor (LSP), expander (LSP), gate (LSP), limiter, amplify, pan, invert, echo, denoise, loudnorm. See [`docs/audio-filters.md`](docs/audio-filters.md).
+**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor (LSP), expander (LSP), gate (LSP), limiter, amplify, pan, invert, echo, denoise, loudnorm. See [`dove/docs/audio-filters.md`](dove/docs/audio-filters.md).
 
-**Video:** color balance, flip/mirror, crop, color effects, blur, chroma key. **Experimental (requires `frei0r-plugins`):** pixelate, cartoon, glow, vignette, film grain, glitch, scanlines, sobel edge, color halftone. See [`docs/video-filters.md`](docs/video-filters.md).
+**Video:** color balance, flip/mirror, crop, color effects, blur, chroma key. **Experimental (requires `frei0r-plugins`):** pixelate, cartoon, glow, vignette, film grain, glitch, scanlines, sobel edge, color halftone. See [`dove/docs/video-filters.md`](dove/docs/video-filters.md).
 
 ### Previews
 
@@ -96,7 +96,7 @@ Per-input dynamic filter chains, applied at runtime without pipeline restart.
 
 ### Keyboard Shortcuts
 
-Full keyboard control for live production: scene selection (1–9), cut/crossfade (Enter), transition toggle (T), and more. Press `?` in the UI for the full list. See [`docs/keyboard-shortcuts.md`](docs/keyboard-shortcuts.md).
+Full keyboard control for live production: scene selection (1–9), cut/crossfade (Enter), transition toggle (T), and more. Press `?` in the UI for the full list. See [`dove/docs/keyboard-shortcuts.md`](dove/docs/keyboard-shortcuts.md).
 
 ## Quick Start
 
@@ -130,7 +130,7 @@ Open [http://localhost:5000](http://localhost:5000)
 
 ### Configuration
 
-Copy `config-example.toml` to `config.toml` and edit as needed. See [`docs/config.md`](docs/config.md) for all options.
+Copy `config-example.toml` to `config.toml` and edit as needed. See [`dove/docs/config.md`](dove/docs/config.md) for all options.
 
 ```toml
 [main]
@@ -155,19 +155,19 @@ client_id = "dove-app"
 client_secret = "your-secret"
 ```
 
-Four roles: User, Supervisor, Outputs, Admin. See [`docs/auth.md`](docs/auth.md) for setup, role details, API tokens, and nginx integration.
+Four roles: User, Supervisor, Outputs, Admin. See [`dove/docs/auth.md`](dove/docs/auth.md) for setup, role details, API tokens, and nginx integration.
 
 ## Documentation
 
-In-app help is available at `/help` after starting DOVE. All docs are in the [`docs/`](docs/) directory:
+In-app help is available at `/help` after starting DOVE. All docs are in the [`dove/docs/`](dove/docs/) directory:
 
-**Setup** — [Interface overview](docs/interface.md) · [Configuration](docs/config.md) · [Authentication](docs/auth.md)
+**Setup** — [Interface overview](dove/docs/interface.md) · [Configuration](dove/docs/config.md) · [Authentication](dove/docs/auth.md)
 
-**Pipeline** — [Inputs](docs/inputs.md) ([uridecodebin3](docs/inputs-uridecodebin3.md) · [playlist](docs/inputs-playlist.md) · [wpesrc](docs/inputs-wpesrc.md) · [ytdlp](docs/inputs-ytdlp.md) · [nodecg](docs/inputs-nodecg.md) · [testsrc](docs/inputs-testsrc.md)) · [Scenes](docs/scenes.md) · [Outputs](docs/outputs.md) · [Encoders](docs/encoders.md)
+**Pipeline** — [Inputs](dove/docs/inputs.md) ([uridecodebin3](dove/docs/inputs-uridecodebin3.md) · [playlist](dove/docs/inputs-playlist.md) · [wpesrc](dove/docs/inputs-wpesrc.md) · [ytdlp](dove/docs/inputs-ytdlp.md) · [nodecg](dove/docs/inputs-nodecg.md) · [testsrc](dove/docs/inputs-testsrc.md)) · [Scenes](dove/docs/scenes.md) · [Outputs](dove/docs/outputs.md) · [Encoders](dove/docs/encoders.md)
 
-**Effects & Output** — [Audio filters](docs/audio-filters.md) · [Video filters](docs/video-filters.md) · [Previews](docs/previews.md)
+**Effects & Output** — [Audio filters](dove/docs/audio-filters.md) · [Video filters](dove/docs/video-filters.md) · [Previews](dove/docs/previews.md)
 
-**Operations** — [Debugging](docs/debugging.md)
+**Operations** — [Debugging](dove/docs/debugging.md)
 
 ## Tech Stack
 
@@ -178,7 +178,7 @@ In-app help is available at `/help` after starting DOVE. All docs are in the [`d
 
 ## Development
 
-Running DOVE natively from a Python venv: see [`docs/install.md`](docs/install.md).
+Running DOVE natively from a Python venv: see [`dove/docs/install.md`](dove/docs/install.md).
 
 ## Contributing
 

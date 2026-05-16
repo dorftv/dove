@@ -3,6 +3,7 @@ import logging
 import re
 import threading
 from contextlib import asynccontextmanager
+from importlib.resources import files as resource_files
 from threading import Thread
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -147,10 +148,10 @@ class APIThread(Thread):
             return response
 
         # serve branding assets
-        fastapi.mount("/branding", StaticFiles(directory="assets"), name="branding")
+        fastapi.mount("/branding", StaticFiles(directory=str(resource_files("dove") / "assets")), name="branding")
 
         # serve frontend with StaticFiles
-        fastapi.mount("/", StaticFiles(directory="static", html=True), name="static")
+        fastapi.mount("/", StaticFiles(directory=str(resource_files("dove") / "static"), html=True), name="static")
 
 
 

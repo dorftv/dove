@@ -261,7 +261,8 @@ def get_fields(model_class: type(BaseModel), models_path: str) -> dict:
 
 def get_models(models_path: str, exclude_models: Set[str] = set(), enabled_models: List[str] = None) -> Generator[Tuple[Type[BaseModel], str], None, None]:
     exclude_models.add("BaseModel")
-    package_dir = models_path.replace('.', '/')
+    package = importlib.import_module(models_path)
+    package_dir = package.__path__[0]
 
     for root, _, _ in os.walk(package_dir):
         for _, module_name, _ in pkgutil.iter_modules([root]):
@@ -282,16 +283,19 @@ def get_dtos(io_type: str) -> Generator[Tuple[Type[BaseModel], str], None, None]
     base_path = f'dove.api.{io_type}s'
     base_class = InputDTO if io_type == 'input' else OutputDTO
 
-    for _, name, _ in pkgutil.iter_modules([base_path.replace('.', '/')]):
+    package = importlib.import_module(base_path)
+    for _, name, _ in pkgutil.iter_modules(package.__path__):
         module = importlib.import_module(f'{base_path}.{name}')
         for attr_name, attr_value in module.__dict__.items():
             if isinstance(attr_value, type) and issubclass(attr_value, base_class) and attr_value != base_class:
                 yield attr_value, attr_name.lower().replace(f'{io_type}dto', '')
 
 def get_routers(routes_path: str) -> Generator[Tuple[APIRouter, str], None, None]:
-    for root, _, _ in os.walk(routes_path.replace('.', '/')):
+    package = importlib.import_module(routes_path)
+    routes_dir = package.__path__[0]
+    for root, _, _ in os.walk(routes_dir):
         for _, module_name, _ in pkgutil.iter_modules([root]):
-            module_path = os.path.relpath(root, routes_path.replace('.', '/')).replace(os.sep, '.')
+            module_path = os.path.relpath(root, routes_dir).replace(os.sep, '.')
             full_module_name = f"{routes_path}.{module_path}.{module_name}" if module_path != '.' else f"{routes_path}.{module_name}"
 
             module = importlib.import_module(full_module_name)

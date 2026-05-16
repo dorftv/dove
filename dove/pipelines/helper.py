@@ -13,7 +13,8 @@ def get_pipeline_classes(io_type: str) -> Generator[Tuple[Type, str], None, None
     base_path = f'dove.pipelines.{io_type}s'
     base_class = Input if io_type == 'input' else Output
 
-    for _, name, _ in pkgutil.iter_modules([base_path.replace('.', '/')]):
+    package = importlib.import_module(base_path)
+    for _, name, _ in pkgutil.iter_modules(package.__path__):
         module = importlib.import_module(f'{base_path}.{name}')
         for attr_name, attr_value in module.__dict__.items():
             if isinstance(attr_value, type) and issubclass(attr_value, (GSTBase, base_class)) and attr_value not in (GSTBase, base_class):

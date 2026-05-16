@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse, JSONResponse, FileResponse
 import os
+from importlib.resources import files
 
 router = APIRouter(prefix="/api")
 
-docs_dir = os.path.realpath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "docs"))
+docs_dir = os.path.realpath(str(files("dove") / "docs"))
 
 
 @router.get("/docs/{slug}.md")

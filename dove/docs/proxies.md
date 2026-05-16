@@ -26,7 +26,7 @@ extensions = ["png", "jpg", "webp"]
 
 ## OvenMediaEngine
 
-Walks an OME origin's REST API (vhosts → apps → streams) and lists active streams. Each entry's URL is built from `url_template` with `{vhost}`, `{app}`, `{stream}` placeholders.
+Walks an [OvenMediaEngine](https://github.com/AirenSoft/OvenMediaEngine) origin's REST API (vhosts → apps → streams) and lists active streams. Each entry's URL is built from `url_template` with `{vhost}`, `{app}`, `{stream}` placeholders.
 
 ```toml
 [proxy.ovenmedia]
@@ -45,7 +45,7 @@ For multiple OMEs, add additional `[proxy.ovenmedia."<name>"]` blocks. Each is q
 
 ## MediaMTX
 
-Walks a MediaMTX server's path list. One picker entry per published path.
+Walks a [MediaMTX](https://github.com/bluenviron/mediamtx) server's path list. One picker entry per published path.
 
 ```toml
 [proxy.mediamtx]
@@ -72,7 +72,7 @@ url   = "https://example.com/playlists.json?host=self"
 
 ## NodeCG Bundle
 
-Pulls graphics bundle metadata from a NodeCG instance. Used by the `nodecg` input type.
+Pulls graphics bundle metadata from a [NodeCG](https://www.nodecg.dev/) instance. Used by the `nodecg` input type.
 
 ```toml
 [proxy.nodecg]

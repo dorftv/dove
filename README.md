@@ -46,48 +46,50 @@ Inputs → Scenes → Program → Outputs
 
 | Type | Description |
 |------|-------------|
-| `uridecodebin3` | Local files and streams (HTTP, SRT, RTMP, RTSP) |
-| `playlist` | Sequence of video clips and HTML pages |
-| `wpesrc` | Web page rendered as video (HTML/CSS/JS overlays) |
-| `ytdlp` | YouTube, Twitch, and hundreds of other sites via yt-dlp |
-| `nodecg` | NodeCG broadcast graphics |
+| [`uridecodebin3`](dove/docs/inputs-uridecodebin3.md) | Local files and streams (HTTP, SRT, RTMP, RTSP) |
+| [`playlist`](dove/docs/inputs-playlist.md) | Sequence of video clips and HTML pages |
+| [`wpesrc`](dove/docs/inputs-wpesrc.md) | Web page rendered as video (HTML/CSS/JS overlays) |
+| [`ytdlp`](dove/docs/inputs-ytdlp.md) | YouTube, Twitch, and hundreds of other sites via [yt-dlp](https://github.com/yt-dlp/yt-dlp) |
+| [`nodecg`](dove/docs/inputs-nodecg.md) | [NodeCG](https://www.nodecg.dev/) broadcast graphics |
 | `v4l2src` | Webcams and capture cards (V4L2) |
 | `imagesrc` | Still images (PNG, JPEG, WebP, SVG) |
-| `testsrc` | SMPTE color bars and test patterns |
-| `whip` | Browser screen share or webcam via WebRTC (experimental) |
+| [`testsrc`](dove/docs/inputs-testsrc.md) | SMPTE color bars and test patterns |
+| [`whip`](dove/docs/screencast.md) | Browser screen share or webcam via WebRTC (experimental) |
+
+**Input Pickers (Proxies)** — Configurable dropdowns in the "Add Input" dialog for fast discovery of local files, webcams, NodeCG sources, MediaMTX/OvenMedia streams, SRT relays, and playlists. Define in `config.toml` with `[proxy.<name>]` sections. See [`dove/docs/proxies.md`](dove/docs/proxies.md).
 
 ### Outputs
 
 | Type | Description |
 |------|-------------|
-| `srtsink` | SRT push to a remote listener |
-| `srtserversink` | SRT server mode (remotes connect to DOVE) |
-| `rtmpsink` | RTMP push |
-| `rtspclientsink` | RTSP push |
-| `hlssink2` | HLS segments (also used for previews) |
-| `splitmuxsink` | Segmented file recording |
-| `decklink` | SDI/HDMI via Blackmagic Design card |
-| `shout2send` | Icecast/Shoutcast audio stream |
+| [`srtsink`](dove/docs/outputs.md#srtsink) | SRT push to a remote listener |
+| [`srtserversink`](dove/docs/outputs.md#srtserversink) | SRT server mode (remotes connect to DOVE) |
+| [`rtmpsink`](dove/docs/outputs.md#rtmpsink) | RTMP push |
+| [`rtspclientsink`](dove/docs/outputs.md#rtspclientsink) | RTSP push |
+| [`hlssink2`](dove/docs/outputs.md#hlssink2) | HLS segments (also used for previews) |
+| [`splitmuxsink`](dove/docs/outputs.md#splitmuxsink) | Segmented file recording |
+| [`decklink`](dove/docs/outputs.md#decklink) | SDI/HDMI via [Blackmagic Design](https://www.blackmagicdesign.com/products/decklink) card |
+| [`shout2send`](dove/docs/outputs.md#shout2send) | [Icecast](https://icecast.org/)/Shoutcast audio stream |
 
 ### Encoders
 
-Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan. Software fallback via x264/x265. Set `video_encoder.name = "auto"` to pick the best available encoder at startup. Multiple outputs can share a single encoder, or each output can have its own dedicated encoder.
+Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan Video. Software fallback via x264 / x265. Set `video_encoder.name = "auto"` to pick the best available encoder at startup. Multiple outputs can share a single encoder, or each output can have its own dedicated encoder. See [`dove/docs/encoders.md`](dove/docs/encoders.md).
 
 | Encoder | Type |
 |---------|------|
-| `x264` | Software (always available) |
-| `openh264` | Software alternative |
-| `vah264enc` / `vaapih264enc` | VAAPI (AMD/Intel) |
-| `vulkanh264enc` | Vulkan (Mesa 26+, GStreamer 1.28+) |
-| `mpph264enc` | Rockchip hardware |
+| [`x264`](dove/docs/encoders.md#x264) | Software (always available) |
+| [`openh264`](dove/docs/encoders.md#openh264) | Software alternative |
+| [`vah264enc`](dove/docs/encoders.md#vah264enc) / [`vaapih264enc`](dove/docs/encoders.md#vaapih264enc) | VAAPI (AMD/Intel) |
+| [`vulkanh264enc`](dove/docs/encoders.md#vulkanh264enc) | Vulkan (Mesa 26+, GStreamer 1.28+) |
+| [`mpph264enc`](dove/docs/encoders.md#mpph264enc) | Rockchip hardware |
 
 ### Audio & Video Filters
 
 Per-input dynamic filter chains, applied at runtime without pipeline restart.
 
-**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor (LSP), expander (LSP), gate (LSP), limiter, amplify, pan, invert, echo, denoise, loudnorm. See [`dove/docs/audio-filters.md`](dove/docs/audio-filters.md).
+**Audio:** highpass, lowpass, 3-band/10-band EQ, compressor ([LSP](https://lsp-plug.in/)), expander (LSP), gate (LSP), limiter, amplify, pan, invert, echo, denoise, loudnorm. See [`dove/docs/audio-filters.md`](dove/docs/audio-filters.md).
 
-**Video:** color balance, flip/mirror, crop, color effects, blur, chroma key. **Experimental (requires `frei0r-plugins`):** pixelate, cartoon, glow, vignette, film grain, glitch, scanlines, sobel edge, color halftone. See [`dove/docs/video-filters.md`](dove/docs/video-filters.md).
+**Video:** color balance, flip/mirror, crop, color effects, blur, chroma key. **Experimental (requires [`frei0r-plugins`](https://frei0r.dyne.org/)):** pixelate, cartoon, glow, vignette, film grain, glitch, scanlines, sobel edge, color halftone. See [`dove/docs/video-filters.md`](dove/docs/video-filters.md).
 
 ### Previews
 
@@ -145,7 +147,7 @@ video_encoder.name = "auto"
 
 ## Authentication
 
-Optional OIDC authentication (Keycloak, Authentik, Authelia, etc.). Disabled by default — enable with:
+Optional OIDC authentication ([Keycloak](https://www.keycloak.org/), [Authentik](https://goauthentik.io/), [Authelia](https://www.authelia.com/), etc.). Disabled by default — enable with:
 
 ```toml
 [auth]
@@ -163,11 +165,11 @@ In-app help is available at `/help` after starting DOVE. All docs are in the [`d
 
 **Setup** — [Interface overview](dove/docs/interface.md) · [Configuration](dove/docs/config.md) · [Authentication](dove/docs/auth.md)
 
-**Pipeline** — [Inputs](dove/docs/inputs.md) ([uridecodebin3](dove/docs/inputs-uridecodebin3.md) · [playlist](dove/docs/inputs-playlist.md) · [wpesrc](dove/docs/inputs-wpesrc.md) · [ytdlp](dove/docs/inputs-ytdlp.md) · [nodecg](dove/docs/inputs-nodecg.md) · [testsrc](dove/docs/inputs-testsrc.md)) · [Scenes](dove/docs/scenes.md) · [Outputs](dove/docs/outputs.md) · [Encoders](dove/docs/encoders.md)
+**Pipeline** — [Inputs](dove/docs/inputs.md) ([uridecodebin3](dove/docs/inputs-uridecodebin3.md) · [playlist](dove/docs/inputs-playlist.md) · [wpesrc](dove/docs/inputs-wpesrc.md) · [ytdlp](dove/docs/inputs-ytdlp.md) · [nodecg](dove/docs/inputs-nodecg.md) · [testsrc](dove/docs/inputs-testsrc.md) · [screencast](dove/docs/screencast.md)) · [Input Pickers](dove/docs/proxies.md) · [Scenes](dove/docs/scenes.md) · [Outputs](dove/docs/outputs.md) · [Encoders](dove/docs/encoders.md)
 
 **Effects & Output** — [Audio filters](dove/docs/audio-filters.md) · [Video filters](dove/docs/video-filters.md) · [Previews](dove/docs/previews.md)
 
-**Operations** — [Debugging](dove/docs/debugging.md)
+**Operations** — [Debugging](dove/docs/debugging.md) · [Connection Status](dove/docs/connection-status.md)
 
 ## Tech Stack
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dove-video-editor"
-version = "1.0.0rc3"
+version = "1.0.0rc4"
 description = "DOVE - Online Video Editor"
 authors = ["Stefan Hageneder <stefan.hageneder@dorftv.at>"]
 license = "AGPL-3.0-or-later"

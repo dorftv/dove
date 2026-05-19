@@ -402,55 +402,139 @@ class WebrtcPreviewManager:
                 pass
         peer.pop('ice_agent', None)
 
-        # 2. Remove proxysinks from main pipeline
+        # Pad-block + unlink each tee branch; defer release_request_pad to idle (avoids tee stream-lock contention).
+        media_entries = []
         for media in ('video', 'audio'):
             tee = peer.get(f'{media}_tee')
             tee_pad = peer.get(f'{media}_tee_pad')
             psink = peer.get(f'{media}_proxysink')
-            if not (tee_pad and tee and psink and pipeline):
-                continue
+            if tee and tee_pad and psink:
+                media_entries.append((media, tee, tee_pad, psink))
+
+        pending = [len(media_entries) + 1]   # +1 sentinel — only decremented after loop completes
+        fallback_sources = []
+
+        def _schedule_dispose():
+            def _dispose_viewer():
+                for src_id in fallback_sources:
+                    try:
+                        GLib.source_remove(src_id)
+                    except Exception:
+                        pass
+
+                for media in ('video', 'audio'):
+                    psink = peer.get(f'{media}_proxysink')
+                    if not psink:
+                        continue
+                    psink.set_state(Gst.State.NULL)
+                    if pipeline and psink.get_parent() == pipeline:
+                        pipeline.remove(psink)
+
+                # 3. READY viewer pipeline (graceful ICE/DTLS teardown)
+                if viewer_pipe:
+                    viewer_pipe.set_state(Gst.State.READY)
+
+                # 4. Unlink and release webrtcbin request pads (ICE already cleaned by READY)
+                if webrtcbin:
+                    for pad_key in ('wb_video_sink', 'wb_audio_sink'):
+                        pad = peer.get(pad_key)
+                        if not pad:
+                            continue
+                        peer_pad = pad.get_peer()
+                        if peer_pad:
+                            peer_pad.unlink(pad)
+                        webrtcbin.release_request_pad(pad)
+
+                # 5. Flush bus, remove webrtcbin, NULL pipeline.
+                #    Keep webrtcbin ref — GC finalize segfaults on real ICE sessions.
+                if viewer_pipe:
+                    bus = viewer_pipe.get_bus()
+                    if bus:
+                        bus.set_flushing(True)
+
+                if viewer_pipe and webrtcbin:
+                    viewer_pipe.remove(webrtcbin)
+
+                if viewer_pipe:
+                    viewer_pipe.set_state(Gst.State.NULL)
+
+                if webrtcbin:
+                    _orphaned_webrtcbins.append(webrtcbin)
+
+                logger.log(
+                    f"WHEP: {name} disposed (orphaned webrtcbins: "
+                    f"{len(_orphaned_webrtcbins)})",
+                    level='INFO',
+                )
+                return False
+            GLib.idle_add(_dispose_viewer)
+
+        def _on_branch_detached_main():
+            pending[0] -= 1
+            if pending[0] == 0:
+                pending[0] = -1  # latch so dispose can't fire twice
+                _schedule_dispose()
+            return False
+
+        def _on_branch_detached():
+            # Serialize on main thread — probe callbacks fire on tee streaming threads.
+            GLib.idle_add(_on_branch_detached_main)
+
+        if not media_entries:
+            _schedule_dispose()
+            return
+
+        for media, tee, tee_pad, psink in media_entries:
             sink_pad = psink.get_static_pad("sink")
-            if sink_pad:
-                peer_pad = sink_pad.get_peer()
-                if peer_pad:
-                    peer_pad.unlink(sink_pad)
-            tee.release_request_pad(tee_pad)
-            psink.set_state(Gst.State.NULL)
-            if psink.get_parent() == pipeline:
-                pipeline.remove(psink)
 
-        # 3. READY viewer pipeline (graceful ICE/DTLS teardown)
-        if viewer_pipe:
-            viewer_pipe.set_state(Gst.State.READY)
+            if sink_pad is None or tee_pad.get_peer() is None:
+                try:
+                    tee.release_request_pad(tee_pad)
+                except Exception:
+                    pass
+                _on_branch_detached()
+                continue
 
-        # 4. Unlink and release webrtcbin request pads (ICE already cleaned by READY)
-        if webrtcbin:
-            for pad_key in ('wb_video_sink', 'wb_audio_sink'):
-                pad = peer.get(pad_key)
-                if not pad:
-                    continue
-                peer_pad = pad.get_peer()
-                if peer_pad:
-                    peer_pad.unlink(pad)
-                webrtcbin.release_request_pad(pad)
+            def _on_blocked(pad, info, _media=media, _tee=tee,
+                            _tee_pad=tee_pad, _sink_pad=sink_pad):
+                try:
+                    pad.unlink(_sink_pad)
+                except Exception as e:
+                    logger.log(f"WHEP cleanup: {_media} unlink error: {e}", level='ERROR')
 
-        # 5. Flush bus, remove webrtcbin, NULL pipeline.
-        #    Keep webrtcbin ref — GC finalize segfaults on real ICE sessions.
-        if viewer_pipe:
-            bus = viewer_pipe.get_bus()
-            if bus:
-                bus.set_flushing(True)
+                def _release():
+                    try:
+                        _tee.release_request_pad(_tee_pad)
+                    except Exception as e:
+                        logger.log(f"WHEP cleanup: {_media} release error: {e}", level='ERROR')
+                    _on_branch_detached()
+                    return False
+                GLib.idle_add(_release)
 
-        if viewer_pipe and webrtcbin:
-            viewer_pipe.remove(webrtcbin)
+                return Gst.PadProbeReturn.REMOVE
 
-        if viewer_pipe:
-            viewer_pipe.set_state(Gst.State.NULL)
+            tee_pad.add_probe(
+                Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM,
+                _on_blocked,
+            )
 
-        if webrtcbin:
-            _orphaned_webrtcbins.append(webrtcbin)
+            # Fallback for mid-handshake disconnect: probe never fires if no buffers flow.
+            def _fallback(_media=media, _tee=tee, _tee_pad=tee_pad, _sink_pad=sink_pad):
+                if _tee_pad.get_peer() is None:
+                    return False  # probe path won the race; release scheduled or done
+                try:
+                    _tee_pad.unlink(_sink_pad)
+                    _tee.release_request_pad(_tee_pad)
+                except Exception as e:
+                    logger.log(f"WHEP cleanup: {_media} fallback error: {e}", level='ERROR')
+                _on_branch_detached()
+                return False
 
-        logger.log(f"WHEP: {name} disposed (orphaned webrtcbins: {len(_orphaned_webrtcbins)})", level='INFO')
+            src_id = GLib.timeout_add(50, _fallback)
+            fallback_sources.append(src_id)
+
+        # Sentinel decrement — ensures dispose can't fire until all probes/fallbacks are installed.
+        _on_branch_detached()
 
 
 def _get_or_create_manager(source_uid: str) -> WebrtcPreviewManager:
@@ -582,9 +666,7 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                         _managers.pop(source_uid, None)
                     _resources[resource_id] = (new_source, peer_id)
 
-                    # Tee-pad swap inside a BLOCK_DOWNSTREAM probe per media — without this,
-                    # in-flight buffers can hit the new tee before SEGMENT/CAPS propagate.
-                    # Pattern matches pipelines/audio_filters.py::rebuild_between_anchors.
+                    # Tee-pad swap: unlink in probe, defer release+request+link to idle (probe holds stream lock).
                     swap_list = [('video', new_video_tee)]
                     if new_audio_tee:
                         swap_list.append(('audio', new_audio_tee))
@@ -602,25 +684,33 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                                          _new_tee=new_tee, _sink_pad=sink_pad, _peer=peer):
                             try:
                                 pad.unlink(_sink_pad)
-                                _old_tee.release_request_pad(pad)
-                                new_pad = _new_tee.request_pad_simple("src_%u")
-                                if new_pad is None:
-                                    logger.log(f"WHEP switch: {_media} request_pad_simple returned None", level='ERROR')
-                                    return Gst.PadProbeReturn.REMOVE
-                                link_result = new_pad.link(_sink_pad)
-                                if link_result != Gst.PadLinkReturn.OK:
-                                    logger.log(f"WHEP switch: {_media} pad link failed: {link_result}", level='ERROR')
-                                    return Gst.PadProbeReturn.REMOVE
-                                _peer[f'{_media}_tee'] = _new_tee
-                                _peer[f'{_media}_tee_pad'] = new_pad
-                                if _media == 'video':
-                                    vpay = _peer.get('video_pay')
-                                    if vpay:
-                                        key_event = GstVideo.video_event_new_upstream_force_key_unit(
-                                            Gst.CLOCK_TIME_NONE, True, 0)
-                                        vpay.send_event(key_event)
                             except Exception as e:
-                                logger.log(f"WHEP switch: {_media} pad swap error: {e}", level='ERROR')
+                                logger.log(f"WHEP switch: {_media} unlink error: {e}", level='ERROR')
+
+                            def _swap_tail():
+                                try:
+                                    _old_tee.release_request_pad(pad)
+                                    new_pad = _new_tee.request_pad_simple("src_%u")
+                                    if new_pad is None:
+                                        logger.log(f"WHEP switch: {_media} request_pad_simple returned None", level='ERROR')
+                                        return False
+                                    link_result = new_pad.link(_sink_pad)
+                                    if link_result != Gst.PadLinkReturn.OK:
+                                        logger.log(f"WHEP switch: {_media} pad link failed: {link_result}", level='ERROR')
+                                        return False
+                                    _peer[f'{_media}_tee'] = _new_tee
+                                    _peer[f'{_media}_tee_pad'] = new_pad
+                                    if _media == 'video':
+                                        vpay = _peer.get('video_pay')
+                                        if vpay:
+                                            key_event = GstVideo.video_event_new_upstream_force_key_unit(
+                                                Gst.CLOCK_TIME_NONE, True, 0)
+                                            vpay.send_event(key_event)
+                                except Exception as e:
+                                    logger.log(f"WHEP switch: {_media} pad swap error: {e}", level='ERROR')
+                                return False
+                            GLib.idle_add(_swap_tail)
+
                             return Gst.PadProbeReturn.REMOVE
 
                         old_pad.add_probe(

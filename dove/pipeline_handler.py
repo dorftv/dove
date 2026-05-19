@@ -117,7 +117,13 @@ class PipelineHandler(object):
                         cleared.append(b)
                 except Exception:
                     pass
+            core = self.core_pipeline.pipeline if self.core_pipeline else None
             for b in cleared:
+                if core and b.get_parent() == core:
+                    try:
+                        core.remove(b)
+                    except Exception as e:
+                        logger.log(f"sweep core.remove failed for {b.get_name()}: {e}", level='WARNING')
                 self._orphaned_input_bins.remove(b)
                 logger.log(f"orphan input bin {b.get_name()} cleanup completed, {len(self._orphaned_input_bins)} orphans remain", level='INFO')
         except Exception as e:
@@ -770,24 +776,24 @@ class PipelineHandler(object):
         if component_bin and core:
             def _deferred_null_bin(b):
                 orphan = False
+                name = b.get_name()
                 try:
-                    name = b.get_name()
-                    try:
-                        b.send_event(Gst.Event.new_flush_start())
-                    except Exception as e:
-                        logger.log(f"flush_start failed for {name}: {e}", level='WARNING')
-                    try:
-                        b.send_event(Gst.Event.new_flush_stop(True))
-                    except Exception as e:
-                        logger.log(f"flush_stop failed for {name}: {e}", level='WARNING')
-                    try:
-                        b.set_state(Gst.State.READY)
-                        state_ret, _, _ = b.get_state(2 * Gst.SECOND)
-                        if state_ret == Gst.StateChangeReturn.ASYNC:
-                            orphan = True
-                            logger.log(f"set_state(READY) ASYNC timeout for {name}", level='WARNING')
-                    except Exception as e:
-                        logger.log(f"set_state(READY) failed for {name}: {e}", level='WARNING')
+                    b.send_event(Gst.Event.new_flush_start())
+                except Exception as e:
+                    logger.log(f"flush_start failed for {name}: {e}", level='WARNING')
+                try:
+                    b.send_event(Gst.Event.new_flush_stop(True))
+                except Exception as e:
+                    logger.log(f"flush_stop failed for {name}: {e}", level='WARNING')
+                try:
+                    b.set_state(Gst.State.READY)
+                    state_ret, _, _ = b.get_state(2 * Gst.SECOND)
+                    if state_ret == Gst.StateChangeReturn.ASYNC:
+                        orphan = True
+                        logger.log(f"set_state(READY) ASYNC timeout for {name}", level='WARNING')
+                except Exception as e:
+                    logger.log(f"set_state(READY) failed for {name}: {e}", level='WARNING')
+                if not orphan:
                     try:
                         b.set_state(Gst.State.NULL)
                         state_ret, _, _ = b.get_state(2 * Gst.SECOND)
@@ -796,13 +802,13 @@ class PipelineHandler(object):
                             logger.log(f"set_state(NULL) ASYNC timeout for {name}", level='WARNING')
                     except Exception as e:
                         logger.log(f"set_state(NULL) failed for {name}: {e}", level='WARNING')
+                if not orphan:
                     try:
                         if b.get_parent() == core:
                             core.remove(b)
                     except Exception as e:
                         logger.log(f"core.remove failed for {name}: {e}", level='WARNING')
-                except Exception as e:
-                    logger.log(f"Exception in deferred NULL bin: {e}", level='ERROR')
+
                 if orphan:
                     self._orphaned_input_bins.append(b)
                     if len(self._orphaned_input_bins) > 10:

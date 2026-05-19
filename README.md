@@ -14,7 +14,7 @@
 </table>
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![GStreamer 1.26+](https://img.shields.io/badge/GStreamer-1.26+-F47B20.svg)](https://gstreamer.freedesktop.org/)
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82.svg?logo=nuxt&logoColor=white)](https://nuxt.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -176,7 +176,9 @@ In-app help is available at `/help` after starting DOVE. All docs are in the [`d
 - **GStreamer 1.26+**
 - **FastAPI + uvicorn** — REST API and WebSocket
 - **Nuxt 4** — web frontend
-- **Python 3.12+**
+- **Python 3.12 or 3.13**
+
+> **Note:** Python 3.14 is not supported for native installs due to PyGObject/GStreamer thread interaction bugs. Use Python 3.12 or 3.13. Docker images are pinned to 3.12 and unaffected.
 
 ## Development
 

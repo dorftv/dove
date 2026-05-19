@@ -49,6 +49,8 @@ sudo cargo cinstall --libdir=/usr/lib/x86_64-linux-gnu/gstreamer-1.0 --package g
 
 ## Backend (venv)
 
+**Python:** 3.12 or 3.13 required. **Do NOT use Python 3.14** — PyGObject + GStreamer interaction on 3.14 has known thread/asyncio bugs that cause GLib main-loop hangs on input deletion. Docker images ship with Python 3.12 baked in.
+
 PyGObject lives in the system Python — the venv must inherit it:
 
 ```bash

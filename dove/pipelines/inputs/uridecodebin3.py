@@ -221,6 +221,9 @@ class Uridecodebin3Input(Input):
         fallback_videosrc.link(fallback_vcaps)
         fallback_vcaps.link(input_videomixer)
         vclocksync.link(input_videomixer)
+        real_video_pad = vclocksync.get_static_pad("src").get_peer()
+        if real_video_pad:
+            real_video_pad.set_property("sizing-policy", 1)
         input_videomixer.link(post_vrate)
         post_vrate.link(post_vconv)
         post_vconv.link(post_vscale)

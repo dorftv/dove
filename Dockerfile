@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.28.3
+ARG GSTREAMER_VERSION=1.28.4
 
 # Core build deps
 RUN apk add --no-cache \
@@ -69,14 +69,14 @@ RUN cd gstreamer && \
 FROM builder AS rust-builder
 
 RUN apk add --no-cache clang gcc musl-dev curl pkgconfig openssl-dev zlib-dev
-# Use rustup for newer rust (Alpine 3.21 ships 1.83, gst-plugins-rs 0.15 needs 1.92+)
+# Use rustup for newer rust (Alpine 3.21 ships 1.83, gst-plugins-rs needs 1.92+)
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 # Disable static crt so cargo-c links dynamically against system libs (avoids static lib chain)
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN cargo install --locked cargo-c
 
-ARG GST_RS_VERSION=0.15.2
+ARG GST_RS_VERSION=gstreamer-1.28.4
 RUN git clone --depth 1 -b ${GST_RS_VERSION} \
     https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
 

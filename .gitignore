@@ -7,6 +7,7 @@ pyvenv.cfg
 .vscode
 *.code-workspace
 tmp/
+logs/
 
 
 quadlet/

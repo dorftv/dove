@@ -1,6 +1,5 @@
 from dove.api.inputs.ytdlp import YtdlpInputDTO
 from dove.pipelines.inputs.uridecodebin3 import Uridecodebin3Input
-from dove.logger import logger
 
 import yt_dlp
 

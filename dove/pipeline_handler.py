@@ -457,7 +457,7 @@ class PipelineHandler(object):
                             name="Preview Audio",
                             type="audio", element="opusenc",
                             src=src_uid, is_preview=True,
-                            options="bitrate=64000 frame-size=10",
+                            options="bitrate=64000 frame-size=20",
                         ))
                         if not self._add_pipeline_direct(audio_enc):
                             continue
@@ -483,6 +483,7 @@ class PipelineHandler(object):
                             name="Preview Audio",
                             type="audio", element="fdkaacenc",
                             src=src_uid, is_preview=True,
+                            options="bitrate=64000 afterburner=true",
                         ))
                         if not self._add_pipeline_direct(audio_enc):
                             continue

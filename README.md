@@ -77,7 +77,7 @@ Hardware-accelerated encoding via VAAPI (AMD/Intel) or Vulkan Video. Software fa
 
 | Encoder | Type |
 |---------|------|
-| [`x264`](dove/docs/encoders.md#x264) | Software (always available) |
+| [`x264`](dove/docs/encoders.md#x264) | Software |
 | [`openh264`](dove/docs/encoders.md#openh264) | Software alternative |
 | [`vah264enc`](dove/docs/encoders.md#vah264enc) / [`vaapih264enc`](dove/docs/encoders.md#vaapih264enc) | VAAPI (AMD/Intel) |
 | [`vulkanh264enc`](dove/docs/encoders.md#vulkanh264enc) | Vulkan (Mesa 26+, GStreamer 1.28+) |

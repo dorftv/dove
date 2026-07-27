@@ -5,7 +5,16 @@ on:
     tags: ['v*.*.*']
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.15.11"
+
   publish:
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       id-token: write

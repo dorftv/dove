@@ -9,7 +9,16 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.15.11"
+
   build:
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       contents: read

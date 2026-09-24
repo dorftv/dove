@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.28.5
+ARG GSTREAMER_VERSION=1.28.7
 
 # Core build deps
 RUN apk add --no-cache \
@@ -28,13 +28,9 @@ RUN apk upgrade --no-cache \
     --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
     vulkan-loader-dev vulkan-headers vulkan-loader
 
-# Build librtmp (from rtmpdump) and install with a pkg-config file
-RUN git clone https://git.ffmpeg.org/rtmpdump.git /opt/rtmpdump && \
-    cd /opt/rtmpdump && \
-    make SYS=posix && \
-    make install prefix=/usr && \
-    mkdir -p /usr/lib/pkgconfig && \
-    printf "prefix=/usr\nexec_prefix=\${prefix}\nlibdir=\${exec_prefix}/lib\nincludedir=\${prefix}/include\n\nName: librtmp\nDescription: RTMP library\nVersion: 2.4\nLibs: -L\${libdir} -lrtmp\nCflags: -I\${includedir}/librtmp\n" > /usr/lib/pkgconfig/librtmp.pc
+# librtmp for rtmpsink (classic RTMP plugin) — Alpine's package ships headers,
+# shared lib, and a working pkg-config file, so no need for the upstream source build
+RUN apk add --no-cache rtmpdump-dev
 
 # WPE/WebKit + FDO backend for wpesrc
 RUN apk add --no-cache \
@@ -76,7 +72,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN cargo install --locked cargo-c
 
-ARG GST_RS_VERSION=gstreamer-1.28.5
+ARG GST_RS_VERSION=gstreamer-1.28.7
 RUN git clone --depth 1 -b ${GST_RS_VERSION} \
     https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
 

@@ -11,7 +11,7 @@ import websockets
 from fastapi import APIRouter, Request, WebSocket, HTTPException
 from fastapi.responses import Response
 
-from dove.api.auth import is_auth_enabled, get_current_user, COOKIE_NAME
+from dove.api.auth import is_auth_enabled, get_current_user, is_allowed_ws_origin, COOKIE_NAME
 from dove.config_handler import ConfigReader
 from dove.logger import logger
 
@@ -140,6 +140,9 @@ async def proxy_dashboard_js(request: Request):
 
 @router.websocket("/socket.io/")
 async def ws_proxy(client_ws: WebSocket):
+    if not is_allowed_ws_origin(client_ws):
+        await client_ws.close(code=1008, reason="Origin not allowed")
+        return
     if is_auth_enabled():
         try:
             user = await get_current_user(client_ws)

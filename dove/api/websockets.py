@@ -7,7 +7,7 @@ from dove.api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from dove.api.input_models import InputDTO, InputDeleteDTO
 from dove.api.output_models import OutputDTO, OutputDeleteDTO
 from dove.api.encoder_models import EncoderEntityDTO, EncoderEntityDeleteDTO
-from dove.api.auth import is_auth_enabled, get_current_user
+from dove.api.auth import is_auth_enabled, get_current_user, is_allowed_ws_origin
 from dove.config_handler import ConfigReader
 
 from fastapi import WebSocketDisconnect
@@ -130,6 +130,9 @@ async def update_pipe(data, websocket: WebSocket):
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    if not is_allowed_ws_origin(websocket):
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
     if is_auth_enabled():
         try:
             user = await get_current_user(websocket)

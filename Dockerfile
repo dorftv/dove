@@ -135,7 +135,7 @@ RUN apk upgrade --no-cache \
     --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
     mesa mesa-gbm mesa-dri-gallium mesa-egl mesa-gl mesa-va-gallium \
     mesa-vulkan-ati mesa-vulkan-intel mesa-vulkan-swrast \
-    vulkan-loader libxcb wayland-libs-client libva
+    vulkan-loader libxcb wayland-libs-client libva libdrm
 
 COPY . /app
 WORKDIR /app

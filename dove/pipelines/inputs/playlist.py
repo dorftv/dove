@@ -103,7 +103,9 @@ class PlaylistInput(Uridecodebin3Input):
             self.data.total_duration = self._sum_clip_durations()
         item_type, uri = self._next_clip()
         if uri is None:
-            self.data.state = "EOS"
+            # Pending async playlist load starts playback via _on_async_playlist_loaded
+            if not self._loading_next_playlist:
+                self.data.state = "EOS"
             return ""
         self._update_clip_metadata()
         if item_type == "html":
@@ -192,6 +194,9 @@ class PlaylistInput(Uridecodebin3Input):
             uri, duration = self._first_html
             del self._first_html
             GLib.timeout_add(500, self._switch_first_html, uri, duration)
+        # URL playlist still loading — no URI yet; _on_async_playlist_loaded cold-starts the first clip
+        elif self._loading_next_playlist:
+            self.uridecodebin.set_locked_state(True)
 
         return container
 
@@ -758,14 +763,10 @@ class PlaylistInput(Uridecodebin3Input):
         data = self._prefetched_next
         self._prefetched_next = None
         if data is None:
-            if self._changing_clip:
-                # Runtime: async load to avoid blocking GLib thread
-                self._loading_next_playlist = True
-                self._start_async_playlist_load(self.data.next)
-                return False
-            # Init: sync load OK — GLib loop not running yet
-            if self.data.next:
-                data = self._load_playlist(self.data.next)
+            # Async load — build_bin also runs on the live GLib loop (startup + API)
+            self._loading_next_playlist = True
+            self._start_async_playlist_load(self.data.next)
+            return False
         return self._apply_playlist_data(data)
 
     def _apply_playlist_data(self, data):

@@ -380,7 +380,9 @@ class Mixer(GSTBase, ABC):
 
             return Gst.PadProbeReturn.REMOVE
 
-        queue_src.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM, _do_rebuild, None)
+        # IDLE: fire immediately when no data flows (EOS'd/stopped source) —
+        # a plain block probe would never fire and keep the slot busy forever.
+        queue_src.add_probe(Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.IDLE, _do_rebuild, None)
 
     def add_slot(self, mixerSource: mixerInputDTO = None):
         """Add a new slot (dynamically request mixer pad)."""

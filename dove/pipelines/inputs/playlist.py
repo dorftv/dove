@@ -59,9 +59,12 @@ class PlaylistInput(Uridecodebin3Input):
         self._watchdog_tee_pad = None
         self._pending_advance = False
         self._flush_drop_probe_ids = {}
+        self._deleted = False
 
     def cleanup(self):
         """Cancel all active timers and probes — call before deletion."""
+        # Idles queued before this point (watchdog resets, clip changes) check this flag
+        self._deleted = True
         # Remove any residual flush-drop probes (leaks permanently if exception aborted _flush_chain)
         for pad, pid in list(self._flush_drop_probe_ids.items()):
             try:
@@ -373,6 +376,8 @@ class PlaylistInput(Uridecodebin3Input):
     def _reset_watchdog(self):
         """Reset watchdog timer — called on every buffer.
         Must run on GLib main thread (uses GLib.source_remove/timeout_add)."""
+        if self._deleted:
+            return False
         if self._watchdog_timer_id is not None:
             GLib.source_remove(self._watchdog_timer_id)
         self._watchdog_timer_id = GLib.timeout_add(
@@ -418,6 +423,8 @@ class PlaylistInput(Uridecodebin3Input):
 
     def _change_clip(self):
         """Switch to next clip. Runs in GLib main loop."""
+        if self._deleted:
+            return False
         uid = self.data.uid
 
         # Cancel any lingering timers from previous clip

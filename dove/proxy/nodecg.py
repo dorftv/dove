@@ -11,7 +11,7 @@ import websockets
 from fastapi import APIRouter, Request, WebSocket, HTTPException
 from fastapi.responses import Response
 
-from dove.api.auth import is_auth_enabled, get_current_user
+from dove.api.auth import is_auth_enabled, get_current_user, COOKIE_NAME
 from dove.config_handler import ConfigReader
 from dove.logger import logger
 
@@ -39,6 +39,10 @@ def _get_client() -> httpx.AsyncClient:
 
 # --- HTTP proxy core ---
 
+# DOVE's own cookies — never sent to NodeCG, never set by NodeCG on DOVE's origin
+_DOVE_COOKIES = (COOKIE_NAME, 'oauth_state', 'oauth_redirect_base')
+
+
 async def _proxy(request: Request, path: str) -> Response:
     url = _get_url()
     if not url:
@@ -49,23 +53,26 @@ async def _proxy(request: Request, path: str) -> Response:
         target += f"?{request.query_params}"
 
     headers = {k: v for k, v in request.headers.items()
-               if k.lower() not in ('host', 'content-length', 'content-encoding')}
+               if k.lower() not in ('host', 'content-length', 'content-encoding', 'authorization', 'cookie')}
+    # Forward NodeCG's own cookies (e.g. its login session) only
+    cookies = [f"{k}={v}" for k, v in request.cookies.items() if k not in _DOVE_COOKIES]
+    if cookies:
+        headers['cookie'] = '; '.join(cookies)
 
     try:
         client = _get_client()
         body = await request.body() if request.method != "GET" else None
         resp = await client.request(request.method, target, headers=headers, content=body)
 
-        resp_headers = dict(resp.headers)
-        resp_headers.pop('content-encoding', None)
-        resp_headers.pop('content-length', None)
-        resp_headers.pop('transfer-encoding', None)
-
-        return Response(
-            content=resp.content,
-            status_code=resp.status_code,
-            headers=resp_headers,
-        )
+        response = Response(content=resp.content, status_code=resp.status_code)
+        # multi_items keeps repeated Set-Cookie headers (a dict would collapse them)
+        for k, v in resp.headers.multi_items():
+            if k.lower() in ('content-encoding', 'content-length', 'transfer-encoding'):
+                continue
+            if k.lower() == 'set-cookie' and v.split('=', 1)[0].strip() in _DOVE_COOKIES:
+                continue
+            response.headers.append(k, v)
+        return response
     except (httpx.ConnectError, httpx.ConnectTimeout):
         raise HTTPException(status_code=502, detail="NodeCG unreachable")
     except httpx.ReadTimeout:

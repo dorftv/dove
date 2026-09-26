@@ -430,9 +430,11 @@ class Mixer(GSTBase, ABC):
             GLib.idle_add(lambda: (self.remove_slot(mixerSource), False)[1])
             return
         try:
-            # Unlink first (use inner — we already hold the slot guard)
-            if mixerSource.index is not None:
-                self._unlink_source_inner(mixerSource.index)
+            # Hard cleanup (queues, tee pads, ghost pads, filters) — the mixer pad
+            # is released below anyway, so no soft-unlink needed.
+            if index is not None:
+                for av in ["video", "audio"]:
+                    self._cleanup_slot_connections(index, av)
 
             # Release pads
             for av in ["video", "audio"]:
@@ -442,10 +444,17 @@ class Mixer(GSTBase, ABC):
                     if pad:
                         mixer.release_request_pad(pad)
 
-            # Drop per-slot bookkeeping so the dicts don't grow over a long session.
-            self._slot_filters.pop(mixerSource.index, None)
-
             self.data.remove_slot(mixerSource)
+
+            # DTO reindexed the slots above the removed one — shift the
+            # per-slot bookkeeping down with them.
+            if index is not None:
+                for slots in (self._slot_queues, self._tee_pads, self._ghost_pads,
+                              self._drop_probes, self._slot_filters):
+                    slots.pop(index, None)
+                    for i in sorted(k for k in slots if k > index):
+                        slots[i - 1] = slots.pop(i)
+
             safe_broadcast("UPDATE", self.data)
         finally:
             if index is not None:

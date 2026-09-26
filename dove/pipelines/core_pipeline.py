@@ -652,6 +652,18 @@ class CorePipeline(BaseModel):
             if not enc_queue.link(enc_fakesink):
                 raise RuntimeError("enc_queue -> enc_fakesink link failed")
 
+            # Block latency queries from encoder internals (e.g. audioloudnorm 3s)
+            # so they don't inflate pipeline-wide latency and delay previews.
+            encoder_component.install_latency_firewall()
+
+            # Sync state BEFORE linking the source tee pad — a buffer hitting a
+            # not-yet-active encoder pad returns FLUSHING, which tee propagates
+            # upstream and stops the source task for good.
+            enc_fakesink.sync_state_with_parent()
+            enc_queue.sync_state_with_parent()
+            enc_tee.sync_state_with_parent()
+            encoder_bin.sync_state_with_parent()
+
             # Request pad from source tee and link to encoder bin's ghost sink
             tee_pad = source_tee.request_pad_simple("src_%u")
 
@@ -665,22 +677,14 @@ class CorePipeline(BaseModel):
             else:
                 link_result = tee_pad.link(encoder_bin.get_static_pad("sink"))
 
-            logger.log(f"Encoder link result: {link_result}", level='DEBUG')
+            if link_result != Gst.PadLinkReturn.OK:
+                raise RuntimeError(f"source tee -> encoder_bin link failed: {link_result}")
 
             # Store remaining references
             self.components[uid] = encoder_component
             encoder_component._source_tee_pad = tee_pad
             encoder_component.tee = enc_tee
 
-            # Block latency queries from encoder internals (e.g. audioloudnorm 3s)
-            # so they don't inflate pipeline-wide latency and delay previews.
-            encoder_component.install_latency_firewall()
-
-            # Sync state: downstream first (sink → source)
-            enc_fakesink.sync_state_with_parent()
-            enc_queue.sync_state_with_parent()
-            enc_tee.sync_state_with_parent()
-            encoder_bin.sync_state_with_parent()
             encoder_component.data.state = "PLAYING"
             from dove.event_loop_bridge import safe_broadcast
             safe_broadcast("UPDATE", encoder_component.data, type="encoder")

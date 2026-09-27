@@ -1,6 +1,32 @@
 import os
 import logging
+import re
 import sys
+
+# Credentials that end up in logs via URIs and pipeline strings.
+# Bare "pass=" is excluded on purpose — x264 "pass=cbr" must stay readable.
+_SECRET_PATTERNS = [
+    (re.compile(r'(\w+://)[^/\s:@]+:[^/\s@]+@'), r'\1***:***@'),                   # scheme://user:pass@host
+    (re.compile(r'(?i)\b(passphrase|password|passwd|streamid|token|secret|api_key|key)=("[^"]*"|[^\s&"\',;]+)'),
+     r'\1=***'),                                                                     # query params / element props
+    (re.compile(r'(rtmps?://[^/\s]+/[^/\s]+/)[^\s"\'?]+'), r'\1***'),                # rtmp://host/app/<stream key>
+]
+
+
+def redact(text: str) -> str:
+    for pattern, repl in _SECRET_PATTERNS:
+        text = pattern.sub(repl, text)
+    return text
+
+
+class RedactSecretsFilter(logging.Filter):
+    """Scrub credentials from log records (message and string args — uvicorn's access formatter unpacks args)."""
+    def filter(self, record):
+        if isinstance(record.msg, str):
+            record.msg = redact(record.msg)
+        if isinstance(record.args, tuple):
+            record.args = tuple(redact(a) if isinstance(a, str) else a for a in record.args)
+        return True
 
 # ANSI color codes
 class LogColors:
@@ -35,6 +61,7 @@ class DebugLogger:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(ColorFormatter())
         self.logger.addHandler(handler)
+        self.logger.addFilter(RedactSecretsFilter())
 
     def log(self, message, level='INFO'):
         level = level.upper()

@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 import threading
 from contextlib import asynccontextmanager
 from importlib.resources import files as resource_files
@@ -17,17 +16,6 @@ class SuppressHLSAccessFilter(logging.Filter):
         msg = record.getMessage()
         return '/preview/hls/' not in msg
 
-
-class RedactTokenAccessFilter(logging.Filter):
-    """Redact ?token=… / &token=… from uvicorn access log URLs."""
-    _TOKEN_RE = re.compile(r'([?&])token=[^&\s"]*')
-
-    def filter(self, record):
-        args = record.args
-        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str) and 'token=' in args[2]:
-            redacted = self._TOKEN_RE.sub(r'\1token=REDACTED', args[2])
-            record.args = args[:2] + (redacted,) + args[3:]
-        return True
 
 from dove.event_loop_bridge import bridge
 
@@ -52,7 +40,7 @@ from dove.proxy import nodecg as nodecg_proxy
 from dove.pipeline_handler import PipelineHandler
 
 from dove.config_handler import ConfigReader
-from dove.logger import logger
+from dove.logger import logger, RedactSecretsFilter
 config = ConfigReader()
 
 
@@ -157,7 +145,8 @@ class APIThread(Thread):
 
         access_logger = logging.getLogger("uvicorn.access")
         access_logger.addFilter(SuppressHLSAccessFilter())
-        access_logger.addFilter(RedactTokenAccessFilter())
+        access_logger.addFilter(RedactSecretsFilter())
+        logging.getLogger("uvicorn.error").addFilter(RedactSecretsFilter())
 
         uvicorn_config = uvicorn.Config(fastapi, port=5000, host='0.0.0.0', loop='none', ws_ping_interval=5, ws_ping_timeout=10, ws_max_size=65536, proxy_headers=True, forwarded_allow_ips=config.get_forwarded_allow_ips())
         server = uvicorn.Server(uvicorn_config)

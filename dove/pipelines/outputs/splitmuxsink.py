@@ -103,6 +103,12 @@ class splitmuxsinkOutput(Output):
             Path(self._fallback_dir).mkdir(parents=True, exist_ok=True)
             filename = str(Path(self._fallback_dir) / (datetime.now().strftime("recording_%Y-%m-%d_%H-%M-%S") + ext))
 
+        # Never overwrite an existing file (template without time fields, restart within the same second)
+        base, n = filename[:-len(ext)], 1
+        while Path(filename).exists():
+            filename = f"{base}_{n}{ext}"
+            n += 1
+
         logger.log(f"splitmuxsink {self.data.uid}: segment {fragment_id} → {filename}", level='DEBUG')
         return filename
 

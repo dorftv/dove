@@ -665,6 +665,24 @@ class PipelineHandler(object):
                 logger.log(f"Failed to clean HLS directory {hls_dir}: {e}", level='WARNING')
         return False
 
+    def _finalize_recording(self, output_bin, mux, teardown):
+        """EOS a recording so the muxer finalizes the file, then tear down without flushing
+        (a flush makes splitmuxsink reopen — and truncate — the current file).
+        Teardown runs on splitmuxsink-fragment-closed, or after 5 s if no file was open."""
+        def finish():
+            GLib.source_remove(timeout_id)
+            teardown(output_bin, flush=False)
+
+        def on_timeout():
+            self.core_pipeline._fragment_closed_callbacks.pop(mux.get_name(), None)
+            teardown(output_bin, flush=False)
+            return False
+
+        timeout_id = GLib.timeout_add(5000, on_timeout)
+        self.core_pipeline._fragment_closed_callbacks[mux.get_name()] = finish
+        for pad in output_bin.sinkpads:
+            pad.send_event(Gst.Event.new_eos())
+
     def _delete_component(self, pipeline, type):
         """Delete a component, clean up GStreamer resources, and broadcast DELETE."""
         uid = pipeline.data.uid
@@ -775,17 +793,18 @@ class PipelineHandler(object):
         # core.remove must run AFTER NULL — early removal strands GstTasks and deadlocks set_state on uridecodebin3 bins.
         component_bin = getattr(pipeline, '_bin', None)
         if component_bin and core:
-            def _deferred_null_bin(b):
+            def _deferred_null_bin(b, flush=True):
                 orphan = False
                 name = b.get_name()
-                try:
-                    b.send_event(Gst.Event.new_flush_start())
-                except Exception as e:
-                    logger.log(f"flush_start failed for {name}: {e}", level='WARNING')
-                try:
-                    b.send_event(Gst.Event.new_flush_stop(True))
-                except Exception as e:
-                    logger.log(f"flush_stop failed for {name}: {e}", level='WARNING')
+                if flush:
+                    try:
+                        b.send_event(Gst.Event.new_flush_start())
+                    except Exception as e:
+                        logger.log(f"flush_start failed for {name}: {e}", level='WARNING')
+                    try:
+                        b.send_event(Gst.Event.new_flush_stop(True))
+                    except Exception as e:
+                        logger.log(f"flush_stop failed for {name}: {e}", level='WARNING')
                 try:
                     b.set_state(Gst.State.READY)
                     state_ret, _, _ = b.get_state(2 * Gst.SECOND)
@@ -815,7 +834,12 @@ class PipelineHandler(object):
                     if len(self._orphaned_input_bins) > 10:
                         logger.log(f"_orphaned_input_bins size={len(self._orphaned_input_bins)}", level='INFO')
                 return False
-            GLib.idle_add(_deferred_null_bin, component_bin)
+
+            mux = component_bin.get_by_name(f"mux_{uid}") if pipeline.data.type == "splitmuxsink" else None
+            if mux:
+                self._finalize_recording(component_bin, mux, _deferred_null_bin)
+            else:
+                GLib.idle_add(_deferred_null_bin, component_bin)
 
         # Remove from core_pipeline.components
         if uid in self.core_pipeline.components:

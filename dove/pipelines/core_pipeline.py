@@ -15,6 +15,8 @@ class CorePipeline(BaseModel):
     _building: bool = PrivateAttr(default=False)
     _pending_levels: dict = PrivateAttr(default_factory=dict)
     _level_timer_id: Optional[int] = PrivateAttr(default=None)
+    # splitmuxsink name -> callback, run when a stopping recording has finalized its file
+    _fragment_closed_callbacks: dict = PrivateAttr(default_factory=dict)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -874,6 +876,11 @@ class CorePipeline(BaseModel):
         """Handle element messages — batch audio levels for periodic broadcast."""
         try:
             structure = message.get_structure()
+            if structure and structure.get_name() == "splitmuxsink-fragment-closed":
+                callback = self._fragment_closed_callbacks.pop(message.src.get_name(), None)
+                if callback:
+                    callback()
+                return
             if not structure or structure.get_name() != "level":
                 return
             element_name = message.src.get_name()

@@ -683,6 +683,24 @@ class PipelineHandler(object):
         for pad in output_bin.sinkpads:
             pad.send_event(Gst.Event.new_eos())
 
+    def finalize_recordings(self, on_done):
+        """Shutdown: EOS every running recording so its file is finalized, then call on_done."""
+        recordings = [o for o in self._pipelines.get("outputs", [])
+                      if o.data.type == "splitmuxsink" and getattr(o, '_bin', None)]
+        pending = len(recordings)
+        if not pending:
+            on_done()
+            return
+
+        def closed(output_bin, flush):
+            nonlocal pending
+            pending -= 1
+            if pending == 0:
+                on_done()
+
+        for o in recordings:
+            self._finalize_recording(o._bin, o._bin.get_by_name(f"mux_{o.data.uid}"), closed)
+
     def _delete_component(self, pipeline, type):
         """Delete a component, clean up GStreamer resources, and broadcast DELETE."""
         uid = pipeline.data.uid

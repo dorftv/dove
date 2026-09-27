@@ -47,10 +47,8 @@ class splitmuxsinkOutputDTO(OutputDTO):
         ),
     )
     mux: Union[mp4MuxDTO, matroskaMuxDTO, mpegtsMuxDTO] = Field(
-        default_factory=lambda: mp4MuxDTO(
-            name="mp4mux",
-            options="fragment-duration=1000 latency=4000000000"
-        ),
+        # mkv: crash-safe and correct durations (fragmented mp4 carries pipeline running time)
+        default_factory=lambda: matroskaMuxDTO(name="matroskamux"),
     )
 
 from dove.pipelines.outputs.splitmuxsink import splitmuxsinkOutput

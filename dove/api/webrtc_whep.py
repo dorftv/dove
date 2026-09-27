@@ -37,6 +37,7 @@ config = ConfigReader()
 
 _managers: dict[str, "WebrtcPreviewManager"] = {}  # source_uid -> manager
 _resources: dict[str, tuple[str, str]] = {}  # resource_id -> (source_uid, peer_id)
+WHEP_CONNECT_TIMEOUT_S = 30  # answered sessions that never reach ICE CONNECTED are cleaned up
 # GC finalize on webrtcbin that had real ICE sessions segfaults in libnice.
 # Keep refs alive (~52KB each). Pipeline and all other resources are fully freed.
 _orphaned_webrtcbins: list = []
@@ -328,6 +329,19 @@ class WebrtcPreviewManager:
             sdp_text = rewrite_sdp_candidates(sdp_text, host_ip)
 
         loop.call_soon_threadsafe(answer_future.set_result, sdp_text)
+        GLib.timeout_add_seconds(WHEP_CONNECT_TIMEOUT_S, self._cleanup_if_never_connected, peer_id)
+
+    def _cleanup_if_never_connected(self, peer_id):
+        """Client vanished before ICE connected (e.g. page reload mid-setup): no ICE state
+        change will ever arrive, so _on_ice_state never cleans up — do it here."""
+        peer = self.peers.get(peer_id)
+        if peer:
+            state = peer['webrtcbin'].get_property("ice-connection-state")
+            if state not in (GstWebRTC.WebRTCICEConnectionState.CONNECTED,
+                             GstWebRTC.WebRTCICEConnectionState.COMPLETED):
+                logger.log(f"WHEP: {peer_id[:8]} never connected ({state.value_nick}) — cleaning up", level='INFO')
+                self._deferred_cleanup(peer_id)
+        return False
 
     def _on_ice_state(self, webrtcbin, pspec, peer_id):
         try:

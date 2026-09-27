@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, List, ClassVar, Optional
@@ -27,8 +28,6 @@ class PipelineHandler(object):
     core_pipeline: CorePipeline = None
     _defer_build: bool = True  # Defer building until initial setup complete
 
-    _QUERY_SLOW_THRESHOLD_MS = 500
-    _QUERY_MAX_SKIP = 3
 
     def __init__(self):
         Gst.init(sys.argv)
@@ -43,7 +42,7 @@ class PipelineHandler(object):
         self._defer_build = True
         self.mainloop = None
         self._start_time = time.monotonic()
-        self._input_ticks = {}  # uid -> {"timer_id": int, "last_query_ms": float, "skip_count": int}
+        self._input_ticks = {}  # uid -> {"timer_id": int, "in_flight": bool}
         self._tick_count = 0
         self._orphaned_input_bins: list = []
         self._tick()
@@ -135,7 +134,7 @@ class PipelineHandler(object):
         if uid in self._input_ticks:
             return
         timer_id = GLib.timeout_add_seconds(1, self._input_tick_callback, input_obj)
-        self._input_ticks[uid] = {"timer_id": timer_id, "last_query_ms": 0.0, "skip_count": 0}
+        self._input_ticks[uid] = {"timer_id": timer_id, "in_flight": False}
 
     def _stop_input_tick(self, uid):
         entry = self._input_ticks.pop(uid, None)
@@ -180,71 +179,67 @@ class PipelineHandler(object):
                 return True
 
 
-            # Circuit-breaker: skip query if previous was slow.
-            # on_position_updated() is intentionally not called here — the input is under
-            # stress and playlist prestart can tolerate 1-3s delay.
-            if entry["last_query_ms"] > self._QUERY_SLOW_THRESHOLD_MS and entry["skip_count"] < self._QUERY_MAX_SKIP:
-                entry["skip_count"] += 1
+            # Queries can block on slow storage (NFS stall → query_duration hung the main loop
+            # >10 s) — run them in a worker thread, apply results back on the main loop.
+            if entry["in_flight"]:
                 safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
                 return True
-
-            entry["skip_count"] = 0
-
-            t0 = time.monotonic()
-
-            # Query position/duration (we're already on the GLib main thread)
-            _, state, _ = pipeline.get_state(0)
-            state_name = Gst.Element.state_get_name(state)
-
-            pos = -1
-            dur = -1
-            pos_success = False
-            dur_success = False
-
-            try:
-                pos_success, pos = pipeline.query_position(Gst.Format.TIME)
-                dur_success, dur = pipeline.query_duration(Gst.Format.TIME)
-            except Exception as e:
-                logger.log(f"Pipeline query failed for {uid}: {e}", level='DEBUG')
-
-            # Fallback: query via video tee's sink pad (upstream to source)
-            if not pos_success or not dur_success:
-                if hasattr(input_obj, 'video_tee') and input_obj.video_tee:
-                    sink_pad = input_obj.video_tee.get_static_pad("sink")
-                    if sink_pad:
-                        try:
-                            if not pos_success:
-                                pos_success, pos = sink_pad.query_position(Gst.Format.TIME)
-                            if not dur_success:
-                                dur_success, dur = sink_pad.query_duration(Gst.Format.TIME)
-                        except Exception as e:
-                            logger.log(f"Tee sink query failed for {uid}: {e}", level='DEBUG')
-
-            elapsed_ms = (time.monotonic() - t0) * 1000
-            entry["last_query_ms"] = elapsed_ms
-
-            logger.log(f"Query {uid}: state={state_name}, pos={pos_success}/{pos}, dur={dur_success}/{dur}, {elapsed_ms:.1f}ms", level='DEBUG')
-
-            # Update data and broadcast
-            if pos_success and pos >= 0:
-                input_obj.data.position = pos // Gst.SECOND
-                if hasattr(input_obj, 'on_position_updated'):
-                    try:
-                        input_obj.on_position_updated()
-                    except Exception as e:
-                        logger.log(f"on_position_updated failed for {uid}: {e}", level='ERROR')
-                    safe_broadcast("UPDATE", input_obj.data, type="input")
-                else:
-                    safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
-
-            if dur_success and dur > 0 and input_obj.data.duration in [None, 0, -1]:
-                input_obj.data.duration = dur // Gst.SECOND
-                safe_broadcast("UPDATE", input_obj.data, type="input")
+            entry["in_flight"] = True
+            threading.Thread(target=self._query_input_position, args=(input_obj, pipeline), daemon=True).start()
 
         except Exception as e:
             uid = getattr(getattr(input_obj, 'data', None), 'uid', '?')
             logger.log(f"Input tick error for {uid}: {e}", level='ERROR')
         return True
+
+    def _query_input_position(self, input_obj, pipeline):
+        """Worker thread: position/duration queries (may block on stalled reads)."""
+        pos = dur = -1
+        pos_success = dur_success = False
+        try:
+            pos_success, pos = pipeline.query_position(Gst.Format.TIME)
+            dur_success, dur = pipeline.query_duration(Gst.Format.TIME)
+        except Exception as e:
+            logger.log(f"Pipeline query failed for {input_obj.data.uid}: {e}", level='DEBUG')
+
+        # Fallback: query via video tee's sink pad (upstream to source)
+        if not pos_success or not dur_success:
+            if hasattr(input_obj, 'video_tee') and input_obj.video_tee:
+                sink_pad = input_obj.video_tee.get_static_pad("sink")
+                if sink_pad:
+                    try:
+                        if not pos_success:
+                            pos_success, pos = sink_pad.query_position(Gst.Format.TIME)
+                        if not dur_success:
+                            dur_success, dur = sink_pad.query_duration(Gst.Format.TIME)
+                    except Exception as e:
+                        logger.log(f"Tee sink query failed for {input_obj.data.uid}: {e}", level='DEBUG')
+
+        GLib.idle_add(self._apply_input_position, input_obj, pos_success, pos, dur_success, dur)
+
+    def _apply_input_position(self, input_obj, pos_success, pos, dur_success, dur):
+        """Main loop: apply worker query results, broadcast."""
+        uid = input_obj.data.uid
+        entry = self._input_ticks.get(uid)
+        if entry is None:  # input deleted while the query ran
+            return False
+        entry["in_flight"] = False
+
+        if pos_success and pos >= 0:
+            input_obj.data.position = pos // Gst.SECOND
+            if hasattr(input_obj, 'on_position_updated'):
+                try:
+                    input_obj.on_position_updated()
+                except Exception as e:
+                    logger.log(f"on_position_updated failed for {uid}: {e}", level='ERROR')
+                safe_broadcast("UPDATE", input_obj.data, type="input")
+            else:
+                safe_broadcast("UPDATE", PositionDTO(uid=uid, position=input_obj.data.position), type="input")
+
+        if dur_success and dur > 0 and input_obj.data.duration in [None, 0, -1]:
+            input_obj.data.duration = dur // Gst.SECOND
+            safe_broadcast("UPDATE", input_obj.data, type="input")
+        return False
 
     def _get_category(self, pipeline) -> str:
         """Determine pipeline category from class hierarchy."""

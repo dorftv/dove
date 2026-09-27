@@ -667,17 +667,24 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                     _resources[resource_id] = (new_source, peer_id)
 
                     # Tee-pad swap: unlink in probe, defer release+request+link to idle (probe holds stream lock).
-                    swap_list = [('video', new_video_tee)]
-                    if new_audio_tee:
-                        swap_list.append(('audio', new_audio_tee))
+                    # new_audio_tee None (source without audio) → old audio is unlinked, player goes silent
+                    swap_list = [('video', new_video_tee), ('audio', new_audio_tee)]
                     for media, new_tee in swap_list:
                         old_tee = peer.get(f'{media}_tee')
                         old_pad = peer.get(f'{media}_tee_pad')
                         psink = peer.get(f'{media}_proxysink')
-                        if not (old_tee and old_pad and psink):
-                            continue
+                        if not psink:
+                            continue  # session was negotiated without this media
                         sink_pad = psink.get_static_pad("sink")
                         if not sink_pad:
+                            continue
+                        if not old_pad:
+                            # Silent since a switch to a source without audio — nothing to unlink
+                            if new_tee:
+                                new_pad = new_tee.request_pad_simple("src_%u")
+                                new_pad.link(sink_pad)
+                                peer[f'{media}_tee'] = new_tee
+                                peer[f'{media}_tee_pad'] = new_pad
                             continue
 
                         def _do_pad_swap(pad, info, ud, _media=media, _old_tee=old_tee,
@@ -690,6 +697,10 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                             def _swap_tail():
                                 try:
                                     _old_tee.release_request_pad(pad)
+                                    if _new_tee is None:
+                                        _peer[f'{_media}_tee'] = None
+                                        _peer[f'{_media}_tee_pad'] = None
+                                        return False
                                     new_pad = _new_tee.request_pad_simple("src_%u")
                                     if new_pad is None:
                                         logger.log(f"WHEP switch: {_media} request_pad_simple returned None", level='ERROR')

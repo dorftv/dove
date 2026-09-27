@@ -308,5 +308,9 @@ class ElementsFactory:
         steps = self._build_steps()
         for desc, fn in steps:
             logger.log(f"Factory: creating {desc}", level='DEBUG')
-            fn()
+            # One bad config entry must not skip the remaining steps (outputs, links, cut)
+            try:
+                fn()
+            except Exception as e:
+                logger.log(f"Factory: failed to create {desc}: {e}", level='ERROR')
         logger.log("Factory: all pipelines created", level='DEBUG')

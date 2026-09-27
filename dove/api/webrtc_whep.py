@@ -574,9 +574,17 @@ async def whep_offer(source_uid: str, request: Request):
     manager.setup_peer(peer_id, sdp_offer, answer_future, loop, host_ip)
 
     try:
-        answer = await asyncio.wait_for(answer_future, timeout=10.0)
+        # shield: a late set_result from the GLib side must not hit a cancelled future
+        answer = await asyncio.wait_for(asyncio.shield(answer_future), timeout=10.0)
     except asyncio.TimeoutError:
         _resources.pop(resource_id, None)
+
+        # Tear the peer down once setup has finished — removing webrtcbin mid-negotiation segfaults
+        def do_remove():
+            manager.remove_peer(peer_id)
+            if not manager.peers:
+                _managers.pop(source_uid, None)
+        answer_future.add_done_callback(lambda _: bridge.run_sync_in_glib(do_remove))
         return Response(status_code=500, content="WebRTC session setup timed out")
     if not answer:
         _resources.pop(resource_id, None)

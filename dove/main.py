@@ -111,6 +111,12 @@ def main():
 
     handler.mainloop.run()
 
+    # Skip interpreter teardown: GC-finalizing the kept _orphaned_webrtcbins segfaults in
+    # libnice (see CLAUDE.md webrtcbin cleanup). Recordings are already finalized here.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
+
 
 if __name__ == "__main__":
     main()

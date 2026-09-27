@@ -263,6 +263,8 @@ class Mixer(GSTBase, ABC):
             self._rebuild_slot_filter_chain(index, new_filters, av=av)
 
         setattr(mixerInput, f'{av}_filters', new_filters)
+        # Runs on GLib after scene update() already broadcast the old state
+        safe_broadcast("UPDATE", self.data)
 
     def _rebuild_slot_filter_chain(self, index, new_filters, av='audio'):
         """Replace per-slot filter elements in the running pipeline via pad blocking on the queue src."""

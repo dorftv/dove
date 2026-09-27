@@ -732,8 +732,9 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
                             return Gst.PadProbeReturn.REMOVE
 
+                        # IDLE: also fire when the old source is dead (no data) — else the swap never happens
                         old_pad.add_probe(
-                            Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM,
+                            Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM | Gst.PadProbeType.IDLE,
                             _do_pad_swap, None,
                         )
 

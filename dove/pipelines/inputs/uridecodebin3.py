@@ -470,6 +470,27 @@ class Uridecodebin3Input(Input):
             GLib.idle_add(self._stop_source)
         return False
 
+    async def update(self, data):
+        from dove.api.input_models import updateInputDTO
+        if not isinstance(data, updateInputDTO):
+            data = updateInputDTO.model_validate(data)
+        # Play after end of file: _stop_source stopped the whole bin, start over from the beginning
+        restart = data.state == 'PLAYING' and getattr(self, '_stopping', False) and self._bin
+        if restart:
+            self._stopping = False
+            self._video_linked[0] = False
+            self._audio_linked[0] = False
+            self.uridecodebin = self._bin.get_by_name(f"uridecodebin_{self.data.uid}")
+            self.uridecodebin.set_locked_state(True)  # started on its own, see add_input_dynamic
+        await super().update(data)
+        if restart:
+            GLib.idle_add(self._restart_decoder)  # after the bin's state change queued by super()
+
+    def _restart_decoder(self):
+        self.uridecodebin.set_locked_state(False)
+        self.uridecodebin.set_state(Gst.State.PLAYING)
+        return False
+
     def _stop_source(self):
         """Stop entire input bin after EOS."""
         uid = self.data.uid

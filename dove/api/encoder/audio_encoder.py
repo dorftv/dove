@@ -39,7 +39,7 @@ class mp3EncoderDTO(audioEncoderDTO):
 class vorbisEncoderDTO(audioEncoderDTO):
     name: Literal["vorbisenc"] = "vorbisenc"
     element: Literal["vorbisenc"] = "vorbisenc"
-    format: ClassVar[str] = "S16LE"
+    format: ClassVar[str] = "F32LE"  # vorbisenc accepts F32LE only
     pre_elements: ClassVar[str] = ""
     post_elements: ClassVar[str] = ""
 

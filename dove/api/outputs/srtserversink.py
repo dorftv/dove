@@ -38,7 +38,7 @@ class SrtserversinkOutputDTO(OutputDTO):
 
     video_encoder: Union[UUID, h264EncoderUnion, h265EncoderUnion] = Field(
         default_factory=lambda: x264EncoderDTO(
-            options="bitrate=4000 pass=cbr speed-preset=veryfast",
+            options="bitrate=4000 pass=cbr speed-preset=veryfast key-int-max=60",
             profile="main",
         ),
     )

@@ -22,3 +22,6 @@ Dockerfile*
 .DS_Store
 *.swp
 *.swo
+
+# Local-only
+.venv/

@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 from dove.api.output_models import OutputDTO, SuccessDTO
+from typing import Optional, Union
+from uuid import UUID
+from dove.api.encoder.video_encoder import h264EncoderUnion, x264EncoderDTO
+from dove.api.encoder.audio_encoder import aacEncoderDTO
 from dove.event_loop_bridge import safe_broadcast
 from dove.api.helper import create_or_raise
 
@@ -14,6 +18,15 @@ class hlssink2OutputDTO(OutputDTO):
         label="HLS Sink",
         default="hlssink2",
         description="stream output to HLS.",
+    )
+    # Previews pass encoder UUIDs; user-created outputs get these defaults
+    video_encoder: Union[UUID, h264EncoderUnion] = Field(
+        default_factory=lambda: x264EncoderDTO(
+            options="bitrate=4000 pass=cbr speed-preset=veryfast key-int-max=60",
+        ),
+    )
+    audio_encoder: Optional[Union[UUID, aacEncoderDTO]] = Field(
+        default_factory=lambda: aacEncoderDTO(name="aac", options=""),
     )
 
 @router.put("/hlssink2", response_model=SuccessDTO)

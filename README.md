@@ -178,11 +178,11 @@ In-app help is available at `/help` after starting DOVE. All docs are in the [`d
 - **Nuxt 4** — web frontend
 - **Python 3.12 or 3.13**
 
-> **Note:** Python 3.14 is not supported for native installs due to PyGObject/GStreamer thread interaction bugs. Use Python 3.12 or 3.13. Docker images are pinned to 3.12 and unaffected.
+> **Note:** Python 3.14 is not supported for native installs due to PyGObject/GStreamer thread interaction bugs. Use Python 3.12 or 3.13. The Docker images ship Python 3.13 and are unaffected.
 
 ## Development
 
-Running DOVE natively from a Python venv: see [`dove/docs/install.md`](dove/docs/install.md).
+Running DOVE natively (pip install on Debian 13, or from a checkout): see [`dove/docs/install.md`](dove/docs/install.md).
 
 ## Contributing
 

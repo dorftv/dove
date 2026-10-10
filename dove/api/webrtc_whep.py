@@ -37,6 +37,7 @@ config = ConfigReader()
 
 _managers: dict[str, "WebrtcPreviewManager"] = {}  # source_uid -> manager
 _resources: dict[str, tuple[str, str]] = {}  # resource_id -> (source_uid, peer_id)
+WHEP_CONNECT_TIMEOUT_S = 30  # answered sessions that never reach ICE CONNECTED are cleaned up
 # GC finalize on webrtcbin that had real ICE sessions segfaults in libnice.
 # Keep refs alive (~52KB each). Pipeline and all other resources are fully freed.
 _orphaned_webrtcbins: list = []
@@ -328,6 +329,19 @@ class WebrtcPreviewManager:
             sdp_text = rewrite_sdp_candidates(sdp_text, host_ip)
 
         loop.call_soon_threadsafe(answer_future.set_result, sdp_text)
+        GLib.timeout_add_seconds(WHEP_CONNECT_TIMEOUT_S, self._cleanup_if_never_connected, peer_id)
+
+    def _cleanup_if_never_connected(self, peer_id):
+        """Client vanished before ICE connected (e.g. page reload mid-setup): no ICE state
+        change will ever arrive, so _on_ice_state never cleans up — do it here."""
+        peer = self.peers.get(peer_id)
+        if peer:
+            state = peer['webrtcbin'].get_property("ice-connection-state")
+            if state not in (GstWebRTC.WebRTCICEConnectionState.CONNECTED,
+                             GstWebRTC.WebRTCICEConnectionState.COMPLETED):
+                logger.log(f"WHEP: {peer_id[:8]} never connected ({state.value_nick}) — cleaning up", level='INFO')
+                self._deferred_cleanup(peer_id)
+        return False
 
     def _on_ice_state(self, webrtcbin, pspec, peer_id):
         try:
@@ -574,9 +588,17 @@ async def whep_offer(source_uid: str, request: Request):
     manager.setup_peer(peer_id, sdp_offer, answer_future, loop, host_ip)
 
     try:
-        answer = await asyncio.wait_for(answer_future, timeout=10.0)
+        # shield: a late set_result from the GLib side must not hit a cancelled future
+        answer = await asyncio.wait_for(asyncio.shield(answer_future), timeout=10.0)
     except asyncio.TimeoutError:
         _resources.pop(resource_id, None)
+
+        # Tear the peer down once setup has finished — removing webrtcbin mid-negotiation segfaults
+        def do_remove():
+            manager.remove_peer(peer_id)
+            if not manager.peers:
+                _managers.pop(source_uid, None)
+        answer_future.add_done_callback(lambda _: bridge.run_sync_in_glib(do_remove))
         return Response(status_code=500, content="WebRTC session setup timed out")
     if not answer:
         _resources.pop(resource_id, None)
@@ -667,17 +689,24 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                     _resources[resource_id] = (new_source, peer_id)
 
                     # Tee-pad swap: unlink in probe, defer release+request+link to idle (probe holds stream lock).
-                    swap_list = [('video', new_video_tee)]
-                    if new_audio_tee:
-                        swap_list.append(('audio', new_audio_tee))
+                    # new_audio_tee None (source without audio) → old audio is unlinked, player goes silent
+                    swap_list = [('video', new_video_tee), ('audio', new_audio_tee)]
                     for media, new_tee in swap_list:
                         old_tee = peer.get(f'{media}_tee')
                         old_pad = peer.get(f'{media}_tee_pad')
                         psink = peer.get(f'{media}_proxysink')
-                        if not (old_tee and old_pad and psink):
-                            continue
+                        if not psink:
+                            continue  # session was negotiated without this media
                         sink_pad = psink.get_static_pad("sink")
                         if not sink_pad:
+                            continue
+                        if not old_pad:
+                            # Silent since a switch to a source without audio — nothing to unlink
+                            if new_tee:
+                                new_pad = new_tee.request_pad_simple("src_%u")
+                                new_pad.link(sink_pad)
+                                peer[f'{media}_tee'] = new_tee
+                                peer[f'{media}_tee_pad'] = new_pad
                             continue
 
                         def _do_pad_swap(pad, info, ud, _media=media, _old_tee=old_tee,
@@ -690,6 +719,10 @@ async def whep_ice_candidate(resource_id: str, request: Request):
                             def _swap_tail():
                                 try:
                                     _old_tee.release_request_pad(pad)
+                                    if _new_tee is None:
+                                        _peer[f'{_media}_tee'] = None
+                                        _peer[f'{_media}_tee_pad'] = None
+                                        return False
                                     new_pad = _new_tee.request_pad_simple("src_%u")
                                     if new_pad is None:
                                         logger.log(f"WHEP switch: {_media} request_pad_simple returned None", level='ERROR')
@@ -713,8 +746,9 @@ async def whep_ice_candidate(resource_id: str, request: Request):
 
                             return Gst.PadProbeReturn.REMOVE
 
+                        # IDLE: also fire when the old source is dead (no data) — else the swap never happens
                         old_pad.add_probe(
-                            Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM,
+                            Gst.PadProbeType.BLOCK_DOWNSTREAM | Gst.PadProbeType.EVENT_DOWNSTREAM | Gst.PadProbeType.IDLE,
                             _do_pad_swap, None,
                         )
 

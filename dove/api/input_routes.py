@@ -5,7 +5,6 @@ from dove.pipeline_handler import PipelineHandler
 
 from dove.pipelines.base import GSTBase
 from dove.api.input_models import SuccessDTO, InputDeleteDTO, updateInputDTO
-from dove.api.mixers_dtos import mixerRemoveDTO
 from dove.api.auth import require_role, require_read
 
 from dove.api.helper import get_routers
@@ -47,16 +46,6 @@ async def delete(request: Request, data: InputDeleteDTO):
             raise HTTPException(status_code=403, detail="Input is locked")
         # delete_pipeline handles preview cleanup + mixer unlinking + DELETE broadcasts
         handler.delete_pipeline("inputs", data.uid)
-
-        # Also remove source references from mixer DTOs
-        mixers = handler.get_pipelines('mixers')
-        for mixer in mixers:
-            if mixer.data.type == "scene":
-                while True:
-                    mixerInput = mixer.data.getMixerInputDTObySource(data.uid)
-                    if mixerInput is None:
-                        break
-                    mixer.remove_source(mixerRemoveDTO(src=data.uid, index=mixerInput.index))
     return SuccessDTO(uid=data.uid)
 
 @router.put("/inputs", response_model=SuccessDTO, dependencies=[require_role("user")])

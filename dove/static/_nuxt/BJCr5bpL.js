@@ -1,0 +1,1 @@
+import{t as e}from"./CR4l8FKM.js";function t(t,n={}){return e(t,n)}export{t};

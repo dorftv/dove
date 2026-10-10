@@ -19,7 +19,7 @@ sudo pacman -S --needed \
 
 **Debian Trixie:**
 
-Trixie's repos ship GStreamer 1.24, which is below DOVE's 1.26+ minimum. Either build GStreamer 1.26+ from source before installing the rest, or use the provided Docker image (which builds 1.28+ during the image build) instead of a native install.
+Trixie ships GStreamer 1.26, which DOVE supports (`vulkanh264enc` needs 1.28 — use the default Docker image for that). `gstreamer1.0-fdkaac` is in the `non-free` component; enable it in `/etc/apt/sources.list.d/debian.sources` first.
 
 ```bash
 sudo apt install --no-install-recommends \
@@ -27,29 +27,43 @@ sudo apt install --no-install-recommends \
   gobject-introspection libgirepository-1.0-1 libcairo2-dev \
   gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
-  gstreamer1.0-nice gstreamer1.0-wpe gstreamer1.0-vaapi gstreamer1.0-x \
+  gstreamer1.0-nice gstreamer1.0-wpe gstreamer1.0-vaapi gstreamer1.0-fdkaac gstreamer1.0-x \
   gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 gir1.2-gst-plugins-bad-1.0 \
   libwpe-1.0-1 libwpebackend-fdo-1.0-1 libwpewebkit-2.0-1 \
   bubblewrap xdg-dbus-proxy dbus at-spi2-core \
-  frei0r-plugins lsp-plugins-ladspa
+  mesa-va-drivers mesa-vulkan-drivers fonts-noto-core graphviz \
+  frei0r-plugins lsp-plugins-ladspa zam-plugins
 ```
 
 `gst-plugins-rs` (audiofx for ebur128level/audioloudnorm, livesync, fallbackswitch) is not packaged on Trixie — build from source (matches `Dockerfile.trixie`):
 
 ```bash
-sudo apt install -y cargo build-essential clang pkg-config libssl-dev \
+sudo apt install -y build-essential clang pkg-config libssl-dev git curl \
   libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+# rustup: the plugins need Rust 1.92+, Trixie ships 1.85
+curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+. "$HOME/.cargo/env"
 cargo install cargo-c
-git clone --depth 1 -b 0.15.2 https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /tmp/gst-plugins-rs
+git clone --depth 1 -b gstreamer-1.28.8 https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /tmp/gst-plugins-rs
 cd /tmp/gst-plugins-rs
-sudo cargo cinstall --libdir=/usr/lib/x86_64-linux-gnu/gstreamer-1.0 --package gst-plugin-audiofx
-sudo cargo cinstall --libdir=/usr/lib/x86_64-linux-gnu/gstreamer-1.0 --package gst-plugin-livesync
-sudo cargo cinstall --libdir=/usr/lib/x86_64-linux-gnu/gstreamer-1.0 --package gst-plugin-fallbackswitch
+cargo cinstall --libdir=/tmp/gst-rs --package gst-plugin-audiofx
+cargo cinstall --libdir=/tmp/gst-rs --package gst-plugin-livesync
+cargo cinstall --libdir=/tmp/gst-rs --package gst-plugin-fallbackswitch
+sudo cp /tmp/gst-rs/gstreamer-1.0/*.so /usr/lib/x86_64-linux-gnu/gstreamer-1.0/
+```
+
+## Backend (pip)
+
+```bash
+sudo install -d -o "$(id -un)" /var/dove   # HLS previews and recordings
+python3 -m venv ~/dove-venv --system-site-packages
+~/dove-venv/bin/pip install --pre dove-video-editor
+MALLOC_MMAP_THRESHOLD_=131072 ~/dove-venv/bin/dove   # the variable bounds glibc memory growth
 ```
 
 ## Backend (venv)
 
-**Python:** 3.12 or 3.13 required. **Do NOT use Python 3.14** — PyGObject + GStreamer interaction on 3.14 has known thread/asyncio bugs that cause GLib main-loop hangs on input deletion. Docker images ship with Python 3.12 baked in.
+**Python:** 3.12 or 3.13 required. **Do NOT use Python 3.14** — PyGObject + GStreamer interaction on 3.14 has known thread/asyncio bugs that cause GLib main-loop hangs on input deletion. The Docker images ship Python 3.13.
 
 PyGObject lives in the system Python — the venv must inherit it:
 

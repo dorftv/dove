@@ -102,13 +102,20 @@ def main():
     # Graceful shutdown on SIGTERM (docker stop) and SIGINT (Ctrl+C)
     def _on_shutdown(*args):
         print("Shutting down…", file=sys.stderr, flush=True)
-        handler.mainloop.quit()
+        # Finalize running recordings first — quitting right away leaves them unfinalized
+        handler.finalize_recordings(handler.mainloop.quit)
         return GLib.SOURCE_REMOVE
 
     GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, _on_shutdown)
     GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, _on_shutdown)
 
     handler.mainloop.run()
+
+    # Skip interpreter teardown: GC-finalizing the kept _orphaned_webrtcbins segfaults in
+    # libnice (see CLAUDE.md webrtcbin cleanup). Recordings are already finalized here.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":

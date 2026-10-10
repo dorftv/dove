@@ -72,11 +72,15 @@ def get_safe_config():
             safe['auth'] = {k: v for k, v in values.items()
                            if k not in ('cookie_secret', 'client_secret', 'api_tokens')}
         elif section == 'proxy':
-            # Strip credentials from proxy configs
+            # Keep flat keys only (type/field/url/paths) — nested per-server
+            # tables (proxy.mediamtx.<server>) hold user/pass/auth
             safe['proxy'] = {}
             for name, proxy in values.items():
                 safe['proxy'][name] = {k: v for k, v in proxy.items()
-                                       if k not in ('password', 'secret', 'token', 'api_key')}
+                                       if not isinstance(v, dict)}
+        elif section in ('inputs', 'outputs', 'encoders'):
+            # Entity configs carry stream keys / passphrases in URIs — not needed by the UI
+            continue
         elif section == 'webrtc':
             # Strip TURN credentials
             safe['webrtc'] = {k: v for k, v in values.items()

@@ -23,7 +23,8 @@ class hlssink2Output(Output):
             if enc:
                 src = enc.data.src
 
-        preview_path = self.output_base.joinpath(str(src or self.data.uid))
+        # Previews live under the source uid (UI players); user outputs under their own uid
+        preview_path = self.output_base.joinpath(str(src or self.data.uid) if self.data.is_preview else str(self.data.uid))
         preview_path.mkdir(parents=True, exist_ok=True)
 
         uid = self.data.uid

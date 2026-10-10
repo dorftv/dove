@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from uuid import UUID
 from gi.repository import Gst, GLib
@@ -15,6 +16,10 @@ class CorePipeline(BaseModel):
     _building: bool = PrivateAttr(default=False)
     _pending_levels: dict = PrivateAttr(default_factory=dict)
     _level_timer_id: Optional[int] = PrivateAttr(default=None)
+    # splitmuxsink name -> callback, run when a stopping recording has finalized its file
+    _fragment_closed_callbacks: dict = PrivateAttr(default_factory=dict)
+    # (audiomixer name, pad name) -> (time, dropped samples) of the last logged drop
+    _audio_drops_logged: dict = PrivateAttr(default_factory=dict)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -76,6 +81,7 @@ class CorePipeline(BaseModel):
         bus.connect("message::state-changed", self._on_state_change)
         bus.connect("message::element", self._on_element_message)
         bus.connect("message::buffering", self._on_buffering)
+        bus.connect("message::qos", self._on_qos)
         logger.log("Bus handlers connected", level='DEBUG')
 
         ret = self.pipeline.set_state(Gst.State.PLAYING)
@@ -203,6 +209,17 @@ class CorePipeline(BaseModel):
                 # Sync state with parent pipeline
                 ret = input_bin.sync_state_with_parent()
                 logger.log(f"Input bin {uid} sync_state_with_parent returned: {ret}", level='DEBUG')
+
+                # Start uridecodebin3 on its own, like the playlist's cold start. Alone it stops at
+                # PAUSED until its streams are known. As part of the bin's state change the live
+                # fallback sources make GStreamer run straight on to PLAYING, and for file sources
+                # that deadlocks with urisourcebin's typefind thread: the GLib main loop never
+                # returns (reviews/gst-urisourcebin-deadlock.md).
+                decoder = getattr(input_component, 'uridecodebin', None)
+                if decoder and decoder.get_property("uri"):
+                    decoder.set_locked_state(False)
+                    ret = decoder.set_state(Gst.State.PLAYING)
+                    logger.log(f"Input {uid} uridecodebin3 set_state returned: {ret}", level='DEBUG')
 
                 # Wait for state transition with timeout, or set PENDING
                 result, state, pending = input_bin.get_state(100 * Gst.MSECOND)
@@ -430,6 +447,10 @@ class CorePipeline(BaseModel):
                 logger.log(f"Unknown source type for {src_uid}", level='ERROR')
                 return False
 
+        # Before the try: the rollback below reads both
+        tee_pads = {}
+        source_ghost_pads = {}
+
         try:
             # Build output bin string (dynamic=True for named queues)
             pipeline_str = output_component.build_pipeline_str(dynamic=True)
@@ -456,9 +477,6 @@ class CorePipeline(BaseModel):
             if has_audio and not audio_tee:
                 logger.log(f"Output {uid} needs audio tee but none found", level='ERROR')
                 return False
-
-            tee_pads = {}
-            source_ghost_pads = {}
 
             # Set up queues: small + leaky for isolation (prevent backpressure on shared tees)
             if has_video:
@@ -652,6 +670,18 @@ class CorePipeline(BaseModel):
             if not enc_queue.link(enc_fakesink):
                 raise RuntimeError("enc_queue -> enc_fakesink link failed")
 
+            # Block latency queries from encoder internals (e.g. audioloudnorm 3s)
+            # so they don't inflate pipeline-wide latency and delay previews.
+            encoder_component.install_latency_firewall()
+
+            # Sync state BEFORE linking the source tee pad — a buffer hitting a
+            # not-yet-active encoder pad returns FLUSHING, which tee propagates
+            # upstream and stops the source task for good.
+            enc_fakesink.sync_state_with_parent()
+            enc_queue.sync_state_with_parent()
+            enc_tee.sync_state_with_parent()
+            encoder_bin.sync_state_with_parent()
+
             # Request pad from source tee and link to encoder bin's ghost sink
             tee_pad = source_tee.request_pad_simple("src_%u")
 
@@ -665,22 +695,14 @@ class CorePipeline(BaseModel):
             else:
                 link_result = tee_pad.link(encoder_bin.get_static_pad("sink"))
 
-            logger.log(f"Encoder link result: {link_result}", level='DEBUG')
+            if link_result != Gst.PadLinkReturn.OK:
+                raise RuntimeError(f"source tee -> encoder_bin link failed: {link_result}")
 
             # Store remaining references
             self.components[uid] = encoder_component
             encoder_component._source_tee_pad = tee_pad
             encoder_component.tee = enc_tee
 
-            # Block latency queries from encoder internals (e.g. audioloudnorm 3s)
-            # so they don't inflate pipeline-wide latency and delay previews.
-            encoder_component.install_latency_firewall()
-
-            # Sync state: downstream first (sink → source)
-            enc_fakesink.sync_state_with_parent()
-            enc_queue.sync_state_with_parent()
-            enc_tee.sync_state_with_parent()
-            encoder_bin.sync_state_with_parent()
             encoder_component.data.state = "PLAYING"
             from dove.event_loop_bridge import safe_broadcast
             safe_broadcast("UPDATE", encoder_component.data, type="encoder")
@@ -870,6 +892,11 @@ class CorePipeline(BaseModel):
         """Handle element messages — batch audio levels for periodic broadcast."""
         try:
             structure = message.get_structure()
+            if structure and structure.get_name() == "splitmuxsink-fragment-closed":
+                callback = self._fragment_closed_callbacks.pop(message.src.get_name(), None)
+                if callback:
+                    callback()
+                return
             if not structure or structure.get_name() != "level":
                 return
             element_name = message.src.get_name()
@@ -886,6 +913,23 @@ class CorePipeline(BaseModel):
                 self._level_timer_id = GLib.timeout_add(200, self._flush_levels)
         except Exception as e:
             logger.log(f"Exception in _on_element_message: {e}", level='ERROR')
+
+    def _on_qos(self, bus, message):
+        """Log audio a mixer dropped because it arrived too late (qos-messages on its slot pads)."""
+        pad = message.src
+        if not isinstance(pad, Gst.Pad):
+            return
+        mixer = pad.get_parent_element()
+        if not mixer or mixer.get_factory().get_name() != "audiomixer":
+            return
+        _, _, dropped = message.parse_qos_stats()
+        key = (mixer.get_name(), pad.get_name())
+        last_time, last_dropped = self._audio_drops_logged.get(key, (0, 0))
+        now = time.monotonic()
+        # at most one line per pad per second; the count is cumulative
+        if dropped > last_dropped and now - last_time >= 1:
+            self._audio_drops_logged[key] = (now, dropped)
+            logger.log(f"Audio dropped (late): {key[0]} {key[1]} +{dropped - last_dropped} samples, {dropped} total", level='WARNING')
 
     def _on_buffering(self, bus, message):
         """Handle buffering messages from uridecodebin3 — broadcast to frontend."""

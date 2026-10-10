@@ -59,9 +59,12 @@ class PlaylistInput(Uridecodebin3Input):
         self._watchdog_tee_pad = None
         self._pending_advance = False
         self._flush_drop_probe_ids = {}
+        self._deleted = False
 
     def cleanup(self):
         """Cancel all active timers and probes — call before deletion."""
+        # Idles queued before this point (watchdog resets, clip changes) check this flag
+        self._deleted = True
         # Remove any residual flush-drop probes (leaks permanently if exception aborted _flush_chain)
         for pad, pid in list(self._flush_drop_probe_ids.items()):
             try:
@@ -100,7 +103,9 @@ class PlaylistInput(Uridecodebin3Input):
             self.data.total_duration = self._sum_clip_durations()
         item_type, uri = self._next_clip()
         if uri is None:
-            self.data.state = "EOS"
+            # Pending async playlist load starts playback via _on_async_playlist_loaded
+            if not self._loading_next_playlist:
+                self.data.state = "EOS"
             return ""
         self._update_clip_metadata()
         if item_type == "html":
@@ -178,17 +183,15 @@ class PlaylistInput(Uridecodebin3Input):
         self._wpe_chain = [self._htmlsrc, wpe_vconv, wpe_vscale, wpe_vrate, wpe_vcaps, wpe_vqueue]
         self._html_audio_chain = [self._html_audiosrc, html_acaps, html_aconv, html_aresample, html_aqueue]
 
-        # Lock audio chain (silent until HTML clip active)
-        # Video chain stays unlocked — wpesrc runs on about:blank at alpha=0 (negligible cost)
-        for elem in self._html_audio_chain:
-            elem.set_locked_state(True)
-
         # If first clip is HTML, lock uridecodebin and schedule switch
         if hasattr(self, '_first_html'):
             self.uridecodebin.set_locked_state(True)
             uri, duration = self._first_html
             del self._first_html
             GLib.timeout_add(500, self._switch_first_html, uri, duration)
+        # URL playlist still loading — no URI yet; _on_async_playlist_loaded cold-starts the first clip
+        elif self._loading_next_playlist:
+            self.uridecodebin.set_locked_state(True)
 
         return container
 
@@ -373,6 +376,8 @@ class PlaylistInput(Uridecodebin3Input):
     def _reset_watchdog(self):
         """Reset watchdog timer — called on every buffer.
         Must run on GLib main thread (uses GLib.source_remove/timeout_add)."""
+        if self._deleted:
+            return False
         if self._watchdog_timer_id is not None:
             GLib.source_remove(self._watchdog_timer_id)
         self._watchdog_timer_id = GLib.timeout_add(
@@ -418,6 +423,8 @@ class PlaylistInput(Uridecodebin3Input):
 
     def _change_clip(self):
         """Switch to next clip. Runs in GLib main loop."""
+        if self._deleted:
+            return False
         uid = self.data.uid
 
         # Cancel any lingering timers from previous clip
@@ -751,14 +758,10 @@ class PlaylistInput(Uridecodebin3Input):
         data = self._prefetched_next
         self._prefetched_next = None
         if data is None:
-            if self._changing_clip:
-                # Runtime: async load to avoid blocking GLib thread
-                self._loading_next_playlist = True
-                self._start_async_playlist_load(self.data.next)
-                return False
-            # Init: sync load OK — GLib loop not running yet
-            if self.data.next:
-                data = self._load_playlist(self.data.next)
+            # Async load — build_bin also runs on the live GLib loop (startup + API)
+            self._loading_next_playlist = True
+            self._start_async_playlist_load(self.data.next)
+            return False
         return self._apply_playlist_data(data)
 
     def _apply_playlist_data(self, data):

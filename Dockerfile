@@ -60,10 +60,7 @@ RUN cd gstreamer && \
   ninja -C builddir install && \
   ldconfig
 
-# ---------- Rust plugin builder ----------
-# Inherits /usr/local with GStreamer 1.28 from builder, just adds rust toolchain
-FROM builder AS rust-builder
-
+# Rust gst-plugins-rs, built against the GStreamer 1.28 in /usr/local
 RUN apt-get update && apt-get install -yq --no-install-recommends curl clang \
   && rm -rf /var/lib/apt/lists/*
 # Use rustup for newer rust (trixie ships 1.85, gst-plugins-rs needs 1.92+)
@@ -83,6 +80,21 @@ RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-livesyn
 # fallbackswitch/fallbacksrc for graceful failover
 RUN cargo cinstall --libdir=/install/gst-plugins-rs --package gst-plugin-fallbackswitch
 
+# From here on /usr/local is exactly what the runtime image gets.
+# Rust plugins are stripped (61MB -> 5MB); GStreamer's own libs keep their symbols for native backtraces.
+# Static libs, headers, pkg-config and GIR XML are only needed to build against GStreamer.
+RUN strip --strip-unneeded /install/gst-plugins-rs/gstreamer-1.0/*.so && \
+  cp /install/gst-plugins-rs/gstreamer-1.0/*.so /usr/local/lib/gstreamer-1.0/ && \
+  rm -rf /usr/local/include /usr/local/lib/*.a /usr/local/lib/pkgconfig \
+    /usr/local/lib/gstreamer-1.0/pkgconfig /usr/local/lib/gstreamer-1.0/include \
+    /usr/local/share/gir-1.0 /usr/local/share/man /usr/local/man
+
+# DOVE + Python deps go to /usr/local too, so the runtime image needs no pip
+RUN apt-get update && apt-get install -yq --no-install-recommends python3-pip \
+  && rm -rf /var/lib/apt/lists/*
+COPY . /app
+RUN pip install /app --ignore-installed --break-system-packages
+
 # ---------- Runtime stage ----------
 FROM debian:trixie-slim AS runtime
 
@@ -91,9 +103,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 # non-free for intel-media-va-driver-non-free
 RUN sed -i 's/^Components: main$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
 
+# Skip package contents DOVE never loads: zam-plugins' LV2/VST/CLAP/standalone builds (160MB, only
+# the LADSPA ones are used) and Vulkan drivers other than AMD, Intel and software (50MB)
+RUN printf 'path-exclude=%s\n' \
+  '/usr/lib/lv2/*' '/usr/lib/vst/*' '/usr/lib/vst3/*' '/usr/lib/clap/*' '/usr/bin/Za*' \
+  '/usr/lib/*/libvulkan_nouveau.so' '/usr/share/vulkan/icd.d/nouveau_icd*' \
+  '/usr/lib/*/libvulkan_freedreno.so' '/usr/share/vulkan/icd.d/freedreno_icd*' \
+  '/usr/lib/*/libvulkan_asahi.so' '/usr/share/vulkan/icd.d/asahi_icd*' \
+  '/usr/lib/*/libvulkan_gfxstream.so' '/usr/share/vulkan/icd.d/gfxstream_vk_icd*' \
+  '/usr/lib/*/libvulkan_virtio.so' '/usr/share/vulkan/icd.d/virtio_icd*' \
+  > /etc/dpkg/dpkg.cfg.d/dove-excludes
+
 # Runtime libs only
 RUN apt-get update && apt-get install -yq --no-install-recommends \
-  python3 python3-pip python3-gi python3-gi-cairo libpython3.13 \
+  python3 python3-gi python3-gi-cairo libpython3.13 \
   libglib2.0-0t64 libgirepository-1.0-1 libxml2 \
   libjpeg62-turbo libpng16-16t64 libvorbis0a libvorbisenc2 libogg0 libopus0 libmpg123-0t64 \
   libasound2t64 libpulse0 libcairo2 libcairo-gobject2 libpango-1.0-0 libpangocairo-1.0-0 libfreetype6 \
@@ -131,25 +154,26 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
   ladspa-sdk zam-plugins lsp-plugins-ladspa frei0r-plugins \
   && rm -rf /var/lib/apt/lists/*
 
+# GStreamer 1.28 + Rust gst-plugins-rs (audiofx, livesync, fallbackswitch) + DOVE's Python deps
 COPY --from=builder /usr/local /usr/local
-# Rust gst-plugins-rs (audiofx + optional livesync/fallbackswitch)
-COPY --from=rust-builder /install/gst-plugins-rs/gstreamer-1.0/*.so /usr/local/lib/gstreamer-1.0/
 RUN ldconfig
 
 # GStreamer typelibs and gst-python overrides live under /usr/local
 ENV GI_TYPELIB_PATH=/usr/local/lib/girepository-1.0
 ENV PYTHONPATH=/usr/local/lib/python3/dist-packages
 
-COPY . /app
-WORKDIR /app
-RUN cp config-example.toml config.toml
-
-RUN pip install . --ignore-installed --break-system-packages
+# glibc otherwise serves video-frame-sized blocks from its per-thread heaps and cannot return them:
+# 30 input create/delete cycles grew DOVE from 640MB to 1.8GB. A fixed threshold sends every block
+# over 128KB straight to mmap/munmap, as musl does.
+ENV MALLOC_MMAP_THRESHOLD_=131072
 
 # Non-root user with video group (GPU access via /dev/dri)
 RUN useradd -r -m -G video dove \
     && mkdir -p /var/dove/hls /crashes \
-    && chown -R dove:dove /app /var/dove /crashes
+    && chown -R dove:dove /var/dove /crashes
+
+COPY --chown=dove:dove . /app
+WORKDIR /app
 
 EXPOSE 5000
 
@@ -160,6 +184,7 @@ ENV DBUS_SESSION_BUS_ADDRESS=disabled:
 ENV WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
 
 USER dove
+RUN cp config-example.toml config.toml
 
 # Pre-scan GStreamer plugins at build time (baked registry = instant startup, no warnings on first run)
 RUN gst-inspect-1.0 > /dev/null 2>&1

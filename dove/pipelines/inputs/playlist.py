@@ -183,11 +183,6 @@ class PlaylistInput(Uridecodebin3Input):
         self._wpe_chain = [self._htmlsrc, wpe_vconv, wpe_vscale, wpe_vrate, wpe_vcaps, wpe_vqueue]
         self._html_audio_chain = [self._html_audiosrc, html_acaps, html_aconv, html_aresample, html_aqueue]
 
-        # Lock audio chain (silent until HTML clip active)
-        # Video chain stays unlocked — wpesrc runs on about:blank at alpha=0 (negligible cost)
-        for elem in self._html_audio_chain:
-            elem.set_locked_state(True)
-
         # If first clip is HTML, lock uridecodebin and schedule switch
         if hasattr(self, '_first_html'):
             self.uridecodebin.set_locked_state(True)

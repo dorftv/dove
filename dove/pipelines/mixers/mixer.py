@@ -414,6 +414,8 @@ class Mixer(GSTBase, ABC):
                 else:
                     pad.set_property("volume", 0)
                     pad.set_property("mute", True)
+                    # Report dropped (late) audio on the bus, logged in core_pipeline._on_qos
+                    pad.set_property("qos-messages", True)
 
                 mixerSource.sink = pad.get_name()
 

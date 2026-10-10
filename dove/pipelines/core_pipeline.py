@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from uuid import UUID
 from gi.repository import Gst, GLib
@@ -17,6 +18,8 @@ class CorePipeline(BaseModel):
     _level_timer_id: Optional[int] = PrivateAttr(default=None)
     # splitmuxsink name -> callback, run when a stopping recording has finalized its file
     _fragment_closed_callbacks: dict = PrivateAttr(default_factory=dict)
+    # (audiomixer name, pad name) -> (time, dropped samples) of the last logged drop
+    _audio_drops_logged: dict = PrivateAttr(default_factory=dict)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -78,6 +81,7 @@ class CorePipeline(BaseModel):
         bus.connect("message::state-changed", self._on_state_change)
         bus.connect("message::element", self._on_element_message)
         bus.connect("message::buffering", self._on_buffering)
+        bus.connect("message::qos", self._on_qos)
         logger.log("Bus handlers connected", level='DEBUG')
 
         ret = self.pipeline.set_state(Gst.State.PLAYING)
@@ -909,6 +913,23 @@ class CorePipeline(BaseModel):
                 self._level_timer_id = GLib.timeout_add(200, self._flush_levels)
         except Exception as e:
             logger.log(f"Exception in _on_element_message: {e}", level='ERROR')
+
+    def _on_qos(self, bus, message):
+        """Log audio a mixer dropped because it arrived too late (qos-messages on its slot pads)."""
+        pad = message.src
+        if not isinstance(pad, Gst.Pad):
+            return
+        mixer = pad.get_parent_element()
+        if not mixer or mixer.get_factory().get_name() != "audiomixer":
+            return
+        _, _, dropped = message.parse_qos_stats()
+        key = (mixer.get_name(), pad.get_name())
+        last_time, last_dropped = self._audio_drops_logged.get(key, (0, 0))
+        now = time.monotonic()
+        # at most one line per pad per second; the count is cumulative
+        if dropped > last_dropped and now - last_time >= 1:
+            self._audio_drops_logged[key] = (now, dropped)
+            logger.log(f"Audio dropped (late): {key[0]} {key[1]} +{dropped - last_dropped} samples, {dropped} total", level='WARNING')
 
     def _on_buffering(self, bus, message):
         """Handle buffering messages from uridecodebin3 — broadcast to frontend."""

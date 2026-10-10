@@ -89,6 +89,11 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def _send_error(websocket: WebSocket, message: str):
+    """Tell this client its update was not applied (REST calls get an HTTP error instead)."""
+    await websocket.send_json({"channel": "ERROR", "data": {"message": message}})
+
+
 async def update_pipe(data, websocket: WebSocket):
     handler = websocket.app.state.pipeline_handler
     uid = data['data']['uid']
@@ -97,6 +102,7 @@ async def update_pipe(data, websocket: WebSocket):
         logger.log(f"WS filters: uid={uid[:8]}, keys={list(data['data'].keys())}", level='DEBUG')
     if not pipeline:
         logger.log(f"WebSocket update for unknown pipeline {uid}", level='WARNING')
+        await _send_error(websocket, "Update not applied: entity no longer exists")
         return
 
     # Role check: determine required role from the pipeline's category, not client data
@@ -116,6 +122,7 @@ async def update_pipe(data, websocket: WebSocket):
             required_group = groups_map.get(required_role, required_role)
             if required_group not in user_groups:
                 logger.log(f"WS update denied: {entity_category} requires {required_role}", level='WARNING')
+                await _send_error(websocket, f"Not allowed: changing {entity_category} requires the '{required_role}' role")
                 return
 
             # Lock check: supervisor and admin can bypass
@@ -123,6 +130,7 @@ async def update_pipe(data, websocket: WebSocket):
                 supervisor_group = groups_map.get('supervisor', 'dove-supervisor')
                 if admin_group not in user_groups and supervisor_group not in user_groups:
                     logger.log("WS update denied: entity is locked", level='WARNING')
+                    await _send_error(websocket, "Not allowed: entity is locked")
                     return
 
     await pipeline.update(data['data'])
@@ -149,6 +157,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await update_pipe(data, websocket)
             except Exception as e:
                 logger.log(f"WebSocket message error: {e}", level='ERROR')
+                await _send_error(websocket, f"Update failed: {e}")
     except WebSocketDisconnect:
         pass
     except Exception as e:

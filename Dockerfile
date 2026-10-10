@@ -1,7 +1,7 @@
 # ---------- Builder stage ----------
 FROM alpine:3.21 AS builder
 
-ARG GSTREAMER_VERSION=1.28.7
+ARG GSTREAMER_VERSION=1.28.8
 
 # Core build deps
 RUN apk add --no-cache \
@@ -72,7 +72,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN cargo install --locked cargo-c
 
-ARG GST_RS_VERSION=gstreamer-1.28.7
+ARG GST_RS_VERSION=gstreamer-1.28.8
 RUN git clone --depth 1 -b ${GST_RS_VERSION} \
     https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git /opt/gst-plugins-rs
 

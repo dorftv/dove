@@ -144,7 +144,7 @@ Legacy VAAPI H.264 encoder. Use `vah264enc` instead unless your platform require
 
 ### vulkanh264enc
 
-Vulkan Video hardware H.264 encoder. Requires GStreamer 1.28+ and a Vulkan-capable GPU with video encode support (Mesa 26+). Alpine image only — not available in the Debian Trixie image.
+Vulkan Video hardware H.264 encoder. Requires GStreamer 1.28+ and a Vulkan-capable GPU with video encode support (Mesa 26+). Default image only — not available in the `-debian` image (GStreamer 1.26).
 
 **Key options**
 - `bitrate=4000` — target rate in **kbit/s**.
@@ -208,7 +208,7 @@ Auto-selected video encoder: vah264enc
 
 **VAAPI (AMD/Intel):** requires `/dev/dri` passed to the container.
 
-**Vulkan:** requires a Vulkan-capable GPU with video encode support. Only available in the Alpine image.
+**Vulkan:** requires a Vulkan-capable GPU with video encode support. Only available in the default image, not in the `-debian` image.
 
 **Rockchip:** requires the `mpp` runtime + relevant `/dev/*` device nodes.
 

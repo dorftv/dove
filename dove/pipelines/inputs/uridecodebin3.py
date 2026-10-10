@@ -72,6 +72,8 @@ class Uridecodebin3Input(Input):
         self._added_at = time.monotonic()
         self.data.is_live = self._is_live
         uridecodebin = Gst.ElementFactory.make("uridecodebin3", f"uridecodebin_{uid}")
+        # Started on its own after the bin, see add_input_dynamic
+        uridecodebin.set_locked_state(True)
         if uri:
             uridecodebin.set_property("uri", uri)
         if _is_self_buffered_uri(uri):

@@ -206,6 +206,17 @@ class CorePipeline(BaseModel):
                 ret = input_bin.sync_state_with_parent()
                 logger.log(f"Input bin {uid} sync_state_with_parent returned: {ret}", level='DEBUG')
 
+                # Start uridecodebin3 on its own, like the playlist's cold start. Alone it stops at
+                # PAUSED until its streams are known. As part of the bin's state change the live
+                # fallback sources make GStreamer run straight on to PLAYING, and for file sources
+                # that deadlocks with urisourcebin's typefind thread: the GLib main loop never
+                # returns (reviews/gst-urisourcebin-deadlock.md).
+                decoder = getattr(input_component, 'uridecodebin', None)
+                if decoder and decoder.get_property("uri"):
+                    decoder.set_locked_state(False)
+                    ret = decoder.set_state(Gst.State.PLAYING)
+                    logger.log(f"Input {uid} uridecodebin3 set_state returned: {ret}", level='DEBUG')
+
                 # Wait for state transition with timeout, or set PENDING
                 result, state, pending = input_bin.get_state(100 * Gst.MSECOND)
                 if result == Gst.StateChangeReturn.SUCCESS:

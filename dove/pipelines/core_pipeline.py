@@ -443,6 +443,10 @@ class CorePipeline(BaseModel):
                 logger.log(f"Unknown source type for {src_uid}", level='ERROR')
                 return False
 
+        # Before the try: the rollback below reads both
+        tee_pads = {}
+        source_ghost_pads = {}
+
         try:
             # Build output bin string (dynamic=True for named queues)
             pipeline_str = output_component.build_pipeline_str(dynamic=True)
@@ -469,9 +473,6 @@ class CorePipeline(BaseModel):
             if has_audio and not audio_tee:
                 logger.log(f"Output {uid} needs audio tee but none found", level='ERROR')
                 return False
-
-            tee_pads = {}
-            source_ghost_pads = {}
 
             # Set up queues: small + leaky for isolation (prevent backpressure on shared tees)
             if has_video:

@@ -7,7 +7,7 @@ from dove.api.mixers_dtos import mixerBaseDTO, MixerDeleteDTO
 from dove.api.input_models import InputDTO, InputDeleteDTO
 from dove.api.output_models import OutputDTO, OutputDeleteDTO
 from dove.api.encoder_models import EncoderEntityDTO, EncoderEntityDeleteDTO
-from dove.api.auth import is_auth_enabled, get_current_user
+from dove.api.auth import is_auth_enabled, get_current_user, is_allowed_ws_origin
 from dove.config_handler import ConfigReader
 
 from fastapi import WebSocketDisconnect
@@ -89,6 +89,11 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def _send_error(websocket: WebSocket, message: str):
+    """Tell this client its update was not applied (REST calls get an HTTP error instead)."""
+    await websocket.send_json({"channel": "ERROR", "data": {"message": message}})
+
+
 async def update_pipe(data, websocket: WebSocket):
     handler = websocket.app.state.pipeline_handler
     uid = data['data']['uid']
@@ -97,6 +102,7 @@ async def update_pipe(data, websocket: WebSocket):
         logger.log(f"WS filters: uid={uid[:8]}, keys={list(data['data'].keys())}", level='DEBUG')
     if not pipeline:
         logger.log(f"WebSocket update for unknown pipeline {uid}", level='WARNING')
+        await _send_error(websocket, "Update not applied: entity no longer exists")
         return
 
     # Role check: determine required role from the pipeline's category, not client data
@@ -116,6 +122,7 @@ async def update_pipe(data, websocket: WebSocket):
             required_group = groups_map.get(required_role, required_role)
             if required_group not in user_groups:
                 logger.log(f"WS update denied: {entity_category} requires {required_role}", level='WARNING')
+                await _send_error(websocket, f"Not allowed: changing {entity_category} requires the '{required_role}' role")
                 return
 
             # Lock check: supervisor and admin can bypass
@@ -123,6 +130,7 @@ async def update_pipe(data, websocket: WebSocket):
                 supervisor_group = groups_map.get('supervisor', 'dove-supervisor')
                 if admin_group not in user_groups and supervisor_group not in user_groups:
                     logger.log("WS update denied: entity is locked", level='WARNING')
+                    await _send_error(websocket, "Not allowed: entity is locked")
                     return
 
     await pipeline.update(data['data'])
@@ -130,6 +138,9 @@ async def update_pipe(data, websocket: WebSocket):
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    if not is_allowed_ws_origin(websocket):
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
     if is_auth_enabled():
         try:
             user = await get_current_user(websocket)
@@ -146,6 +157,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await update_pipe(data, websocket)
             except Exception as e:
                 logger.log(f"WebSocket message error: {e}", level='ERROR')
+                await _send_error(websocket, f"Update failed: {e}")
     except WebSocketDisconnect:
         pass
     except Exception as e:

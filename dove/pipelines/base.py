@@ -32,6 +32,11 @@ class GSTBase(BaseModel):
             if issubclass(self.data.__class__, OutputDTO):
                 if self.data.framerate is not None:
                     caps += f",framerate={self.data.framerate}"
+            else:
+                # Square pixels at input exit: otherwise videoscale encodes the source shape
+                # (e.g. a WHIP window) in the PAR, preview encoders derive a different height
+                # per source and VA encoders crash on the mid-stream resolution change.
+                caps += ",pixel-aspect-ratio=1/1"
         return caps
 
     def get_pipeline(self):

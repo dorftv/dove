@@ -7,11 +7,20 @@ from dove.config_handler import ConfigReader
 from dove.logger import logger
 from dove.pipelines.outputs.output import Output
 from dove.api.outputs.splitmuxsink import splitmuxsinkOutputDTO
+from dove.api.helper import get_encoder_dto_class
 
 MUX_EXTENSIONS = {
     "mpegtsmux": ".ts",
     "mp4mux": ".mp4",
     "matroskamux": ".mkv",
+}
+
+# Parsers in front of splitmuxsink, keyed by video codec / audio encoder element (vp8 needs none)
+VIDEO_PARSERS = {"h264": "h264parse", "h265": "h265parse", "vp9": "vp9parse", "av1": "av1parse"}
+AUDIO_PARSERS = {
+    "fdkaacenc": "aacparse", "voaacenc": "aacparse",
+    "avenc_mp2": "mpegaudioparse", "lamemp3enc": "mpegaudioparse",
+    "vorbisenc": "vorbisparse", "flacenc": "flacparse", "opusenc": "opusparse",
 }
 
 SEGMENT_DURATIONS = {
@@ -94,6 +103,12 @@ class splitmuxsinkOutput(Output):
             Path(self._fallback_dir).mkdir(parents=True, exist_ok=True)
             filename = str(Path(self._fallback_dir) / (datetime.now().strftime("recording_%Y-%m-%d_%H-%M-%S") + ext))
 
+        # Never overwrite an existing file (template without time fields, restart within the same second)
+        base, n = filename[:-len(ext)], 1
+        while Path(filename).exists():
+            filename = f"{base}_{n}{ext}"
+            n += 1
+
         logger.log(f"splitmuxsink {self.data.uid}: segment {fragment_id} → {filename}", level='DEBUG')
         return filename
 
@@ -113,8 +128,18 @@ class splitmuxsinkOutput(Output):
         # Parse elements needed for caps negotiation with splitmuxsink
         # (splitmuxsink creates its internal muxer lazily, so caps must be
         # established by upstream parse elements)
-        video_parse = "h264parse ! " if dynamic else ""
-        audio_parse = "aacparse ! " if dynamic else ""
+        video_parse = audio_parse = ""
+        if dynamic:
+            # Encoders are entities (UUIDs) by now — see _ensure_output_encoders
+            from dove.pipeline_handler import HandlerSingleton
+            handler = HandlerSingleton()
+            venc = handler.get_pipeline("encoders", self.data.video_encoder)
+            aenc = handler.get_pipeline("encoders", self.data.audio_encoder)
+            # codec from the element's DTO class — entity .codec can be empty (API-created encoders)
+            vparser = VIDEO_PARSERS.get(getattr(get_encoder_dto_class(venc.data.element), 'codec', None))
+            aparser = AUDIO_PARSERS.get(aenc.data.element)
+            video_parse = f"{vparser} ! " if vparser else ""
+            audio_parse = f"{aparser} ! " if aparser else ""
 
         video_str = (
             f" {self.get_video_start(dynamic)} "

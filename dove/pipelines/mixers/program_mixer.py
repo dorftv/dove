@@ -127,41 +127,44 @@ class programMixer(Mixer):
             return
         self._pending_transition = None
 
-        src_uid = pending['src_uid']
-        transition = pending['transition']
-        duration = pending['duration']
+        # finally: always arm the flush timer — otherwise one exception leaves
+        # _transition_scheduled set and every later cut is silently dropped.
+        try:
+            src_uid = pending['src_uid']
+            transition = pending['transition']
+            duration = pending['duration']
 
-        # Compute indices HERE on GLib thread — always reads latest data.active
-        if self.data.active is None:
-            old_index = None
-            index = 0
-        else:
-            old_index = self.data.active
-            index = 0 if self.data.active == 1 else 1
-
-        self._cancel_fade()
-
-        # Only re-link if the source changed — skip expensive teardown+rebuild for A/B toggling
-        if src_uid:
-            current_src = self.data.sources[index].src if index < len(self.data.sources) else None
-            if str(current_src) != str(src_uid):
-                self.link_source(index, src_uid)
+            # Compute indices HERE on GLib thread — always reads latest data.active
+            if self.data.active is None:
+                old_index = None
+                index = 0
             else:
-                # Source already linked — just make visible
-                self._show_slot(index)
-        self.data.active = index
+                old_index = self.data.active
+                index = 0 if self.data.active == 1 else 1
 
-        if transition == "fade":
-            self._do_fade(index, old_index, duration)
-        else:
-            if old_index is not None:
-                self._hide_slot(old_index)
-            safe_broadcast("UPDATE", self.data)
+            self._cancel_fade()
 
-        # debounce: 100ms gate before processing next queued transition
-        if self._flush_timer_id is not None:
-            GLib.source_remove(self._flush_timer_id)
-        self._flush_timer_id = GLib.timeout_add(100, self._flush_pending_transition)
+            # Only re-link if the source changed — skip expensive teardown+rebuild for A/B toggling
+            if src_uid:
+                current_src = self.data.sources[index].src if index < len(self.data.sources) else None
+                if str(current_src) != str(src_uid):
+                    self.link_source(index, src_uid)
+                else:
+                    # Source already linked — just make visible
+                    self._show_slot(index)
+            self.data.active = index
+
+            if transition == "fade":
+                self._do_fade(index, old_index, duration)
+            else:
+                if old_index is not None:
+                    self._hide_slot(old_index)
+                safe_broadcast("UPDATE", self.data)
+        finally:
+            # debounce: 100ms gate before processing next queued transition
+            if self._flush_timer_id is not None:
+                GLib.source_remove(self._flush_timer_id)
+            self._flush_timer_id = GLib.timeout_add(100, self._flush_pending_transition)
 
     def _flush_pending_transition(self):
         """After cooldown, process any queued transition or release the lock."""

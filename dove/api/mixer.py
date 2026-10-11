@@ -3,6 +3,7 @@ from uuid import UUID
 from dove.api.mixers_dtos import mixerCutDTO, mixerInputDTO, mixerSlotDTO, mixerCutProgramDTO, mixerRemoveSlotDTO
 from dove.api.auth import require_role
 from dove.pipelines.base import GSTBase
+from dove.event_loop_bridge import bridge
 
 router = APIRouter(prefix="/api")
 
@@ -41,7 +42,7 @@ async def action_add_slot(request: Request, data: mixerSlotDTO):
     mixer = handler.get_pipeline("mixers", data.uid)
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.uid} not found")
-    response = mixer.add_slot(data.slot)
+    response = await bridge.call_glib_async(mixer.add_slot, data.slot)
     return response
 
 @router.post("/mixer/remove_slot", dependencies=[require_role("supervisor")])
@@ -51,7 +52,7 @@ async def action_remove_slot(request: Request, data: mixerRemoveSlotDTO):
     if not mixer:
         raise HTTPException(status_code=404, detail=f"Mixer {data.uid} not found")
     inputDTO: mixerInputDTO = mixer.data.getMixerInputDTO(data.index)
-    response = mixer.remove_slot(inputDTO)
+    response = await bridge.call_glib_async(mixer.remove_slot, inputDTO)
     return response
 
 

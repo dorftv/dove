@@ -27,7 +27,7 @@ jobs:
       matrix:
         include:
           - dockerfile: Dockerfile
-            suffix: alpine
+            suffix: ""
             gstreamer: "1.28"
           - dockerfile: Dockerfile.trixie
             suffix: debian
@@ -53,10 +53,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ github.ref_name }}-${{ matrix.suffix }}
-            type=raw,value=latest-${{ matrix.suffix }}
-            type=raw,value=latest,enable=${{ matrix.suffix == 'alpine' }}
-            type=raw,value=${{ github.ref_name }},enable=${{ matrix.suffix == 'alpine' }}
+            type=raw,value=${{ github.ref_name }}-${{ matrix.suffix }},enable=${{ matrix.suffix != '' }}
+            type=raw,value=latest-${{ matrix.suffix }},enable=${{ matrix.suffix != '' }}
+            type=raw,value=latest,enable=${{ matrix.suffix == '' }}
+            type=raw,value=${{ github.ref_name }},enable=${{ matrix.suffix == '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -66,5 +66,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.suffix }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.suffix }}
+          cache-from: type=gha,scope=${{ matrix.suffix || 'main' }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.suffix || 'main' }}

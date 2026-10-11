@@ -9,6 +9,7 @@ import time
 import secrets
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlsplit
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -65,6 +66,24 @@ def _validate_redirect_base(request: Request, redirect_base: Optional[str]) -> s
         return redirect_base
     logger.log(f"Rejected redirect_base: {redirect_base}", level='WARNING')
     return server_origin
+
+
+def is_allowed_ws_origin(websocket: HTTPConnection) -> bool:
+    """Reject cross-site WebSocket handshakes (CSWSH) — browsers don't enforce CORS on WS.
+    Allowed: no Origin (non-browser client), Origin in allowed_origins, or Origin hostname
+    matching Host / X-Forwarded-Host (port ignored: dev frontend :3000 → backend :5000)."""
+    origin = websocket.headers.get('origin')
+    if not origin:
+        return True
+    if origin in _get_config().get('allowed_origins', []):
+        return True
+    hosts = {urlsplit(f"//{h}").hostname for h in (websocket.headers.get('host'),
+                                                   websocket.headers.get('x-forwarded-host')) if h}
+    if urlsplit(origin).hostname in hosts:
+        return True
+    logger.log(f"Rejected WebSocket from origin {origin} (add it to [auth] allowed_origins if legitimate)",
+               level='WARNING')
+    return False
 
 
 def _get_config() -> dict:

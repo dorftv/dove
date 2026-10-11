@@ -27,7 +27,7 @@ class rtmpsinkOutputDTO(OutputDTO):
 
     video_encoder: Union[UUID, h264EncoderUnion] = Field(
         default_factory=lambda: x264EncoderDTO(
-            options="tune=zerolatency pass=cbr bitrate=8192",
+            options="tune=zerolatency pass=cbr bitrate=8192 key-int-max=60",
             profile="baseline",
         )
     )

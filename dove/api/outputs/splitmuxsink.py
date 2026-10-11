@@ -36,7 +36,7 @@ class splitmuxsinkOutputDTO(OutputDTO):
     )
     video_encoder: Union[UUID, h264EncoderUnion, h265EncoderUnion, vp8EncoderDTO, vp9EncoderDTO, av1EncoderDTO] = Field(
         default_factory=lambda: x264EncoderDTO(
-            options="bitrate=4000 pass=cbr speed-preset=veryfast",
+            options="bitrate=4000 pass=cbr speed-preset=veryfast key-int-max=60",
             profile="main",
         ),
     )
@@ -47,10 +47,8 @@ class splitmuxsinkOutputDTO(OutputDTO):
         ),
     )
     mux: Union[mp4MuxDTO, matroskaMuxDTO, mpegtsMuxDTO] = Field(
-        default_factory=lambda: mp4MuxDTO(
-            name="mp4mux",
-            options="fragment-duration=1000 latency=4000000000"
-        ),
+        # mkv: crash-safe and correct durations (fragmented mp4 carries pipeline running time)
+        default_factory=lambda: matroskaMuxDTO(name="matroskamux"),
     )
 
 from dove.pipelines.outputs.splitmuxsink import splitmuxsinkOutput

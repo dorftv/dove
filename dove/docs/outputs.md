@@ -134,7 +134,7 @@ Segmented file recording to disk. Configurable mux (mp4, mkv, ts, etc.) and per-
 **Fields**
 - **Location** *(required)* — file-path pattern with `strftime` placeholders. Extension is added automatically based on the mux. Example: `recording-%Y%m%d-%H%M%S` → `recording-20260116-143027.mp4`.
 - **Segment Duration** *(default `1h`)* — `1h`, `30m`, `5m`, etc. First segment aligns to the clock boundary so files land on the hour/minute.
-- **Mux** *(optional)* — defaults to `mp4`; choose `mkv`, `mpegts`, `webm`, etc. via the encoder/mux selector.
+- **Mux** *(optional)* — defaults to `mkv` (crash-safe); choose `mp4`, `mpegts`, etc. via the encoder/mux selector.
 
 **Example**
 ```toml

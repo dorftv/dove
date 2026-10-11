@@ -29,7 +29,7 @@ dove = "dove.main:main"
 [tool.poetry.dependencies]
 python = "^3.12"
 fastapi = "^0.141.1"
-starlette = ">=0.46.0,<1.0.0"
+starlette = ">=1.7.0,<2.0.0"
 uvicorn = "^0.53.0"
 websockets = "^17.1"
 orjson = "^3.12.0"
